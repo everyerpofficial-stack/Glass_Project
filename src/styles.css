@@ -265,3 +265,14 @@
 .pdoc .sign { display: flex; justify-content: space-between; padding: 16px 6px 4px; font-size: 8.4pt; border: 1px solid #000; border-top: 0; }
 .pdoc .pgno { text-align: right; font-size: 7.4pt; padding-top: 3px; color: #444; }
 .doc-preview .pdoc { background: #fff; padding: 22px; }
+
+/* ── Hide number input spinners (up/down arrows) everywhere ── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
