@@ -1,20 +1,21 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   Plus,
   Trash2,
   Save,
   Printer,
-  FileSpreadsheet,
-  UserPlus,
-  Calculator,
-  Sparkles,
+  RefreshCw,
+  Copy,
+  Search,
+  UserCheck,
+  AlertCircle,
   ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,23 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useGQ } from "@/lib/store";
 import { blankItem, cur, G, nf } from "@/lib/gq";
 import { toast } from "sonner";
@@ -47,6 +31,65 @@ export const Route = createFileRoute("/quote")({
   component: QuoteBuilder,
 });
 
+/* ─── tiny shared helpers ─────────────────────────────────────────────── */
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+      {children}
+    </label>
+  );
+}
+
+function Section({
+  title,
+  headerRight,
+  children,
+}: {
+  title: string;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5">
+          <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
+          {title}
+        </span>
+        {headerRight}
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+/* ─── totals row helper ───────────────────────────────────────────────── */
+function TRow({
+  label,
+  value,
+  bold,
+  muted,
+  green,
+}: {
+  label: string;
+  value: string | number;
+  bold?: boolean;
+  muted?: boolean;
+  green?: boolean;
+}) {
+  return (
+    <div className={`flex justify-between items-baseline py-[3px] text-[11px] border-b border-border/30 last:border-0 ${muted ? "opacity-60" : ""}`}>
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={`font-mono tabular-nums ${bold ? "font-semibold text-foreground" : "text-foreground"} ${green ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/* ─── main component ──────────────────────────────────────────────────── */
 function QuoteBuilder() {
   const navigate = useNavigate();
   const {
@@ -58,21 +101,13 @@ function QuoteBuilder() {
     saveInvoice,
     saveCustomer,
     newInvoice,
-    syncOne,
-    draftState,
   } = useGQ();
 
-  const [custModalOpen, setCustModalOpen] = useState(false);
-  const [chargesOpen, setChargesOpen] = useState(false);
-  const [newCust, setNewCust] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    gstin: "",
-    addr: "",
-    ship: "",
-  });
+  const [custSearch, setCustSearch] = useState("");
+  const [custDropOpen, setCustDropOpen] = useState(false);
+  const [calcItem, setCalcItem] = useState(0); // which item to show in "How this was calculated"
 
+  /* ── field update helpers ── */
   const updateInvField = (path: string, val: any) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
@@ -80,14 +115,10 @@ function QuoteBuilder() {
       let target: any = copy;
       for (let i = 0; i < parts.length - 1; i++) {
         const key = parts[i];
-        if (key && target && typeof target === "object") {
-          target = target[key];
-        }
+        if (key && target && typeof target === "object") target = target[key];
       }
       const lastKey = parts[parts.length - 1];
-      if (lastKey && target && typeof target === "object") {
-        target[lastKey] = val;
-      }
+      if (lastKey && target && typeof target === "object") target[lastKey] = val;
       return copy;
     });
   };
@@ -120,510 +151,862 @@ function QuoteBuilder() {
     });
   };
 
-  const selectCustomer = (name: string) => {
-    const existing = customers.find((c) => c.name === name);
-    if (existing) {
-      setInv((prev) => ({ ...prev, cust: { ...existing } }));
-      toast.success(`Loaded ${name}`);
-    }
+  const duplicateItemRow = (index: number) => {
+    setInv((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      const dup = { ...copy.items[index], id: "it-" + Date.now() };
+      copy.items.splice(index + 1, 0, dup);
+      return copy;
+    });
   };
 
-  const handleSaveModalCustomer = () => {
-    if (!newCust.name.trim()) {
-      toast.error("Customer name is required");
-      return;
-    }
-    saveCustomer(newCust);
-    setInv((prev) => ({ ...prev, cust: { ...newCust } }));
-    setCustModalOpen(false);
-    setNewCust({ name: "", phone: "", email: "", gstin: "", addr: "", ship: "" });
+  /* ── customer search ── */
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter((c) =>
+        c.name?.toLowerCase().includes(custSearch.toLowerCase())
+      ),
+    [customers, custSearch]
+  );
+
+  const selectCustomer = (c: any) => {
+    setInv((prev) => ({ ...prev, cust: { ...c } }));
+    setCustSearch("");
+    setCustDropOpen(false);
+    toast.success(`Loaded ${c.name}`);
   };
 
-  const validLines = totals.lines?.filter((l: any) => l.ok) || [];
+  /* ── calc item for "how this was calculated" ── */
+  const selectedLine = totals.lines?.[calcItem];
+  const selectedItem = inv.items[calcItem];
+
+  /* ── gst fields visibility ── */
+  const gstType = inv.ch?.gstType || "cgst_sgst";
 
   return (
-    <div className="max-w-[1100px] mx-auto space-y-0 pb-10">
-      {/* ── Page header ────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
+    <div className="min-h-screen bg-background">
+      {/* ── BREADCRUMB + PAGE HEADER ─────────────────────────── */}
+      <div className="border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              {inv.no || "PI-1001"}
-            </h1>
-            <Badge
-              variant="outline"
-              className="text-[10px] font-medium rounded-md px-2 py-0.5"
-            >
-              {inv._saved ? "Saved" : "Draft"}
-            </Badge>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+            <Link to="/quotes" className="hover:text-foreground transition-colors">Glass Quote</Link>
+            {" / "}
+            <span className="text-primary">New Invoice</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{draftState}</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground leading-tight">
+            {inv._saved ? inv.no : "New invoice"}
+          </h1>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Enter sizes in inches. Everything else is calculated.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="text-xs" onClick={newInvoice}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> New Quote
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={newInvoice}
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Start fresh
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="text-xs"
+            className="h-8 text-xs gap-1.5"
             onClick={() => {
-              setInv((prev) => {
-                const copy = JSON.parse(JSON.stringify(prev));
-                copy.items = [
-                  { id: "it-1", desc: "Toughened Clear Glass", l1: "36", l2: "13 3/8", qty: 1, rate: 807, shape: "BLOCK", holes: 0, cutouts: 0, remark: "" },
-                  { id: "it-2", desc: "Toughened Clear Glass", l1: "36 3/8", l2: "15", qty: 1, rate: 807, shape: "BLOCK", holes: 0, cutouts: 0, remark: "" },
-                ];
-                return copy;
-              });
-              toast.success("Sample sizes loaded");
+              saveInvoice();
+              navigate({ to: "/invoice", search: { id: inv.id } });
             }}
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> Demo Items
+            <Printer className="h-3.5 w-3.5" /> Print / Save PDF
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={saveInvoice}
+          >
+            <Save className="h-3.5 w-3.5" /> Save Invoice
           </Button>
         </div>
       </div>
 
-      {/* ── Main two-column layout ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_272px] gap-5 items-start">
-        {/* LEFT column: all form sections */}
-        <div className="space-y-4">
+      {/* ── TWO-COLUMN LAYOUT ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-0 items-start">
+        {/* ── LEFT: form sections ───────────────────────────────── */}
+        <div className="space-y-4 p-4 border-r border-border min-h-screen">
 
-          {/* ── 1. Quote meta ──────────────────────────── */}
-          <Card className="border border-border/60 shadow-none">
-            <CardContent className="pt-4 pb-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <Label className="field-label">PI Number</Label>
-                  <Input
-                    className="h-8 text-xs font-mono mt-1"
-                    value={inv.no || ""}
-                    onChange={(e) => updateInvField("no", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="field-label">Date</Label>
-                  <Input
-                    type="date"
-                    className="h-8 text-xs mt-1"
-                    value={inv.date || ""}
-                    onChange={(e) => updateInvField("date", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="field-label">Sales Person</Label>
-                  <Input
-                    className="h-8 text-xs mt-1"
-                    value={inv.salesPerson || ""}
-                    onChange={(e) => updateInvField("salesPerson", e.target.value)}
-                    placeholder="Office"
-                  />
-                </div>
-                <div>
-                  <Label className="field-label">Party PO No.</Label>
-                  <Input
-                    className="h-8 text-xs mt-1"
-                    value={inv.poNo || ""}
-                    onChange={(e) => updateInvField("poNo", e.target.value)}
-                    placeholder="—"
-                  />
-                </div>
+          {/* 1. Invoice details */}
+          <Section title="Invoice details" headerRight={
+            <span className="text-[10px] text-muted-foreground">
+              {inv._saved ? "Saved" : "Draft"} saved {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          }>
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <FieldLabel>Proforma No.</FieldLabel>
+                <Input
+                  className="h-8 text-xs font-mono"
+                  value={inv.no || ""}
+                  onChange={(e) => updateInvField("no", e.target.value)}
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <FieldLabel>Date</FieldLabel>
+                <Input
+                  type="date"
+                  className="h-8 text-xs"
+                  value={inv.date || ""}
+                  onChange={(e) => updateInvField("date", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Party PO No.</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.poNo || ""}
+                  onChange={(e) => updateInvField("poNo", e.target.value)}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <FieldLabel>Sales Person</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.salesPerson || ""}
+                  onChange={(e) => updateInvField("salesPerson", e.target.value)}
+                  placeholder="Office"
+                />
+              </div>
+            </div>
+          </Section>
 
-          {/* ── 2. Customer ────────────────────────────── */}
-          <Card className="border border-border/60 shadow-none">
-            <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-foreground">Customer</CardTitle>
+          {/* 2. Customer */}
+          <Section
+            title="Customer"
+            headerRight={
               <div className="flex items-center gap-2">
-                {customers.length > 0 && (
-                  <Select onValueChange={selectCustomer}>
-                    <SelectTrigger className="h-7 text-xs w-44 border-dashed">
-                      <SelectValue placeholder="Select saved customer…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id || c.name} value={c.name}>
+                {/* Search saved customers */}
+                <div className="relative">
+                  <div className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => setCustDropOpen((v) => !v)}>
+                    <Search className="h-3 w-3 text-muted-foreground" />
+                    <input
+                      className="w-36 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
+                      placeholder="Search saved customer"
+                      value={custSearch}
+                      onChange={(e) => { setCustSearch(e.target.value); setCustDropOpen(true); }}
+                      onFocus={() => setCustDropOpen(true)}
+                    />
+                  </div>
+                  {custDropOpen && filteredCustomers.length > 0 && (
+                    <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-52 max-h-48 overflow-y-auto">
+                      {filteredCustomers.map((c) => (
+                        <div
+                          key={c.id || c.name}
+                          className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground"
+                          onMouseDown={() => selectCustomer(c)}
+                        >
                           {c.name}
-                        </SelectItem>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <Dialog open={custModalOpen} onOpenChange={setCustModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-7 text-xs">
-                      <UserPlus className="h-3.5 w-3.5 mr-1" /> Add
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-sm">
-                    <DialogHeader>
-                      <DialogTitle>New Customer</DialogTitle>
-                      <DialogDescription>Save for future quotes.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 py-1 text-xs">
-                      <div>
-                        <Label>Name *</Label>
-                        <Input
-                          className="h-8 mt-1"
-                          value={newCust.name}
-                          onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-                          placeholder="Company / person name"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label>Phone</Label>
-                          <Input className="h-8 mt-1" value={newCust.phone} onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })} />
-                        </div>
-                        <div>
-                          <Label>GSTIN</Label>
-                          <Input className="h-8 mt-1 font-mono" value={newCust.gstin} onChange={(e) => setNewCust({ ...newCust, gstin: e.target.value })} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Address</Label>
-                        <Textarea rows={2} className="mt-1 text-xs" value={newCust.addr} onChange={(e) => setNewCust({ ...newCust, addr: e.target.value })} />
-                      </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" size="sm" onClick={() => setCustModalOpen(false)}>Cancel</Button>
-                      <Button size="sm" onClick={handleSaveModalCustomer}>Save Customer</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => {
+                    if (!String(inv.cust?.name || "").trim()) {
+                      toast.error("Enter a customer name first");
+                      return;
+                    }
+                    saveCustomer(inv.cust);
+                  }}
+                >
+                  <UserCheck className="h-3 w-3" /> Save to customers
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="pt-0 pb-4 px-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="field-label">Customer Name *</Label>
-                  <Input className="h-8 text-xs mt-1" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} placeholder="M/s. Name" />
-                </div>
-                <div>
-                  <Label className="field-label">GSTIN</Label>
-                  <Input className="h-8 text-xs mt-1 font-mono" value={inv.cust?.gstin || ""} onChange={(e) => updateInvField("cust.gstin", e.target.value)} placeholder="29ABCDE1234F1Z5" />
-                </div>
-                <div>
-                  <Label className="field-label">Phone</Label>
-                  <Input className="h-8 text-xs mt-1" value={inv.cust?.phone || ""} onChange={(e) => updateInvField("cust.phone", e.target.value)} placeholder="+91…" />
-                </div>
-                <div>
-                  <Label className="field-label">Email</Label>
-                  <Input className="h-8 text-xs mt-1" value={inv.cust?.email || ""} onChange={(e) => updateInvField("cust.email", e.target.value)} placeholder="billing@company.com" />
-                </div>
-                <div>
-                  <Label className="field-label">Billing Address</Label>
-                  <Textarea rows={2} className="text-xs mt-1" value={inv.cust?.addr || ""} onChange={(e) => updateInvField("cust.addr", e.target.value)} placeholder="Street, City, State" />
-                </div>
-                <div>
-                  <Label className="field-label">Dispatch Address</Label>
-                  <Textarea rows={2} className="text-xs mt-1" value={inv.cust?.ship || ""} onChange={(e) => updateInvField("cust.ship", e.target.value)} placeholder="Same as billing if blank" />
-                </div>
+            }
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>M/S. — Customer Name</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.cust?.name || ""}
+                  onChange={(e) => updateInvField("cust.name", e.target.value)}
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <FieldLabel>GSTIN</FieldLabel>
+                <Input
+                  className="h-8 text-xs font-mono"
+                  value={inv.cust?.gstin || ""}
+                  onChange={(e) => updateInvField("cust.gstin", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Phone</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.cust?.phone || ""}
+                  onChange={(e) => updateInvField("cust.phone", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Email</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.cust?.email || ""}
+                  onChange={(e) => updateInvField("cust.email", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Billing Address</FieldLabel>
+                <Textarea
+                  rows={3}
+                  className="text-xs resize-none"
+                  value={inv.cust?.addr || ""}
+                  onChange={(e) => updateInvField("cust.addr", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Dispatch To</FieldLabel>
+                <Textarea
+                  rows={3}
+                  className="text-xs resize-none"
+                  value={inv.cust?.ship || ""}
+                  onChange={(e) => updateInvField("cust.ship", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Project Remark</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.projectRemark || ""}
+                  onChange={(e) => updateInvField("projectRemark", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Order No.</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.orderNo || ""}
+                  onChange={(e) => updateInvField("orderNo", e.target.value)}
+                />
+              </div>
+            </div>
+          </Section>
 
-          {/* ── 3. Glass specs ─────────────────────────── */}
-          <Card className="border border-border/60 shadow-none">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm font-medium text-foreground">Glass Specifications</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 pb-4 px-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 3. Glass specification */}
+          <Section title="Glass specification">
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <FieldLabel>Description of Goods</FieldLabel>
+                <Input
+                  className="h-8 text-xs"
+                  value={inv.glass?.desc || ""}
+                  onChange={(e) => updateInvField("glass.desc", e.target.value)}
+                  placeholder="5 MM Grey Tinted T.G. With Rough Grind"
+                />
+              </div>
+              <div>
+                <FieldLabel>Thickness (MM)</FieldLabel>
+                <Input
+                  type="number"
+                  className="h-8 text-xs font-mono"
+                  value={inv.glass?.thickness || ""}
+                  onChange={(e) => updateInvField("glass.thickness", Number(e.target.value))}
+                  placeholder="5"
+                />
+              </div>
+              <div>
+                <FieldLabel>Batch / Lot No.</FieldLabel>
+                <Input
+                  className="h-8 text-xs font-mono"
+                  value={inv.glass?.batchNo || ""}
+                  onChange={(e) => updateInvField("glass.batchNo", e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel>Default Rate</FieldLabel>
+                <Input
+                  type="number"
+                  className="h-8 text-xs font-mono"
+                  value={inv.glass?.defaultRate ?? ""}
+                  onChange={(e) =>
+                    updateInvField("glass.defaultRate", e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                  placeholder="807"
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* 4. Items table */}
+          <Section
+            title="Items"
+            headerRight={
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-muted-foreground">
+                  Rate is per {settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"}
+                </span>
+                <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={addItemRow}>
+                  <Plus className="h-3 w-3" /> Add Item
+                </Button>
+              </div>
+            }
+          >
+            <div className="overflow-x-auto -mx-4">
+              <table className="w-full text-[11px] border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="border-b border-border bg-muted/20">
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-8">#</th>
+                    <th className="py-2 px-2 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground min-w-[120px]">Description</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[90px]">L1 Inch</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[90px]">L2 Inch</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[80px]">MM</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[50px]">QTY</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[50px]">Hole</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[50px]">Cut</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[70px]">Area</th>
+                    <th className="py-2 px-2 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[70px]">Rate</th>
+                    <th className="py-2 px-2 text-right text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-[80px]">Amount</th>
+                    <th className="py-2 px-2 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground min-w-[80px]">Remark</th>
+                    <th className="py-2 px-2 w-[52px]" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {inv.items.map((item: any, idx: number) => {
+                    const line = totals.lines?.[idx];
+                    const isL1Valid = item.l1 ? G.parseInch(item.l1).ok : true;
+                    const isL2Valid = item.l2 ? G.parseInch(item.l2).ok : true;
+                    const mmText = line?.ok
+                      ? `${line.lMM} × ${line.wMM}`
+                      : "—";
+                    const areaText = line?.ok
+                      ? settings.rateUnit === "sqft"
+                        ? String(line.totalSqft)
+                        : String(line.totalSqm)
+                      : "—";
+
+                    return (
+                      <tr key={item.id || idx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2) ? "bg-red-500/5" : ""}`}>
+                        {/* # */}
+                        <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px]">Item</span>
+                            <span className="text-xs font-semibold">{idx + 1}</span>
+                          </div>
+                        </td>
+                        {/* Description */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            className="h-8 text-xs min-w-[100px]"
+                            value={item.desc || ""}
+                            onChange={(e) => updateItem(idx, "desc", e.target.value)}
+                            placeholder={inv.glass?.desc || "Glass"}
+                          />
+                        </td>
+                        {/* L1 */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            className={`h-8 text-xs font-mono text-center w-[82px] ${!isL1Valid && item.l1 ? "border-destructive ring-1 ring-destructive/30" : ""}`}
+                            value={item.l1 || ""}
+                            onChange={(e) => updateItem(idx, "l1", e.target.value)}
+                            placeholder="36 3/8"
+                          />
+                        </td>
+                        {/* L2 */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            className={`h-8 text-xs font-mono text-center w-[82px] ${!isL2Valid && item.l2 ? "border-destructive ring-1 ring-destructive/30" : ""}`}
+                            value={item.l2 || ""}
+                            onChange={(e) => updateItem(idx, "l2", e.target.value)}
+                            placeholder="13 3/8"
+                          />
+                        </td>
+                        {/* MM (auto) */}
+                        <td className="py-1.5 px-2 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                          {mmText}
+                        </td>
+                        {/* QTY */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs font-mono text-center w-[44px]"
+                            value={item.qty ?? 1}
+                            min={1}
+                            onChange={(e) => updateItem(idx, "qty", Number(e.target.value))}
+                          />
+                        </td>
+                        {/* HOLE */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs font-mono text-center w-[44px]"
+                            value={item.holes ?? 0}
+                            min={0}
+                            onChange={(e) => updateItem(idx, "holes", Number(e.target.value))}
+                          />
+                        </td>
+                        {/* CUT */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs font-mono text-center w-[44px]"
+                            value={item.cutouts ?? 0}
+                            min={0}
+                            onChange={(e) => updateItem(idx, "cutouts", Number(e.target.value))}
+                          />
+                        </td>
+                        {/* AREA (auto) */}
+                        <td className="py-1.5 px-2 text-center font-mono text-[11px] text-muted-foreground">
+                          {areaText}
+                        </td>
+                        {/* RATE */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs font-mono text-center w-[62px]"
+                            value={item.rate ?? ""}
+                            onChange={(e) =>
+                              updateItem(idx, "rate", e.target.value === "" ? "" : Number(e.target.value))
+                            }
+                            placeholder={String(inv.glass?.defaultRate || "")}
+                          />
+                        </td>
+                        {/* AMOUNT (auto) */}
+                        <td className="py-1.5 px-2 text-right font-mono font-semibold text-xs whitespace-nowrap">
+                          {line?.ok ? (
+                            nf(line.amount)
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                        {/* REMARK */}
+                        <td className="py-1.5 px-1">
+                          <Input
+                            className="h-8 text-xs min-w-[72px]"
+                            value={item.remark || ""}
+                            onChange={(e) => updateItem(idx, "remark", e.target.value)}
+                          />
+                        </td>
+                        {/* Actions */}
+                        <td className="py-1.5 px-1">
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              title="Duplicate row"
+                              className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={() => duplicateItemRow(idx)}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                            <button
+                              title="Remove row"
+                              className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => removeItemRow(idx)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+
+          {/* 5. Charges & Tax */}
+          <Section title="Charges &amp; tax for this invoice">
+            <div className="space-y-3">
+              {/* Row 1: wastage */}
+              <div className="grid grid-cols-4 gap-3">
                 <div>
-                  <Label className="field-label">Glass Description</Label>
-                  <Input className="h-8 text-xs mt-1" value={inv.glass?.desc || ""} onChange={(e) => updateInvField("glass.desc", e.target.value)} placeholder="Toughened Clear Glass" />
-                </div>
-                <div>
-                  <Label className="field-label">Thickness (mm)</Label>
-                  <Select value={String(inv.glass?.thickness || 5)} onValueChange={(v) => updateInvField("glass.thickness", Number(v))}>
-                    <SelectTrigger className="h-8 text-xs mt-1">
+                  <FieldLabel>Wastage</FieldLabel>
+                  <Select
+                    value={inv.ch?.wastageMode || "none"}
+                    onValueChange={(v) => updateInvField("ch.wastageMode", v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[3, 4, 5, 6, 8, 10, 12, 15, 19].map((mm) => (
-                        <SelectItem key={mm} value={String(mm)}>{mm} mm</SelectItem>
-                      ))}
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="manual">Manual area</SelectItem>
+                      <SelectItem value="percent">Percentage %</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="field-label">Default Rate ({settings.rateUnit === "sqft" ? "₹/Sq.Ft" : "₹/Sq.Mtr"})</Label>
-                  <Input type="number" className="h-8 text-xs mt-1 font-mono" value={inv.glass?.defaultRate ?? ""} onChange={(e) => updateInvField("glass.defaultRate", e.target.value === "" ? "" : Number(e.target.value))} />
+                  <FieldLabel>Wastage Area</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.wastageArea ?? 0}
+                    onChange={(e) => updateInvField("ch.wastageArea", Number(e.target.value))}
+                    disabled={inv.ch?.wastageMode === "none"}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Wastage Rate</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.wastageRate ?? 0}
+                    onChange={(e) => updateInvField("ch.wastageRate", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Template Charge</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.templateCharge ?? 0}
+                    onChange={(e) => updateInvField("ch.templateCharge", Number(e.target.value))}
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* ── 4. Line items ──────────────────────────── */}
-          <Card className="border border-border/60 shadow-none">
-            <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium text-foreground">Line Items</CardTitle>
-              <Button size="sm" onClick={addItemRow} className="h-7 text-xs">
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add Row
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-0 pb-4 px-4 space-y-2">
-              {/* Header row */}
-              <div className="grid items-center gap-x-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium pb-1 border-b border-border/50"
-                style={{ gridTemplateColumns: "24px 1fr 104px 104px 56px 82px 82px 28px" }}>
-                <span className="text-center">#</span>
-                <span>Description</span>
-                <span>Height (L1)</span>
-                <span>Width (L2)</span>
-                <span className="text-center">Qty</span>
-                <span>Rate</span>
-                <span className="text-right">Amount</span>
-                <span />
+              {/* Row 2: charges */}
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <FieldLabel>Other Charges</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.otherCharges ?? 0}
+                    onChange={(e) => updateInvField("ch.otherCharges", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Admin Charge</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.adminCharge ?? 0}
+                    onChange={(e) => updateInvField("ch.adminCharge", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Discount %</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.discountPercent ?? 0}
+                    onChange={(e) => updateInvField("ch.discountPercent", Number(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Insurance %</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.insurancePercent ?? 0}
+                    onChange={(e) => updateInvField("ch.insurancePercent", Number(e.target.value))}
+                  />
+                </div>
               </div>
 
-              {/* Item rows */}
-              {inv.items.map((item: any, idx: number) => {
-                const calculatedLine = totals.lines?.[idx];
-                const isL1Valid = item.l1 ? G.parseInch(item.l1).ok : true;
-                const isL2Valid = item.l2 ? G.parseInch(item.l2).ok : true;
-                return (
-                  <div
-                    key={item.id || idx}
-                    className="grid items-center gap-x-2"
-                    style={{ gridTemplateColumns: "24px 1fr 104px 104px 56px 82px 82px 28px" }}
+              {/* Row 3: GST */}
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <FieldLabel>GST Type</FieldLabel>
+                  <Select
+                    value={gstType}
+                    onValueChange={(v) => updateInvField("ch.gstType", v)}
                   >
-                    <span className="text-center text-xs text-muted-foreground font-mono">{idx + 1}</span>
-                    <Input
-                      className="h-9 text-xs"
-                      value={item.desc || ""}
-                      onChange={(e) => updateItem(idx, "desc", e.target.value)}
-                      placeholder={inv.glass?.desc || "Item description"}
-                    />
-                    <Input
-                      className={`h-9 text-sm font-mono tracking-wide ${!isL1Valid ? "border-destructive" : ""}`}
-                      value={item.l1 || ""}
-                      onChange={(e) => updateItem(idx, "l1", e.target.value)}
-                      placeholder="36 3/8"
-                    />
-                    <Input
-                      className={`h-9 text-sm font-mono tracking-wide ${!isL2Valid ? "border-destructive" : ""}`}
-                      value={item.l2 || ""}
-                      onChange={(e) => updateItem(idx, "l2", e.target.value)}
-                      placeholder="13 3/8"
-                    />
-                    <Input
-                      type="number"
-                      className="h-9 text-sm font-mono text-center"
-                      value={item.qty ?? 1}
-                      onChange={(e) => updateItem(idx, "qty", Number(e.target.value))}
-                    />
-                    <Input
-                      type="number"
-                      className="h-9 text-sm font-mono"
-                      value={item.rate ?? ""}
-                      onChange={(e) => updateItem(idx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder={String(inv.glass?.defaultRate || "")}
-                    />
-                    <div className="h-9 flex items-center justify-end">
-                      <span className="text-sm font-mono font-medium text-foreground">
-                        {calculatedLine?.ok ? nf(calculatedLine.amount) : <span className="text-muted-foreground/50 text-xs">—</span>}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground/50 hover:text-destructive"
-                      onClick={() => removeItemRow(idx)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {/* Add row + area summary */}
-              <div className="flex items-center justify-between pt-2">
-                <Button variant="ghost" size="sm" onClick={addItemRow} className="h-7 text-xs text-muted-foreground hover:text-foreground -ml-2">
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add line
-                </Button>
-                <div className="text-[11px] text-muted-foreground">
-                  {inv.items.length} item{inv.items.length !== 1 ? "s" : ""} · Area:{" "}
-                  <span className="font-medium text-foreground">
-                    {settings.rateUnit === "sqft" ? `${totals.sqft} Sq.Ft` : `${totals.sqm} Sq.M`}
-                  </span>
-                  {totals.qty > 0 && (
-                    <> · Qty: <span className="font-medium text-foreground">{totals.qty}</span></>
-                  )}
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cgst_sgst">CGST + SGST</SelectItem>
+                      <SelectItem value="igst">IGST</SelectItem>
+                      <SelectItem value="none">Exempt</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <FieldLabel>CGST %</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.cgstPercent ?? 9}
+                    onChange={(e) => updateInvField("ch.cgstPercent", Number(e.target.value))}
+                    disabled={gstType !== "cgst_sgst"}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>SGST %</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.sgstPercent ?? 9}
+                    onChange={(e) => updateInvField("ch.sgstPercent", Number(e.target.value))}
+                    disabled={gstType !== "cgst_sgst"}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>IGST %</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.igstPercent ?? 18}
+                    onChange={(e) => updateInvField("ch.igstPercent", Number(e.target.value))}
+                    disabled={gstType !== "igst"}
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* ── 5. Charges & Tax (collapsible) ─────────── */}
-          <Collapsible open={chargesOpen} onOpenChange={setChargesOpen}>
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border/60 bg-card text-sm font-medium text-foreground hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-muted-foreground" />
-                  Charges, Wastage & Tax
+              {/* Row 4: Commission + Round off */}
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <FieldLabel>Commission</FieldLabel>
+                  <Select
+                    value={inv.ch?.commissionMode || "none"}
+                    onValueChange={(v) => updateInvField("ch.commissionMode", v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="percent">Percent %</SelectItem>
+                      <SelectItem value="fixed">Fixed ₹</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${chargesOpen ? "rotate-180" : ""}`} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <Card className="border border-border/60 border-t-0 rounded-t-none shadow-none">
-                <CardContent className="pt-4 pb-4 px-4 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div>
-                      <Label className="field-label">Wastage Mode</Label>
-                      <Select value={inv.ch?.wastageMode || "none"} onValueChange={(v) => updateInvField("ch.wastageMode", v)}>
-                        <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="percent">Percentage %</SelectItem>
-                          <SelectItem value="manual">Manual Area</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="field-label">Wastage %</Label>
-                      <Input type="number" className="h-8 text-xs mt-1" value={inv.ch?.wastagePercent ?? 0} onChange={(e) => updateInvField("ch.wastagePercent", Number(e.target.value))} disabled={inv.ch?.wastageMode !== "percent"} />
-                    </div>
-                    <div>
-                      <Label className="field-label">Wastage Rate</Label>
-                      <Input type="number" className="h-8 text-xs mt-1" value={inv.ch?.wastageRate ?? ""} onChange={(e) => updateInvField("ch.wastageRate", Number(e.target.value))} />
-                    </div>
+                <div>
+                  <FieldLabel>Commission Value</FieldLabel>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs font-mono"
+                    value={inv.ch?.commissionValue ?? 0}
+                    onChange={(e) => updateInvField("ch.commissionValue", Number(e.target.value))}
+                    disabled={inv.ch?.commissionMode === "none"}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Commission On</FieldLabel>
+                  <Select
+                    value={inv.ch?.commissionBase || "basic"}
+                    onValueChange={(v) => updateInvField("ch.commissionBase", v)}
+                    disabled={inv.ch?.commissionMode === "none"}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">Basic amount</SelectItem>
+                      <SelectItem value="glass">Glass amount</SelectItem>
+                      <SelectItem value="grand">Grand total</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <FieldLabel>Round Off Total</FieldLabel>
+                  <Select
+                    value={String(inv.ch?.roundOff) === "1" || inv.ch?.roundOff === 1 ? "yes" : "no"}
+                    onValueChange={(v) => updateInvField("ch.roundOff", v === "yes" ? 1 : 0)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {inv.ch?.commissionMode !== "none" && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Commission is tracked for you only. It never appears on the customer's invoice.
+                </p>
+              )}
+            </div>
+          </Section>
+
+          {/* 6. How this was calculated */}
+          <div className="bg-[#1a1a1a] border border-border/50 rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+              <span className="text-[11px] font-semibold text-white/80 uppercase tracking-widest">
+                How this was calculated
+              </span>
+              {/* Item selector */}
+              <div className="relative">
+                <select
+                  className="appearance-none bg-white/10 text-white text-[11px] border border-white/20 rounded px-2 py-1 pr-6 cursor-pointer outline-none focus:ring-1 focus:ring-white/30"
+                  value={calcItem}
+                  onChange={(e) => setCalcItem(Number(e.target.value))}
+                >
+                  {inv.items.map((_: any, idx: number) => (
+                    <option key={idx} value={idx} className="bg-[#1a1a1a]">
+                      Item {idx + 1}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="h-3 w-3 text-white/50 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="p-4">
+              {selectedLine && !selectedLine.ok ? (
+                /* Problems panel */
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Item {calcItem + 1} Needs Attention
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div>
-                      <Label className="field-label">Admin Charge (₹)</Label>
-                      <Input type="number" className="h-8 text-xs mt-1" value={inv.ch?.adminCharge ?? 0} onChange={(e) => updateInvField("ch.adminCharge", Number(e.target.value))} />
+                  {selectedLine.errors?.map((err: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600/20 text-red-400 border border-red-500/30">
+                        Problem
+                      </span>
+                      <span className="text-[11px] text-white/70">{err}</span>
                     </div>
-                    <div>
-                      <Label className="field-label">Discount (%)</Label>
-                      <Input type="number" className="h-8 text-xs mt-1" value={inv.ch?.discountPercent ?? 0} onChange={(e) => updateInvField("ch.discountPercent", Number(e.target.value))} />
+                  ))}
+                </div>
+              ) : selectedLine?.ok ? (
+                /* Trace table */
+                <div className="space-y-1.5">
+                  {selectedLine.trace?.map((t: any, i: number) => (
+                    <div key={i} className="flex items-start justify-between gap-4 py-1 border-b border-white/5 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] text-white/50 uppercase tracking-wider">{t.label}</div>
+                        <div className="text-[11px] text-white/60 font-mono mt-0.5 truncate">{t.expr}</div>
+                      </div>
+                      <div className="text-[11px] font-mono font-semibold text-emerald-400 shrink-0">{t.value}</div>
                     </div>
-                    <div>
-                      <Label className="field-label">Insurance (%)</Label>
-                      <Input type="number" className="h-8 text-xs mt-1" value={inv.ch?.insurancePercent ?? 0} onChange={(e) => updateInvField("ch.insurancePercent", Number(e.target.value))} />
-                    </div>
-                    <div>
-                      <Label className="field-label">GST Type</Label>
-                      <Select value={inv.ch?.gstType || "cgst_sgst"} onValueChange={(v) => updateInvField("ch.gstType", v)}>
-                        <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cgst_sgst">CGST + SGST</SelectItem>
-                          <SelectItem value="igst">IGST</SelectItem>
-                          <SelectItem value="none">Exempt</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-foreground">Auto Round Off</p>
-                      <p className="text-[11px] text-muted-foreground">Round grand total to nearest rupee</p>
-                    </div>
-                    <Switch
-                      checked={String(inv.ch?.roundOff) === "1" || inv.ch?.roundOff === 1}
-                      onCheckedChange={(checked) => updateInvField("ch.roundOff", checked ? 1 : 0)}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[11px] text-white/40 italic py-2">
+                  Enter sizes for Item {calcItem + 1} to see the calculation breakdown.
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
-        {/* RIGHT column: summary + save ──────────────── */}
-        <div className="sticky top-20">
-          <Card className="border border-border/60 shadow-none">
-            <CardHeader className="py-3 px-4 border-b border-border/40">
-              <CardTitle className="text-sm font-medium text-foreground">Quote Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-3 pb-4 px-4">
-              {/* Breakdown rows */}
-              <div className="space-y-0 text-xs">
-                <SumRow label="Glass Amount" value={cur(totals.glassAmount, settings.currency)} />
-                {Boolean(totals.wastageAmount) && <SumRow label="Wastage" value={cur(totals.wastageAmount, settings.currency)} />}
-                <SumRow label="Basic Amount" value={cur(totals.basicAmount, settings.currency)} bold />
-                {Boolean(totals.adminCharge) && <SumRow label="Admin Charge" value={cur(totals.adminCharge, settings.currency)} />}
-                {Boolean(totals.discount) && <SumRow label="Discount" value={`-${cur(totals.discount, settings.currency)}`} accent="green" />}
-                {Boolean(totals.insurance) && <SumRow label="Insurance" value={cur(totals.insurance, settings.currency)} />}
-                <SumRow label="Assessable Value" value={cur(totals.assessableValue, settings.currency)} bold />
-                {Boolean(totals.cgst) && <SumRow label={`CGST ${totals.settings?.cgstPercent}%`} value={cur(totals.cgst, settings.currency)} />}
-                {Boolean(totals.sgst) && <SumRow label={`SGST ${totals.settings?.sgstPercent}%`} value={cur(totals.sgst, settings.currency)} />}
-                {Boolean(totals.igst) && <SumRow label={`IGST ${totals.settings?.igstPercent}%`} value={cur(totals.igst, settings.currency)} />}
-                {Boolean(totals.roundOff) && (
-                  <SumRow label="Round Off" value={totals.roundOff > 0 ? `+${totals.roundOff}` : String(totals.roundOff)} muted />
-                )}
-              </div>
+        {/* ── RIGHT: Totals panel ───────────────────────────────── */}
+        <div className="sticky top-0 p-3 border-t lg:border-t-0 bg-background">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Totals</span>
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 uppercase tracking-wider">
+                + {settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"} Exact
+              </span>
+            </div>
 
-              {/* Grand Total */}
-              <div className="mt-3 pt-3 border-t border-border/60">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-semibold text-foreground">Grand Total</span>
-                  <span className="text-lg font-bold font-mono text-foreground">
-                    {cur(totals.grandTotal, settings.currency)}
-                  </span>
+            <div className="px-3 py-2.5 space-y-0">
+              <TRow label="Pieces" value={totals.qty || 0} />
+              <TRow
+                label="Area (Sq.Mtr)"
+                value={totals.sqm ?? "0.000"}
+              />
+              <TRow
+                label="Sq.Ft / Sq.Mtr"
+                value={`${totals.sqft ?? "0.000"} / ${totals.sqm ?? "0.000"}`}
+              />
+
+              <div className="py-1" />
+
+              <TRow
+                label="Glass amount"
+                value={`₹ ${nf(totals.glassAmount ?? 0)}`}
+              />
+              <TRow
+                label="Basic amount"
+                value={`₹ ${nf(totals.basicAmount ?? 0)}`}
+                bold
+              />
+              {Boolean(totals.adminCharge) && (
+                <TRow
+                  label="Admin charge"
+                  value={`₹ ${nf(totals.adminCharge)}`}
+                />
+              )}
+              <TRow
+                label="Total"
+                value={`₹ ${nf(totals.subTotal ?? 0)}`}
+                bold
+              />
+              {Boolean(totals.insurance) && (
+                <TRow
+                  label={`Insurance ${totals.settings?.insurancePercent ?? 2}%`}
+                  value={`₹ ${nf(totals.insurance)}`}
+                />
+              )}
+              <TRow
+                label="Assessable value"
+                value={`₹ ${nf(totals.assessableValue ?? 0)}`}
+                bold
+              />
+              {Boolean(totals.cgst) && (
+                <TRow
+                  label={`C-GST ${totals.settings?.cgstPercent ?? 9}%`}
+                  value={`₹ ${nf(totals.cgst)}`}
+                />
+              )}
+              {Boolean(totals.sgst) && (
+                <TRow
+                  label={`S-GST ${totals.settings?.sgstPercent ?? 9}%`}
+                  value={`₹ ${nf(totals.sgst)}`}
+                />
+              )}
+              {Boolean(totals.igst) && (
+                <TRow
+                  label={`IGST ${totals.settings?.igstPercent ?? 18}%`}
+                  value={`₹ ${nf(totals.igst)}`}
+                />
+              )}
+              {Boolean(totals.grossTotal) && (
+                <TRow
+                  label="Gross total"
+                  value={`₹ ${nf(totals.grossTotal)}`}
+                />
+              )}
+              {Boolean(totals.roundOff) && (
+                <TRow
+                  label="Round off"
+                  value={totals.roundOff > 0 ? `₹ +${nf(totals.roundOff)}` : `₹ ${nf(totals.roundOff)}`}
+                  muted
+                />
+              )}
+            </div>
+
+            {/* Grand Total */}
+            <div className="px-3 pb-3 pt-1 border-t border-border/60 mt-1">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-bold text-foreground">Grand total</span>
+                <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                  ₹{nf(totals.grandTotal ?? 0)}
+                </span>
+              </div>
+              {totals.amountInWords && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic leading-relaxed">
+                  {totals.amountInWords}
+                </p>
+              )}
+            </div>
+
+            {/* Commission note (hidden from customer) */}
+            {Boolean(totals.commission) && (
+              <div className="px-3 pb-3">
+                <div className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+                  Commission (internal only): ₹{nf(totals.commission)}
                 </div>
-                {totals.amountInWords && (
-                  <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed italic">
-                    {totals.amountInWords}
-                  </p>
-                )}
               </div>
-
-              {/* Actions */}
-              <div className="mt-4 space-y-2">
-                <Button className="w-full h-9 text-sm" onClick={saveInvoice}>
-                  <Save className="h-3.5 w-3.5 mr-1.5" /> Save Quotation
-                </Button>
-                {settings.sheetUrl && (
-                  <Button
-                    variant="outline"
-                    className="w-full h-8 text-xs"
-                    onClick={() => { saveInvoice(); syncOne(inv); }}
-                  >
-                    <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" /> Save & Sync to Sheet
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  className="w-full h-8 text-xs text-muted-foreground"
-                  onClick={() => { saveInvoice(); navigate({ to: "/invoice", search: { id: inv.id } }); }}
-                >
-                  <Printer className="h-3.5 w-3.5 mr-1.5" /> View & Print Invoice
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* Helper component for summary rows */
-function SumRow({
-  label,
-  value,
-  bold = false,
-  muted = false,
-  accent,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-  muted?: boolean;
-  accent?: "green";
-}) {
-  return (
-    <div className="flex justify-between items-center py-1.5 border-b border-border/30 last:border-0">
-      <span className={muted ? "text-muted-foreground/70" : "text-muted-foreground"}>{label}</span>
-      <span
-        className={`font-mono tabular-nums ${bold ? "font-semibold text-foreground" : ""} ${muted ? "text-muted-foreground/70" : "text-foreground"} ${accent === "green" ? "text-emerald-600 dark:text-emerald-400" : ""}`}
-      >
-        {value}
-      </span>
     </div>
   );
 }
