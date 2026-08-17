@@ -498,9 +498,11 @@ function QuoteBuilder() {
                         <Input
                           type="number"
                           className="h-8 text-xs font-mono text-center w-[44px]"
-                          value={item.qty ?? 1}
+                          value={item.qty || ""}
                           min={1}
-                          onChange={(e) => updateItem(idx, "qty", Number(e.target.value))}
+                          onChange={(e) =>
+                            updateItem(idx, "qty", e.target.value === "" ? "" : Number(e.target.value))
+                          }
                         />
                       </td>
                       {/* HOLE */}
@@ -508,9 +510,11 @@ function QuoteBuilder() {
                         <Input
                           type="number"
                           className="h-8 text-xs font-mono text-center w-[44px]"
-                          value={item.holes ?? 0}
+                          value={item.holes || ""}
                           min={0}
-                          onChange={(e) => updateItem(idx, "holes", Number(e.target.value))}
+                          onChange={(e) =>
+                            updateItem(idx, "holes", e.target.value === "" ? "" : Number(e.target.value))
+                          }
                         />
                       </td>
                       {/* CUT */}
@@ -518,9 +522,11 @@ function QuoteBuilder() {
                         <Input
                           type="number"
                           className="h-8 text-xs font-mono text-center w-[44px]"
-                          value={item.cutouts ?? 0}
+                          value={item.cutouts || ""}
                           min={0}
-                          onChange={(e) => updateItem(idx, "cutouts", Number(e.target.value))}
+                          onChange={(e) =>
+                            updateItem(idx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))
+                          }
                         />
                       </td>
                       {/* AREA auto */}
@@ -596,19 +602,19 @@ function QuoteBuilder() {
               </div>
               <div>
                 <FieldLabel>Wastage Area</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.wastageArea ?? 0}
-                  onChange={(e) => updateInvField("ch.wastageArea", Number(e.target.value))}
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.wastageArea || ""}
+                  onChange={(e) => updateInvField("ch.wastageArea", e.target.value === "" ? "" : Number(e.target.value))}
                   disabled={inv.ch?.wastageMode === "none"} />
               </div>
               <div>
                 <FieldLabel>Wastage Rate</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.wastageRate ?? 0}
-                  onChange={(e) => updateInvField("ch.wastageRate", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.wastageRate || ""}
+                  onChange={(e) => updateInvField("ch.wastageRate", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <FieldLabel>Template Charge</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.templateCharge ?? 0}
-                  onChange={(e) => updateInvField("ch.templateCharge", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.templateCharge || ""}
+                  onChange={(e) => updateInvField("ch.templateCharge", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
             </div>
 
@@ -616,23 +622,23 @@ function QuoteBuilder() {
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <FieldLabel>Other Charges</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.otherCharges ?? 0}
-                  onChange={(e) => updateInvField("ch.otherCharges", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.otherCharges || ""}
+                  onChange={(e) => updateInvField("ch.otherCharges", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <FieldLabel>Admin Charge</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.adminCharge ?? 0}
-                  onChange={(e) => updateInvField("ch.adminCharge", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.adminCharge || ""}
+                  onChange={(e) => updateInvField("ch.adminCharge", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <FieldLabel>Discount %</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.discountPercent ?? 0}
-                  onChange={(e) => updateInvField("ch.discountPercent", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.discountPercent || ""}
+                  onChange={(e) => updateInvField("ch.discountPercent", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
               <div>
                 <FieldLabel>Insurance %</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.insurancePercent ?? 0}
-                  onChange={(e) => updateInvField("ch.insurancePercent", Number(e.target.value))} />
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.insurancePercent || ""}
+                  onChange={(e) => updateInvField("ch.insurancePercent", e.target.value === "" ? "" : Number(e.target.value))} />
               </div>
             </div>
 
@@ -651,20 +657,20 @@ function QuoteBuilder() {
               </div>
               <div>
                 <FieldLabel>CGST %</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.cgstPercent ?? 9}
-                  onChange={(e) => updateInvField("ch.cgstPercent", Number(e.target.value))}
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.cgstPercent || ""}
+                  onChange={(e) => updateInvField("ch.cgstPercent", e.target.value === "" ? "" : Number(e.target.value))}
                   disabled={gstType !== "cgst_sgst"} />
               </div>
               <div>
                 <FieldLabel>SGST %</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.sgstPercent ?? 9}
-                  onChange={(e) => updateInvField("ch.sgstPercent", Number(e.target.value))}
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.sgstPercent || ""}
+                  onChange={(e) => updateInvField("ch.sgstPercent", e.target.value === "" ? "" : Number(e.target.value))}
                   disabled={gstType !== "cgst_sgst"} />
               </div>
               <div>
                 <FieldLabel>IGST %</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.igstPercent ?? 18}
-                  onChange={(e) => updateInvField("ch.igstPercent", Number(e.target.value))}
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.igstPercent || ""}
+                  onChange={(e) => updateInvField("ch.igstPercent", e.target.value === "" ? "" : Number(e.target.value))}
                   disabled={gstType !== "igst"} />
               </div>
             </div>
@@ -684,8 +690,8 @@ function QuoteBuilder() {
               </div>
               <div>
                 <FieldLabel>Commission Value</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.commissionValue ?? 0}
-                  onChange={(e) => updateInvField("ch.commissionValue", Number(e.target.value))}
+                <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.commissionValue || ""}
+                  onChange={(e) => updateInvField("ch.commissionValue", e.target.value === "" ? "" : Number(e.target.value))}
                   disabled={inv.ch?.commissionMode === "none"} />
               </div>
               <div>
