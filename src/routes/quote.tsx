@@ -10,6 +10,7 @@ import {
   UserCheck,
   AlertCircle,
   ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,14 +51,14 @@ function Section({
 }) {
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border bg-muted/30 gap-2 flex-wrap">
         <span className="text-[11px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5">
           <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
           {title}
         </span>
-        {headerRight}
+        {headerRight && <div className="shrink-0">{headerRight}</div>}
       </div>
-      <div className="px-4 py-3">{children}</div>
+      <div className="px-3 sm:px-4 py-3">{children}</div>
     </div>
   );
 }
@@ -88,6 +89,197 @@ function TRow({
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+/* ─── Mobile item card ────────────────────────────────────────────────── */
+function MobileItemCard({
+  item,
+  idx,
+  line,
+  settings,
+  invGlassDesc,
+  invGlassDefaultRate,
+  updateItem,
+  duplicateItemRow,
+  removeItemRow,
+}: {
+  item: any;
+  idx: number;
+  line: any;
+  settings: any;
+  invGlassDesc: string;
+  invGlassDefaultRate: any;
+  updateItem: (index: number, field: string, val: any) => void;
+  duplicateItemRow: (index: number) => void;
+  removeItemRow: (index: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const isL1Valid = item.l1 ? G.parseInch(item.l1).ok : true;
+  const isL2Valid = item.l2 ? G.parseInch(item.l2).ok : true;
+  const mmText = line?.ok ? `${line.lMM}×${line.wMM}` : "—";
+  const areaText = line?.ok
+    ? settings.rateUnit === "sqft"
+      ? String(line.totalSqft)
+      : String(line.totalSqm)
+    : "—";
+
+  return (
+    <div
+      className={`rounded-lg border ${
+        !line?.ok && (item.l1 || item.l2) ? "border-destructive/50 bg-red-500/5" : "border-border bg-card"
+      } overflow-hidden`}
+    >
+      {/* Card header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center h-5 w-5 rounded bg-primary/10 text-primary text-[10px] font-bold font-mono">
+            {idx + 1}
+          </span>
+          <span className="text-xs font-medium text-foreground truncate max-w-[140px]">
+            {item.desc || invGlassDesc || `Item ${idx + 1}`}
+          </span>
+          {line?.ok && (
+            <span className="text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+              ₹{nf(line.amount)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            title="Duplicate"
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => duplicateItemRow(idx)}
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+          <button
+            title="Remove"
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+            onClick={() => removeItemRow(idx)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+          <button
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="p-3 space-y-2.5">
+          {/* Row 1: Description */}
+          <div>
+            <FieldLabel>Description</FieldLabel>
+            <Input
+              className="h-8 text-xs w-full"
+              value={item.desc || ""}
+              onChange={(e) => updateItem(idx, "desc", e.target.value)}
+              placeholder={invGlassDesc || "Glass description"}
+            />
+          </div>
+
+          {/* Row 2: Dimensions */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <FieldLabel>L1 (inch)</FieldLabel>
+              <Input
+                className={`h-8 text-xs font-mono text-center ${!isL1Valid && item.l1 ? "border-destructive" : ""}`}
+                value={item.l1 || ""}
+                onChange={(e) => updateItem(idx, "l1", e.target.value)}
+                placeholder="36 3/8"
+              />
+            </div>
+            <div>
+              <FieldLabel>L2 (inch)</FieldLabel>
+              <Input
+                className={`h-8 text-xs font-mono text-center ${!isL2Valid && item.l2 ? "border-destructive" : ""}`}
+                value={item.l2 || ""}
+                onChange={(e) => updateItem(idx, "l2", e.target.value)}
+                placeholder="13 3/8"
+              />
+            </div>
+            <div>
+              <FieldLabel>MM (auto)</FieldLabel>
+              <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-[11px] font-mono text-muted-foreground">
+                {mmText}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: QTY / Holes / Cutouts / Area */}
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <FieldLabel>QTY</FieldLabel>
+              <Input
+                type="number"
+                className="h-8 text-xs font-mono text-center"
+                value={item.qty || ""}
+                min={1}
+                onChange={(e) => updateItem(idx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <FieldLabel>Holes</FieldLabel>
+              <Input
+                type="number"
+                className="h-8 text-xs font-mono text-center"
+                value={item.holes || ""}
+                min={0}
+                onChange={(e) => updateItem(idx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <FieldLabel>Cutouts</FieldLabel>
+              <Input
+                type="number"
+                className="h-8 text-xs font-mono text-center"
+                value={item.cutouts || ""}
+                min={0}
+                onChange={(e) => updateItem(idx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <FieldLabel>Area</FieldLabel>
+              <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-[11px] font-mono text-muted-foreground">
+                {areaText}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Rate / Amount / Remark */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <FieldLabel>Rate</FieldLabel>
+              <Input
+                type="number"
+                className="h-8 text-xs font-mono text-center"
+                value={item.rate ?? ""}
+                onChange={(e) => updateItem(idx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder={String(invGlassDefaultRate || "")}
+              />
+            </div>
+            <div>
+              <FieldLabel>Amount</FieldLabel>
+              <div className="h-8 flex items-center justify-end px-2 rounded-md border border-border bg-muted/30 text-[11px] font-mono font-semibold text-foreground">
+                {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Remark</FieldLabel>
+              <Input
+                className="h-8 text-xs"
+                value={item.remark || ""}
+                onChange={(e) => updateItem(idx, "remark", e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,66 +371,83 @@ function QuoteBuilder() {
     toast.success(`Loaded ${c.name}`);
   };
 
-  /* ── calc trace for "how this was calculated" ── */
+  /* ── calc trace ── */
   const selectedLine = totals.lines?.[calcItem];
   const gstType = inv.ch?.gstType || "cgst_sgst";
 
   return (
     <div className="min-h-screen bg-background">
 
-      {/* ── PAGE HEADER ─────────────────────────────────────────── */}
-      <div className="border-b border-border bg-card px-6 py-3 flex items-center justify-between">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-            <Link to="/quotes" className="hover:text-foreground transition-colors">
-              Glass Quote
-            </Link>
-            {" / "}
-            <span className="text-primary">New Invoice</span>
+      {/* ── PAGE HEADER ───────────────────────────── */}
+      <div className="border-b border-border bg-card px-3 sm:px-6 py-3">
+        {/* Top row: title + breadcrumb */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+              <Link to="/quotes" className="hover:text-foreground transition-colors">
+                Glass Quote
+              </Link>
+              {" / "}
+              <span className="text-primary">New Invoice</span>
+            </div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight">
+              {inv._saved ? inv.no : "New invoice"}
+            </h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">
+              Enter sizes in inches. Everything else is calculated.
+            </p>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground leading-tight">
-            {inv._saved ? inv.no : "New invoice"}
-          </h1>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Enter sizes in inches. Everything else is calculated.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
-            <RefreshCw className="h-3.5 w-3.5" /> Start fresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => { saveInvoice(); navigate({ to: "/invoice", search: { id: inv.id } }); }}
-          >
-            <Printer className="h-3.5 w-3.5" /> Print / Save PDF
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={saveInvoice}
-          >
-            <Save className="h-3.5 w-3.5" /> Save Invoice
-          </Button>
+
+          {/* Action buttons — wrap on small screens */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={newInvoice}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Start fresh</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => {
+                saveInvoice();
+                navigate({ to: "/invoice", search: { id: inv.id } });
+              }}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Print</span>
+              <span className="hidden sm:inline"> / Save PDF</span>
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={saveInvoice}
+            >
+              <Save className="h-3.5 w-3.5" />
+              Save
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* ── FULL-WIDTH SINGLE COLUMN CONTENT ───────────────────── */}
-      <div className="space-y-4 p-4">
+      {/* ── CONTENT ───────────────────────────────── */}
+      <div className="space-y-4 p-3 sm:p-4">
 
         {/* 1. Invoice details */}
         <Section
           title="Invoice details"
           headerRight={
             <span className="text-[10px] text-muted-foreground">
-              {inv._saved ? "Saved" : "Draft"} saved{" "}
+              {inv._saved ? "Saved" : "Draft"}{" "}
               {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
             </span>
           }
         >
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <FieldLabel>Proforma No.</FieldLabel>
               <Input
@@ -281,7 +490,7 @@ function QuoteBuilder() {
         <Section
           title="Customer"
           headerRight={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
               <div className="relative">
                 <div
                   className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
@@ -289,8 +498,8 @@ function QuoteBuilder() {
                 >
                   <Search className="h-3 w-3 text-muted-foreground" />
                   <input
-                    className="w-36 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
-                    placeholder="Search saved customer"
+                    className="w-28 sm:w-36 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
+                    placeholder="Search saved"
                     value={custSearch}
                     onChange={(e) => { setCustSearch(e.target.value); setCustDropOpen(true); }}
                     onFocus={() => setCustDropOpen(true)}
@@ -322,12 +531,14 @@ function QuoteBuilder() {
                   saveCustomer(inv.cust);
                 }}
               >
-                <UserCheck className="h-3 w-3" /> Save to customers
+                <UserCheck className="h-3 w-3" />
+                <span className="hidden sm:inline">Save to customers</span>
+                <span className="sm:hidden">Save</span>
               </Button>
             </div>
           }
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel>M/S. — Customer Name</FieldLabel>
               <Input className="h-8 text-xs" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} />
@@ -365,14 +576,14 @@ function QuoteBuilder() {
 
         {/* 3. Glass specification */}
         <Section title="Glass specification">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <FieldLabel>Description of Goods</FieldLabel>
               <Input
                 className="h-8 text-xs"
                 value={inv.glass?.desc || ""}
                 onChange={(e) => updateInvField("glass.desc", e.target.value)}
-                placeholder="5 MM Grey Tinted T.G. With Rough Grind"
+                placeholder="5 MM Grey Tinted T.G."
               />
             </div>
             <div>
@@ -408,12 +619,12 @@ function QuoteBuilder() {
           </div>
         </Section>
 
-        {/* 4. Items table — full width, no sidebar competing for space */}
+        {/* 4. Items */}
         <Section
           title="Items"
           headerRight={
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
                 Rate is per {settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"}
               </span>
               <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={addItemRow}>
@@ -422,7 +633,29 @@ function QuoteBuilder() {
             </div>
           }
         >
-          <div className="overflow-x-auto -mx-4">
+          {/* ── Mobile card view (< md) ── */}
+          <div className="md:hidden space-y-3">
+            {inv.items.map((item: any, idx: number) => {
+              const line = totals.lines?.[idx];
+              return (
+                <MobileItemCard
+                  key={item.id || idx}
+                  item={item}
+                  idx={idx}
+                  line={line}
+                  settings={settings}
+                  invGlassDesc={inv.glass?.desc || ""}
+                  invGlassDefaultRate={inv.glass?.defaultRate}
+                  updateItem={updateItem}
+                  duplicateItemRow={duplicateItemRow}
+                  removeItemRow={removeItemRow}
+                />
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table view (≥ md) ── */}
+          <div className="hidden md:block overflow-x-auto -mx-4">
             <table className="w-full text-[11px] border-collapse" style={{ minWidth: "880px" }}>
               <thead>
                 <tr className="border-b border-border bg-muted/20">
@@ -455,14 +688,12 @@ function QuoteBuilder() {
                       key={item.id || idx}
                       className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2) ? "bg-red-500/5" : ""}`}
                     >
-                      {/* # */}
                       <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
                         <div className="flex flex-col items-center leading-none">
                           <span className="text-[9px]">Item</span>
                           <span className="text-xs font-semibold">{idx + 1}</span>
                         </div>
                       </td>
-                      {/* Description */}
                       <td className="py-1.5 px-1">
                         <Input
                           className="h-8 text-xs w-full min-w-[90px]"
@@ -471,7 +702,6 @@ function QuoteBuilder() {
                           placeholder={inv.glass?.desc || "Glass"}
                         />
                       </td>
-                      {/* L1 */}
                       <td className="py-1.5 px-1">
                         <Input
                           className={`h-8 text-xs font-mono text-center w-[80px] ${!isL1Valid && item.l1 ? "border-destructive" : ""}`}
@@ -480,7 +710,6 @@ function QuoteBuilder() {
                           placeholder="36 3/8"
                         />
                       </td>
-                      {/* L2 */}
                       <td className="py-1.5 px-1">
                         <Input
                           className={`h-8 text-xs font-mono text-center w-[80px] ${!isL2Valid && item.l2 ? "border-destructive" : ""}`}
@@ -489,11 +718,9 @@ function QuoteBuilder() {
                           placeholder="13 3/8"
                         />
                       </td>
-                      {/* MM auto */}
                       <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[90px]">
                         {mmText}
                       </td>
-                      {/* QTY */}
                       <td className="py-1.5 px-1">
                         <Input
                           type="number"
@@ -505,7 +732,6 @@ function QuoteBuilder() {
                           }
                         />
                       </td>
-                      {/* HOLE */}
                       <td className="py-1.5 px-1">
                         <Input
                           type="number"
@@ -517,7 +743,6 @@ function QuoteBuilder() {
                           }
                         />
                       </td>
-                      {/* CUT */}
                       <td className="py-1.5 px-1">
                         <Input
                           type="number"
@@ -529,11 +754,9 @@ function QuoteBuilder() {
                           }
                         />
                       </td>
-                      {/* AREA auto */}
                       <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[70px]">
                         {areaText}
                       </td>
-                      {/* RATE */}
                       <td className="py-1.5 px-1">
                         <Input
                           type="number"
@@ -545,11 +768,9 @@ function QuoteBuilder() {
                           placeholder={String(inv.glass?.defaultRate || "")}
                         />
                       </td>
-                      {/* AMOUNT auto */}
                       <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
                         {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
                       </td>
-                      {/* REMARK */}
                       <td className="py-1.5 px-1">
                         <Input
                           className="h-8 text-xs min-w-[72px]"
@@ -557,7 +778,6 @@ function QuoteBuilder() {
                           onChange={(e) => updateItem(idx, "remark", e.target.value)}
                         />
                       </td>
-                      {/* Actions */}
                       <td className="py-1.5 px-1 w-[52px]">
                         <div className="flex items-center gap-0.5">
                           <button
@@ -588,7 +808,7 @@ function QuoteBuilder() {
         <Section title="Charges &amp; tax for this invoice">
           <div className="space-y-3">
             {/* Row 1: wastage */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <FieldLabel>Wastage</FieldLabel>
                 <Select value={inv.ch?.wastageMode || "none"} onValueChange={(v) => updateInvField("ch.wastageMode", v)}>
@@ -618,8 +838,8 @@ function QuoteBuilder() {
               </div>
             </div>
 
-            {/* Row 2: charges */}
-            <div className="grid grid-cols-4 gap-3">
+            {/* Row 2: other charges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <FieldLabel>Other Charges</FieldLabel>
                 <Input type="number" className="h-8 text-xs font-mono" value={inv.ch?.otherCharges || ""}
@@ -643,7 +863,7 @@ function QuoteBuilder() {
             </div>
 
             {/* Row 3: GST */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <FieldLabel>GST Type</FieldLabel>
                 <Select value={gstType} onValueChange={(v) => updateInvField("ch.gstType", v)}>
@@ -676,7 +896,7 @@ function QuoteBuilder() {
             </div>
 
             {/* Row 4: commission + roundoff */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <FieldLabel>Commission</FieldLabel>
                 <Select value={inv.ch?.commissionMode || "none"} onValueChange={(v) => updateInvField("ch.commissionMode", v)}>
@@ -731,7 +951,7 @@ function QuoteBuilder() {
 
         {/* 6. How this was calculated */}
         <div className="bg-[#1a1a1a] border border-border/50 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-white/10 flex-wrap gap-2">
             <span className="text-[11px] font-semibold text-white/80 uppercase tracking-widest">
               How this was calculated
             </span>
@@ -750,7 +970,7 @@ function QuoteBuilder() {
               <ChevronDown className="h-3 w-3 text-white/50 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
-          <div className="p-4">
+          <div className="p-3 sm:p-4">
             {selectedLine && !selectedLine.ok ? (
               <div className="space-y-2">
                 <div className="text-[11px] font-bold text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -786,17 +1006,18 @@ function QuoteBuilder() {
           </div>
         </div>
 
-        {/* 7. TOTALS — vertical list left, grand total right */}
+        {/* 7. TOTALS */}
         <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/20">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border bg-muted/20">
             <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Totals</span>
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 uppercase tracking-wider">
               + {settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"} Exact
             </span>
           </div>
 
-          <div className="p-4 flex gap-8">
-            {/* Left: vertical breakdown rows */}
+          {/* Stack vertically on mobile, side-by-side on md+ */}
+          <div className="p-3 sm:p-4 flex flex-col md:flex-row gap-4 md:gap-8">
+            {/* Breakdown rows */}
             <div className="flex-1 space-y-0">
               <TRow label="Pieces" value={totals.qty || 0} />
               <TRow label="Area (Sq.Mtr)" value={totals.sqm ?? "0.000"} />
@@ -832,19 +1053,19 @@ function QuoteBuilder() {
               )}
             </div>
 
-            {/* Right: Grand Total prominent */}
-            <div className="shrink-0 flex flex-col justify-center items-end min-w-[200px] border-l border-border pl-6">
+            {/* Grand total — full-width on mobile, right-aligned on md+ */}
+            <div className="flex flex-col items-start md:items-end justify-center md:min-w-[200px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
               <span className="text-xs text-muted-foreground font-medium mb-1">Grand total</span>
               <span className="text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
                 ₹{nf(totals.grandTotal ?? 0)}
               </span>
               {totals.amountInWords && (
-                <p className="text-[10px] text-muted-foreground italic mt-2 text-right leading-relaxed max-w-[220px]">
+                <p className="text-[10px] text-muted-foreground italic mt-2 leading-relaxed max-w-[260px] md:text-right">
                   {totals.amountInWords}
                 </p>
               )}
               {Boolean(totals.commission) && (
-                <div className="mt-3 rounded bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[10px] text-amber-600 dark:text-amber-400 text-right">
+                <div className="mt-3 rounded bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[10px] text-amber-600 dark:text-amber-400 md:text-right">
                   Commission (internal): ₹{nf(totals.commission)}
                 </div>
               )}

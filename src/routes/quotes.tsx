@@ -78,19 +78,22 @@ function QuotesList() {
           {settings.sheetUrl && unsyncedCount > 0 && (
             <Button variant="outline" size="sm" onClick={syncAll}>
               <FileSpreadsheet className="h-4 w-4 mr-1 text-emerald-500" />
-              Sync All ({unsyncedCount})
+              <span className="hidden sm:inline">Sync All ({unsyncedCount})</span>
+              <span className="sm:hidden">Sync {unsyncedCount}</span>
             </Button>
           )}
           <Button asChild size="sm" className="shadow-sm">
             <Link to="/quote">
-              <Plus className="h-4 w-4 mr-1" /> New Quotation
+              <Plus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">New Quotation</span>
+              <span className="sm:hidden">New</span>
             </Link>
           </Button>
         </div>
       </div>
 
       {/* ---------- Filters & Search ---------- */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex flex-col gap-3">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -101,29 +104,30 @@ function QuotesList() {
           />
         </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
-          <TabsList className="h-9 text-xs">
-            <TabsTrigger value="all" className="px-3 text-xs">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="h-9 text-xs w-full sm:w-auto">
+            <TabsTrigger value="all" className="flex-1 sm:flex-none px-2 sm:px-3 text-xs">
               All ({invoices.length})
             </TabsTrigger>
-            <TabsTrigger value="synced" className="px-3 text-xs">
+            <TabsTrigger value="synced" className="flex-1 sm:flex-none px-2 sm:px-3 text-xs">
               Synced ({invoices.filter((x) => x.sync === "synced").length})
             </TabsTrigger>
-            <TabsTrigger value="pending" className="px-3 text-xs">
-              Pending Sync ({invoices.filter((x) => x.sync !== "synced").length})
+            <TabsTrigger value="pending" className="flex-1 sm:flex-none px-2 sm:px-3 text-xs">
+              Pending ({invoices.filter((x) => x.sync !== "synced").length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {/* ---------- Quotations Data Table ---------- */}
+      {/* ---------- Quotations List ---------- */}
       <Card className="border border-border/60 shadow-sm">
-        <CardHeader className="py-3 px-4 flex flex-row items-center justify-between bg-muted/20 border-b border-border/40">
+        <CardHeader className="py-3 px-3 sm:px-4 flex flex-row items-center justify-between bg-muted/20 border-b border-border/40">
           <div className="text-xs text-muted-foreground">
             Showing <span className="font-semibold text-foreground">{filteredInvoices.length}</span> quotes
           </div>
           <div className="text-xs font-semibold text-foreground">
-            Combined Total: <span className="text-primary font-mono">{cur(totalValue, settings.currency)}</span>
+            <span className="text-muted-foreground hidden sm:inline">Total: </span>
+            <span className="text-primary font-mono">{cur(totalValue, settings.currency)}</span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -143,101 +147,169 @@ function QuotesList() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground uppercase text-[10px] tracking-wider bg-muted/10">
-                    <th className="py-3 px-4">Quote No</th>
-                    <th className="py-3 px-4">Customer Name</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Glass Specs</th>
-                    <th className="py-3 px-4 text-center">Items</th>
-                    <th className="py-3 px-4 text-right">Grand Total</th>
-                    <th className="py-3 px-4 text-center">Sheet Sync</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {filteredInvoices.map((q) => (
-                    <tr key={q.id} className="group hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4 font-semibold font-mono text-foreground">
-                        {q.no}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-foreground">{q.cust?.name || "Unnamed Customer"}</div>
-                        <div className="text-[11px] text-muted-foreground">{q.cust?.phone || q.cust?.email || ""}</div>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground font-mono">{q.date}</td>
-                      <td className="py-3 px-4">
-                        <div className="truncate max-w-[180px] font-medium">{q.glass?.desc || "Glass"}</div>
-                        <div className="text-[11px] text-muted-foreground">{q.glass?.thickness}mm</div>
-                      </td>
-                      <td className="py-3 px-4 text-center font-mono">{q.items?.length || 0}</td>
-                      <td className="py-3 px-4 text-right font-semibold font-mono">
-                        {cur(q.totals?.grandTotal || 0, settings.currency)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {q.sync === "synced" ? (
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
-                            <CheckCircle2 className="h-3 w-3 mr-1" /> Synced
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
-                            <Clock className="h-3 w-3 mr-1" /> Local
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                              Actions
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="text-xs w-44">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                navigate({ to: "/invoice", search: { id: q.id } });
-                              }}
-                            >
-                              <Receipt className="h-3.5 w-3.5 mr-2 text-primary" /> View / Print Invoice
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                loadInvoice(q.id, false);
-                                navigate({ to: "/quote" });
-                              }}
-                            >
-                              <Edit className="h-3.5 w-3.5 mr-2 text-indigo-500" /> Edit Quotation
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                loadInvoice(q.id, true);
-                                navigate({ to: "/quote" });
-                              }}
-                            >
-                              <Copy className="h-3.5 w-3.5 mr-2 text-amber-500" /> Duplicate Quote
-                            </DropdownMenuItem>
-                            {settings.sheetUrl && (
-                              <DropdownMenuItem onClick={() => syncOne(q)}>
-                                <FileSpreadsheet className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Sync to Sheet
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600 dark:text-red-400 focus:text-red-600"
-                              onClick={() => deleteInvoice(q.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Quote
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+            <>
+              {/* ── Mobile card list (< md) ── */}
+              <div className="md:hidden divide-y divide-border/40">
+                {filteredInvoices.map((q) => (
+                  <div key={q.id} className="px-3 py-3 hover:bg-muted/20 transition-colors">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-semibold text-xs text-foreground">{q.no || "—"}</span>
+                          {q.sync === "synced" ? (
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] px-1.5 py-0">
+                              <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Synced
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px] px-1.5 py-0">
+                              <Clock className="h-2.5 w-2.5 mr-0.5" /> Local
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm font-medium text-foreground truncate mt-0.5">{q.cust?.name || "Unnamed Customer"}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {q.glass?.desc || "Glass"}{q.glass?.thickness ? ` · ${q.glass.thickness}mm` : ""}
+                          {q.date ? ` · ${q.date}` : ""}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-bold font-mono text-foreground">
+                          {cur(q.totals?.grandTotal || 0, settings.currency)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{q.items?.length || 0} items</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2 gap-1"
+                        onClick={() => navigate({ to: "/invoice", search: { id: q.id } })}
+                      >
+                        <Receipt className="h-3 w-3" /> View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2 gap-1"
+                        onClick={() => { loadInvoice(q.id, false); navigate({ to: "/quote" }); }}
+                      >
+                        <Edit className="h-3 w-3" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2 gap-1"
+                        onClick={() => { loadInvoice(q.id, true); navigate({ to: "/quote" }); }}
+                      >
+                        <Copy className="h-3 w-3" /> Dupe
+                      </Button>
+                      {settings.sheetUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2 gap-1 text-emerald-600"
+                          onClick={() => syncOne(q)}
+                        >
+                          <FileSpreadsheet className="h-3 w-3" /> Sync
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2 gap-1 text-red-500 hover:text-red-600 ml-auto"
+                        onClick={() => deleteInvoice(q.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Desktop table (≥ md) ── */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60 text-muted-foreground uppercase text-[10px] tracking-wider bg-muted/10">
+                      <th className="py-3 px-4">Quote No</th>
+                      <th className="py-3 px-4">Customer Name</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Glass Specs</th>
+                      <th className="py-3 px-4 text-center">Items</th>
+                      <th className="py-3 px-4 text-right">Grand Total</th>
+                      <th className="py-3 px-4 text-center">Sheet Sync</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {filteredInvoices.map((q) => (
+                      <tr key={q.id} className="group hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-4 font-semibold font-mono text-foreground">
+                          {q.no}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-foreground">{q.cust?.name || "Unnamed Customer"}</div>
+                          <div className="text-[11px] text-muted-foreground">{q.cust?.phone || q.cust?.email || ""}</div>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground font-mono">{q.date}</td>
+                        <td className="py-3 px-4">
+                          <div className="truncate max-w-[180px] font-medium">{q.glass?.desc || "Glass"}</div>
+                          <div className="text-[11px] text-muted-foreground">{q.glass?.thickness}mm</div>
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono">{q.items?.length || 0}</td>
+                        <td className="py-3 px-4 text-right font-semibold font-mono">
+                          {cur(q.totals?.grandTotal || 0, settings.currency)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {q.sync === "synced" ? (
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Synced
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
+                              <Clock className="h-3 w-3 mr-1" /> Local
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
+                                Actions
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="text-xs w-44">
+                              <DropdownMenuItem onClick={() => navigate({ to: "/invoice", search: { id: q.id } })}>
+                                <Receipt className="h-3.5 w-3.5 mr-2 text-primary" /> View / Print Invoice
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { loadInvoice(q.id, false); navigate({ to: "/quote" }); }}>
+                                <Edit className="h-3.5 w-3.5 mr-2 text-indigo-500" /> Edit Quotation
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { loadInvoice(q.id, true); navigate({ to: "/quote" }); }}>
+                                <Copy className="h-3.5 w-3.5 mr-2 text-amber-500" /> Duplicate Quote
+                              </DropdownMenuItem>
+                              {settings.sheetUrl && (
+                                <DropdownMenuItem onClick={() => syncOne(q)}>
+                                  <FileSpreadsheet className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Sync to Sheet
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 dark:text-red-400 focus:text-red-600"
+                                onClick={() => deleteInvoice(q.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Quote
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

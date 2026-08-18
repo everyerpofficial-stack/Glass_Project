@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   LS,
+  SAMPLE_INVOICE_07321,
   blankInvoice,
   buildRecord,
   computeTotals,
@@ -41,19 +42,39 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<any>(() => Object.assign({}, loadSettings()));
   const [invoices, setInvoices] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [inv, setInvState] = useState<any>(() => blankInvoice(loadSettings()));
+  const [inv, setInvState] = useState<any>(() => SAMPLE_INVOICE_07321);
   const [draftState, setDraftState] = useState("Draft saved automatically");
 
   /* hydrate from localStorage after mount (SSR-safe) */
   useEffect(() => {
-    const s = loadSettings();
+    const s = Object.assign({}, loadSettings(), {
+      coName: "Hindustan Float Glass Pvt. Ltd.",
+      addr: "S-5, Shree Govind Complex,\nPareek College Mode, Jhotwara Road,\nJaipur, Rajasthan, 302013",
+      email: "hindustan@live.in",
+      gstin: "08AACCH4208C1Z3",
+      pan: "U26109RJ2010PTC031953",
+      logo: "/logo.png",
+    });
     setSettings(s);
-    setInvoices(LS.get<any[]>("invoices", []));
-    setCustomers(LS.get<any[]>("customers", []));
+    LS.set("settings", s);
+
+    const sampleRecord = buildRecord(SAMPLE_INVOICE_07321, computeTotals(s, SAMPLE_INVOICE_07321));
+    const savedInvoices = LS.get<any[]>("invoices", []);
+    const initialInvoices = savedInvoices.length > 0 ? savedInvoices : [sampleRecord];
+    setInvoices(initialInvoices);
+    if (savedInvoices.length === 0) LS.set("invoices", initialInvoices);
+
+    const savedCustomers = LS.get<any[]>("customers", []);
+    const initialCustomers = savedCustomers.length > 0 ? savedCustomers : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
+    setCustomers(initialCustomers);
+    if (savedCustomers.length === 0) LS.set("customers", initialCustomers);
+
     const draft = LS.get<any>("draft", null);
-    setInvState(draft && draft.items ? draft : blankInvoice(s));
+    const initialInv = draft && draft.items ? draft : sampleRecord;
+    setInvState(initialInv);
+    if (!draft) LS.set("draft", sampleRecord);
+
     setHydrated(true);
-    if (draft && draft.items && draft.items.some((i: any) => i.l1)) toast("Draft restored");
   }, []);
 
   const setInv = useCallback((updater: (prev: any) => any) => {

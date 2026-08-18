@@ -88,7 +88,7 @@ function ReportsAnalyticsPage() {
       </div>
 
       {/* ---------- KPI Summary Grid ---------- */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="border border-border/60 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -158,7 +158,7 @@ function ReportsAnalyticsPage() {
               Value of quotations generated per month ({settings.currency})
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-72 pt-4">
+          <CardContent className="h-48 sm:h-72 pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyTrendData}>
                 <defs>
@@ -187,7 +187,7 @@ function ReportsAnalyticsPage() {
               Distribution across glass thickness specs
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-72 flex items-center justify-center">
+          <CardContent className="h-48 sm:h-72 flex items-center justify-center">
             {thicknessData.length === 0 ? (
               <div className="text-xs text-muted-foreground">No quote items yet.</div>
             ) : (
@@ -224,7 +224,7 @@ function ReportsAnalyticsPage() {
             Comparison between quotes synced to Google Sheet vs local browser storage
           </CardDescription>
         </CardHeader>
-        <CardContent className="h-60 pt-4">
+        <CardContent className="h-44 sm:h-60 pt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={syncStatusData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />

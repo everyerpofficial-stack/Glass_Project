@@ -93,18 +93,18 @@ function SettingsPage() {
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="h-10 text-xs">
-            <TabsTrigger value="company" className="px-4 text-xs">
-              <Building className="h-3.5 w-3.5 mr-1.5" /> Company Profile
+          <TabsList className="h-auto text-xs flex flex-wrap gap-1 p-1 w-full sm:w-auto sm:flex-nowrap sm:h-10">
+            <TabsTrigger value="company" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
+              <Building className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Company
             </TabsTrigger>
-            <TabsTrigger value="presets" className="px-4 text-xs">
-              <Calculator className="h-3.5 w-3.5 mr-1.5" /> Calculation & Presets
+            <TabsTrigger value="presets" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
+              <Calculator className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Calculation
             </TabsTrigger>
-            <TabsTrigger value="bank" className="px-4 text-xs">
-              <Landmark className="h-3.5 w-3.5 mr-1.5" /> Bank & Terms
+            <TabsTrigger value="bank" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
+              <Landmark className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Bank & Terms
             </TabsTrigger>
-            <TabsTrigger value="sync" className="px-4 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-emerald-500" /> Sheet Sync
+            <TabsTrigger value="sync" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 hidden sm:inline text-emerald-500" /> Sheet Sync
             </TabsTrigger>
           </TabsList>
 
@@ -139,6 +139,24 @@ function SettingsPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                  <div>
+                    <Label className="text-xs">Company Logo Path / URL</Label>
+                    <Input
+                      className="h-9 text-xs font-mono"
+                      value={form.logo || ""}
+                      onChange={(e) => handleChange("logo", e.target.value)}
+                      placeholder="/logo.png"
+                    />
+                  </div>
+                  {form.logo && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Preview:</span>
+                      <img src={form.logo} alt="Logo preview" className="h-9 w-auto max-w-[160px] object-contain bg-white border border-border rounded p-1" />
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label className="text-xs">Company Address</Label>
                   <Textarea
@@ -150,7 +168,7 @@ function SettingsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                     <Label className="text-xs">Phone Number</Label>
                     <Input
@@ -175,7 +193,16 @@ function SettingsPage() {
                       className="h-9 text-xs font-mono"
                       value={form.gstin || ""}
                       onChange={(e) => handleChange("gstin", e.target.value)}
-                      placeholder="29ABCDE1234F1Z5"
+                      placeholder="08AACCH4208C1Z3"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">CIN Number</Label>
+                    <Input
+                      className="h-9 text-xs font-mono"
+                      value={form.pan || ""}
+                      onChange={(e) => handleChange("pan", e.target.value)}
+                      placeholder="U26109RJ2010PTC031953"
                     />
                   </div>
                 </div>
@@ -404,7 +431,7 @@ function SettingsPage() {
         </Tabs>
 
         <div className="flex justify-end pt-4">
-          <Button type="submit" size="sm" className="shadow-md">
+          <Button type="submit" size="sm" className="shadow-md w-full sm:w-auto">
             <Save className="h-4 w-4 mr-1.5" /> Save All Settings
           </Button>
         </div>

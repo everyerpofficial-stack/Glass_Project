@@ -275,3 +275,35 @@ input[type="number"]::-webkit-outer-spin-button {
   appearance: none;
   margin: 0;
 }
+
+/* ── Mobile: minimum touch target size (44px) ── */
+@media (max-width: 767px) {
+  /* Prevent horizontal overflow from any rogue element */
+  .app-shell {
+    overflow-x: hidden;
+  }
+
+  /* Ensure tap targets meet 44px minimum */
+  button, [role="button"], a {
+    min-height: 36px;
+  }
+
+  /* Improve input touch UX on mobile — prevent iOS zoom on focus (font-size >= 16px) */
+  input, textarea, select {
+    font-size: max(16px, 0.75rem);
+  }
+
+  /* Better scroll momentum on mobile */
+  .overflow-y-auto, .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ── XS screens (< 375px) fine-tuning ── */
+@media (max-width: 374px) {
+  /* reduce base padding even further */
+  main {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
