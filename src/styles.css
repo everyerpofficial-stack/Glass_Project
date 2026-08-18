@@ -231,40 +231,42 @@
 /* ── Print / PDF ─────────────────────────────────────────────────────────── */
 #printroot { display: none; }
 @media print {
-  @page { size: A4 portrait; margin: 11mm 9mm; }
-  body { background: #fff; font-size: 9.6pt; }
-  .app-shell, [data-sonner-toaster] { display: none !important; }
+  @page { size: A4 portrait; margin: 10mm 8mm; }
+  body { background: #fff; color: #000; font-size: 9pt; }
+  .app-shell > header, nav, button, .print\:hidden, aside { display: none !important; }
+  main { padding: 0 !important; margin: 0 !important; }
+  .doc-preview { padding: 0 !important; }
   #printroot { display: block; }
 }
-#printroot { color: #000; }
-.pdoc { width: 100%; }
-.pdoc .ph { display: flex; gap: 12px; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 6px; }
-.pdoc .plogo { width: 58px; height: 58px; object-fit: contain; flex: none; }
+
+.pdoc { width: 100%; color: #000; font-family: system-ui, -apple-system, sans-serif; }
+.pdoc .ph { display: flex; gap: 12px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 6px; }
+.pdoc .plogo { height: 48px; width: auto; object-fit: contain; flex: none; }
 .pdoc .pco { flex: 1; text-align: center; }
-.pdoc .pco h1 { font-size: 15pt; letter-spacing: .01em; font-weight: 700; }
-.pdoc .pco div { font-size: 8.4pt; line-height: 1.35; }
-.pdoc .ptitle { text-align: center; font-weight: 700; font-size: 11pt; letter-spacing: .16em; padding: 4px 0; border-bottom: 1px solid #000; }
-.pdoc table { width: 100%; border-collapse: collapse; }
-.pdoc .meta td { border: 1px solid #000; padding: 3px 5px; font-size: 8.4pt; vertical-align: top; }
-.pdoc .items2 { margin-top: 0; }
-.pdoc .items2 th, .pdoc .items2 td { border: 1px solid #000; padding: 2.4px 4px; font-size: 8pt; }
-.pdoc .items2 th { background: #EDEDED; font-size: 7.4pt; text-transform: uppercase; letter-spacing: .02em; }
-.pdoc .items2 td.n { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.pdoc .pco h1 { font-size: 15pt; letter-spacing: .01em; font-weight: 700; color: #000; margin: 0; }
+.pdoc .pco div { font-size: 8.4pt; line-height: 1.35; color: #111; }
+.pdoc .ptitle { text-align: center; font-weight: 700; font-size: 11pt; letter-spacing: .16em; padding: 4px 0; border-bottom: 1px solid #000; background: #fafafa; color: #000; }
+.pdoc table { width: 100%; border-collapse: collapse; color: #000; }
+.pdoc .meta td { border: 1px solid #000; padding: 4px 6px; font-size: 8.4pt; vertical-align: top; color: #000; }
+.pdoc .items2 { margin-top: 0; width: 100%; border-collapse: collapse; }
+.pdoc .items2 th, .pdoc .items2 td { border: 1px solid #000; padding: 3px 5px; font-size: 8pt; color: #000; }
+.pdoc .items2 th { background: #EDEDED; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .02em; font-weight: 700; color: #000; }
+.pdoc .items2 td.n { text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; }
 .pdoc .items2 td.c { text-align: center; }
 .pdoc thead { display: table-header-group; }
 .pdoc tr { break-inside: avoid; }
 .pdoc .foot { display: flex; gap: 0; border: 1px solid #000; border-top: 0; }
-.pdoc .foot .lft { flex: 1; padding: 5px 6px; font-size: 7.8pt; line-height: 1.4; border-right: 1px solid #000; }
+.pdoc .foot .lft { flex: 1; padding: 6px 8px; font-size: 7.8pt; line-height: 1.45; border-right: 1px solid #000; color: #000; }
 .pdoc .foot .rgt { width: 44%; padding: 0; }
-.pdoc .foot .rgt table { width: 100%; }
-.pdoc .foot .rgt td { padding: 2.4px 6px; font-size: 8.4pt; border-bottom: 1px solid #DDD; }
-.pdoc .foot .rgt td.n { text-align: right; font-family: var(--font-mono); }
-.pdoc .gt td { border-top: 1.5px solid #000 !important; font-weight: 700; font-size: 10pt !important; }
-.pdoc .words { border: 1px solid #000; border-top: 0; padding: 4px 6px; font-size: 8.4pt; }
-.pdoc .terms { border: 1px solid #000; border-top: 0; padding: 5px 6px; font-size: 7.4pt; line-height: 1.4; }
-.pdoc .sign { display: flex; justify-content: space-between; padding: 16px 6px 4px; font-size: 8.4pt; border: 1px solid #000; border-top: 0; }
+.pdoc .foot .rgt table { width: 100%; border-collapse: collapse; }
+.pdoc .foot .rgt td { padding: 3px 6px; font-size: 8.4pt; border-bottom: 1px solid #000; color: #000; }
+.pdoc .foot .rgt td.n { text-align: right; font-family: monospace; }
+.pdoc .gt td { border-top: 2px solid #000 !important; font-weight: 700; font-size: 10pt !important; color: #000; }
+.pdoc .words { border: 1px solid #000; border-top: 0; padding: 5px 8px; font-size: 8.5pt; color: #000; background: #fafafa; }
+.pdoc .terms { border: 1px solid #000; border-top: 0; padding: 6px 8px; font-size: 7.5pt; line-height: 1.45; color: #000; }
+.pdoc .sign { display: flex; justify-content: space-between; padding: 16px 8px 4px; font-size: 8.4pt; border: 1px solid #000; border-top: 0; color: #000; }
 .pdoc .pgno { text-align: right; font-size: 7.4pt; padding-top: 3px; color: #444; }
-.doc-preview .pdoc { background: #fff; padding: 22px; }
+.doc-preview .pdoc { background: #fff; padding: 12px; }
 
 /* ── Hide number input spinners (up/down arrows) everywhere ── */
 input[type="number"] {

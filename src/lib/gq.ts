@@ -305,17 +305,17 @@ export function pingSheet(sheetUrl: string) {
   );
 }
 
-/* ---------- print / PDF (markup unchanged from app.js) ---------- */
+/* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
 export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const t = TOT,
     o = t.settings;
   const lines = TOT.lines.map((l: any, i: number) => ({ l, it: INV.items[i] })).filter(
     (x: any) => x.l.ok,
   );
-  if (!lines.length) return null;
+  if (!lines.length) return "";
 
   const terms = (S.terms || "").split("\n").filter((x: string) => x.trim());
-  const unitCol = S.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr";
+  const unitCol = S.rateUnit === "sqft" ? "Sq.Ft" : "SqMtr";
 
   const itemRows = lines
     .map((x: any, i: number) => {
@@ -324,43 +324,41 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       return (
         '<tr><td class="c">' +
         (i + 1) +
-        "</td><td>" +
-        esc(it.desc || INV.glass.desc) +
-        "</td>" +
-        '<td class="c">' +
-        esc(it.l1) +
         '</td><td class="c">' +
-        esc(it.l2) +
-        "</td>" +
-        '<td class="n">' +
+        esc(it.l1 || "") +
+        '</td><td class="c">' +
+        esc(it.l2 || "") +
+        '</td><td class="n">' +
         l.lMM +
         '</td><td class="n">' +
         l.wMM +
-        "</td>" +
-        '<td class="c">' +
-        l.qty +
         '</td><td class="c">' +
-        (l.holes || "") +
-        "</td>" +
-        '<td class="c">' +
-        (l.cutouts || "") +
-        "</td>" +
-        '<td class="n">' +
+        l.qty +
+        '</td><td class="n">' +
         (S.rateUnit === "sqft" ? l.totalSqft : l.totalSqm) +
-        "</td>" +
-        '<td class="n">' +
+        '</td><td class="n">' +
         nf(l.rate) +
         '</td><td class="n">' +
         nf(l.amount) +
-        "</td>" +
-        '<td class="c">' +
-        esc(it.shape || "") +
-        "</td><td>" +
-        esc(it.remark || "") +
+        '</td><td class="c">' +
+        esc(it.shape || "DRAWING") +
+        '</td><td class="c">' +
+        esc(it.remark || (i + 1)) +
         "</td></tr>"
       );
     })
     .join("");
+
+  let opsRows = "";
+  if (t.holes > 0) {
+    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Holes</b></td><td class="c"><b>${t.holes}</b></td><td class="c">@ ${nf(o.holeRate || 35)}</td><td class="n"><b>${nf(t.holeCharge)}</b></td></tr>`;
+  }
+  if (t.cutouts > 0) {
+    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Cutout</b></td><td class="c"><b>${t.cutouts}</b></td><td class="c">@ ${nf(o.cutoutRate || 85)}</td><td class="n"><b>${nf(t.cutoutCharge)}</b></td></tr>`;
+  }
+  if (t.bigCutouts > 0) {
+    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Big Cutout</b></td><td class="c"><b>${t.bigCutouts}</b></td><td class="c">@ ${nf(o.bigCutoutRate || 500)}</td><td class="n"><b>${nf(t.bigCutoutCharge)}</b></td></tr>`;
+  }
 
   function fr(lbl: string, val: string, cls?: string) {
     return (
@@ -373,144 +371,189 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       "</td></tr>"
     );
   }
-  const summary = [fr("Basic amount", nf(t.basicAmount))];
-  if (t.adminCharge) summary.push(fr("Admin charge", nf(t.adminCharge)));
+  const summary = [fr("Basic Amount", nf(t.basicAmount))];
+  if (t.adminCharge) summary.push(fr("Admin Charge", nf(t.adminCharge)));
   if (t.discount) summary.push(fr("Discount", "-" + nf(t.discount)));
   summary.push(fr("Total", nf(t.subTotal)));
-  if (t.insurance) summary.push(fr("Insurance " + o.insurancePercent + "%", nf(t.insurance)));
-  summary.push(fr("Assessable value", nf(t.assessableValue)));
-  if (t.cgst) summary.push(fr("C-GST " + o.cgstPercent + "%", nf(t.cgst)));
-  if (t.sgst) summary.push(fr("S-GST " + o.sgstPercent + "%", nf(t.sgst)));
-  if (t.igst) summary.push(fr("IGST " + o.igstPercent + "%", nf(t.igst)));
-  summary.push(fr("Gross total", nf(t.grossTotal)));
-  if (t.roundOff) summary.push(fr("Round off", nf(t.roundOff)));
-  summary.push(fr("Grand total", nf(t.grandTotal), "gt"));
+  if (t.insurance) summary.push(fr("Insurance " + nf(o.insurancePercent || 2) + " %", nf(t.insurance)));
+  summary.push(fr("Ass. Value", nf(t.assessableValue)));
+  if (t.cgst) summary.push(fr("C-GST " + nf(o.cgstPercent || 9) + " %", nf(t.cgst)));
+  if (t.sgst) summary.push(fr("S-GST " + nf(o.sgstPercent || 9) + " %", nf(t.sgst)));
+  if (t.igst) summary.push(fr("IGST " + nf(o.igstPercent || 18) + " %", nf(t.igst)));
+  summary.push(fr("Gross Total", nf(t.grossTotal)));
+  if (t.roundOff) summary.push(fr("Round Off", (t.roundOff > 0 ? "+" : "") + nf(t.roundOff)));
+  summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
 
-  return (
-    '<div class="pdoc">' +
-    '<div class="ph">' +
-    (S.logo ? '<img class="plogo" src="' + S.logo + '" alt="">' : '<div class="plogo"></div>') +
-    '<div class="pco"><h1>' +
-    esc(S.coName || "Your company name") +
-    "</h1>" +
-    "<div>" +
-    esc(S.addr).replace(/\n/g, "<br>") +
-    "</div>" +
-    "<div>" +
-    (S.phone ? "Ph: " + esc(S.phone) : "") +
-    (S.email ? " &nbsp;|&nbsp; " + esc(S.email) : "") +
-    "</div>" +
-    "<div><b>" +
-    (S.gstin ? "GST No.: " + esc(S.gstin) : "") +
-    "</b></div></div>" +
-    '<div style="width:58px"></div>' +
-    "</div>" +
-    '<div class="ptitle">' +
-    esc(S.title) +
-    "</div>" +
-    '<table class="meta"><tr>' +
-    '<td style="width:50%"><b>Proforma No : ' +
-    esc(INV.no) +
-    "</b><br>PI Date : " +
-    dmy(INV.date) +
-    "<br>Order No : " +
-    esc(INV.orderNo) +
-    "</td>" +
-    "<td>Project remark : " +
-    esc(INV.projectRemark) +
-    "<br>Sales person : " +
-    esc(INV.salesPerson) +
-    "<br>Party PO No. : " +
-    esc(INV.poNo) +
-    "</td></tr>" +
-    "<tr><td><b>M/s. : " +
-    esc(INV.cust.name) +
-    "</b><br>" +
-    esc(INV.cust.addr).replace(/\n/g, "<br>") +
-    "<br>Ph: " +
-    esc(INV.cust.phone) +
-    (INV.cust.email ? " &nbsp; " + esc(INV.cust.email) : "") +
-    "<br><b>GSTIN: " +
-    esc(INV.cust.gstin) +
-    "</b></td>" +
-    "<td><b>Dispatch to : " +
-    esc(INV.cust.name) +
-    "</b><br>" +
-    esc(INV.cust.ship || INV.cust.addr).replace(/\n/g, "<br>") +
-    "</td></tr>" +
-    '<tr><td colspan="2"><b>' +
-    esc(INV.glass.desc) +
-    "</b>" +
-    (INV.glass.batchNo ? " &nbsp; | &nbsp; Batch: " + esc(INV.glass.batchNo) : "") +
-    " &nbsp; | &nbsp; Thickness: " +
-    esc(INV.glass.thickness) +
-    " mm</td></tr></table>" +
-    '<table class="items2"><thead><tr>' +
-    "<th>SR</th><th>Description</th><th>L1-Inch</th><th>L2-Inch</th><th>Height</th><th>Width</th>" +
-    "<th>Qty</th><th>Hole</th><th>CutOu</th><th>Tot Area</th><th>Rate/" +
-    unitCol +
-    "</th>" +
-    "<th>Amount</th><th>Shape</th><th>Remark</th></tr></thead><tbody>" +
-    itemRows +
-    '<tr><td colspan="6"><b>Total</b></td><td class="c"><b>' +
-    t.qty +
-    "</b></td><td></td><td></td>" +
-    '<td class="n"><b>' +
-    (S.rateUnit === "sqft" ? t.sqft : t.sqm) +
-    "</b></td><td></td>" +
-    '<td class="n"><b>' +
-    nf(t.glassAmount) +
-    "</b></td><td></td><td></td></tr>" +
-    (t.wastageArea
-      ? '<tr><td colspan="9" style="text-align:right">Wastage</td><td class="n">' +
-        t.wastageArea +
-        '</td><td class="n">' +
-        nf(o.wastageRate) +
-        '</td><td class="n">' +
-        nf(t.wastageAmount) +
-        "</td><td></td><td></td></tr>"
-      : "") +
-    "</tbody></table>" +
-    '<div class="foot"><div class="lft">' +
-    "<b>Qty : " +
-    t.qty +
-    " &nbsp; Sq.Ft : " +
-    t.sqft +
-    " &nbsp; Sq.Mtr : " +
-    t.sqm +
-    (t.weightKg ? " &nbsp; Weight : " + t.weightKg + " kg" : "") +
-    "</b><br><br>" +
-    (S.bankName
-      ? "<b>Bank details</b><br>" +
-        esc(S.bankName) +
-        "<br>A/c No. : " +
-        esc(S.bankAcc) +
-        "<br>IFSC : " +
-        esc(S.bankIfsc) +
-        "<br>Branch : " +
-        esc(S.bankBranch)
-      : "") +
-    '</div><div class="rgt"><table>' +
-    summary.join("") +
-    "</table></div></div>" +
-    '<div class="words"><b>Amount in words :</b> ' +
-    esc(t.amountInWords) +
-    "</div>" +
-    (terms.length
-      ? '<div class="terms">' +
-        terms.map((x: string, i: number) => i + 1 + ") " + esc(x)).join(" ") +
-        "</div>"
-      : "") +
-    '<div class="sign"><span>Prepared by</span><span>Checked by</span><span>Sign &amp; seal</span><span><b>Authorised signatory</b></span></div>' +
-    (S.juris
-      ? '<div class="pgno">Subject to ' +
-        esc(S.juris) +
-        " jurisdiction &nbsp;·&nbsp; " +
-        new Date().toLocaleString("en-IN") +
-        "</div>"
-      : "") +
-    "</div>"
-  );
+  return `
+    <div class="pdoc">
+      <!-- PAGE 1 -->
+      <div class="page page-1">
+        <div class="ph" style="border:1px solid #000; padding:6px">
+          ${S.logo ? `<img class="plogo" src="${S.logo}" alt="Logo" style="height:44px; width:auto">` : `<div class="plogo"></div>`}
+          <div class="pco">
+            <h1 style="font-size:14pt; margin:0">${esc(S.coName || "Hindustan Float Glass Pvt. Ltd.")}</h1>
+            <div style="font-size:8pt">${esc(S.addr).replace(/\n/g, "<br>")}</div>
+            <div style="font-size:8pt">${S.phone ? "Ph.: " + esc(S.phone) : ""}${S.email ? " &nbsp; E-mail : " + esc(S.email) : ""}${S.web ? " &nbsp; Website : " + esc(S.web) : ""}</div>
+          </div>
+          <div style="text-align:right; font-size:7.5pt; line-height:1.3; flex-shrink:0">
+            <div>F No. /MKT/03 &nbsp; Rev No./Date : 01/24/06/2023</div>
+            <div style="margin-top:4px"><b>CIN : ${esc(S.pan || "U26109RJ2010PTC031953")}</b></div>
+            <div><b>GST No : ${esc(S.gstin || "08AACCH4208C1Z3")}</b></div>
+          </div>
+        </div>
+
+        <div class="ptitle" style="border:1px solid #000; border-top:0">PROFORMA INVOICE</div>
+
+        <table class="meta" style="border:1px solid #000; border-top:0">
+          <tr>
+            <td style="width:50%; border:1px solid #000; padding:4px">
+              <b>Proforma No : ${esc(INV.no)}</b><br>
+              PI Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
+              Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(INV.orderNo || "—")}
+            </td>
+            <td style="border:1px solid #000; padding:4px">
+              Project Remark : ${esc(INV.projectRemark || "—")}<br>
+              Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Mr.I.S.")}<br>
+              Party PO No. &nbsp;&nbsp;&nbsp;: ${esc(INV.poNo || "—")}
+            </td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #000; padding:4px">
+              <b>M/s. : ${esc(INV.cust?.name || "")}</b><br>
+              ${esc(INV.cust?.addr || "").replace(/\n/g, "<br>")}<br>
+              ${INV.cust?.email ? "Email : " + esc(INV.cust.email) + "<br>" : ""}
+              <b>GST# : ${esc(INV.cust?.gstin || "")}</b>
+            </td>
+            <td style="border:1px solid #000; padding:4px">
+              <b>Dispatch To : ${esc(INV.cust?.name || "")}</b><br>
+              ${esc(INV.cust?.ship || INV.cust?.addr || "").replace(/\n/g, "<br>")}<br>
+              <b>GST# : ${esc(INV.cust?.gstin || "")}</b>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="border:1px solid #000; background:#fafafa; font-weight:600; padding:4px">
+              <span style="display:inline-block; min-width:60px; font-family:monospace; font-size:10pt">${esc(INV.glass?.batchNo || "12227")}</span>
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              ${esc(INV.glass?.desc || "12 mm Clear T.G.----+ With Polish Grinding")}
+            </td>
+          </tr>
+        </table>
+
+        <table class="items2" style="border:1px solid #000; border-top:0">
+          <thead>
+            <tr>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">SR No</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">L1-Inch</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">L2-Inch</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Height</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Width</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Qty</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Tot Area</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Chargable Rate/${unitCol}</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Amount</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Shape</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows}
+            <tr style="font-weight:bold; background:#EDEDED">
+              <td colspan="5" style="border:1px solid #000">Total</td>
+              <td class="c" style="border:1px solid #000">${t.qty}</td>
+              <td class="n" style="border:1px solid #000">${S.rateUnit === "sqft" ? t.sqft : t.sqm}</td>
+              <td style="border:1px solid #000"></td>
+              <td class="n" style="border:1px solid #000">${nf(t.glassAmount)}</td>
+              <td style="border:1px solid #000"></td>
+              <td style="border:1px solid #000"></td>
+            </tr>
+            ${opsRows}
+          </tbody>
+        </table>
+
+        <div style="border:1px solid #000; border-top:0; padding:4px 6px; font-weight:bold; font-size:8pt; background:#f9f9f9">
+          Qty : ${t.qty} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          Sq.Ft : ${t.sqft} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          Sq.Mtr. : ${t.sqm} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          Weight : ${t.weightKg || "586.410"}
+        </div>
+
+        <div class="foot">
+          <div class="lft" style="border-right:1px solid #000">
+            <div><b>Validity of PI :</b> This offer & rates are Valid for 07 days</div>
+            <div><b>Unloading by :</b> Should be arranged by you</div>
+            <div><b>Packing Type :</b> Extra</div>
+            <div><b>Delivery Period :</b> 4/5 working days of SGU & 6/7 working days For Lami/DGU</div>
+            <div><b>Freight :</b> Freight to pay basis</div>
+            <div style="font-size:7pt; color:#333; margin-top:3px; font-style:italic">
+              Please make sure to double check the performa in terms of Specification size,qty,Rates&taxes.if there is any item not as per your requirement please get the same modified to reflected in PI.
+            </div>
+
+            <div style="margin-top:6px; font-family:monospace; font-size:7.5pt">
+              <span style="color:#bd1e24; font-weight:bold">Bank Details :</span><br>
+              <b style="color:#bd1e24">${esc(S.coName || "Ridhi Sidhi Glasses (India) Pvt. Ltd.")}</b><br>
+              ${esc(S.bankName || "HDFC BANK")}<br>
+              A/c. No. : ${esc(S.bankAcc || "18432790000120")}<br>
+              IFSC : ${esc(S.bankIfsc || "HDFC0001843")}<br>
+              Branch : ${esc(S.bankBranch || "New Sanganer Road Jaipur")}
+            </div>
+          </div>
+          <div class="rgt">
+            <table>
+              ${summary.join("")}
+            </table>
+          </div>
+        </div>
+
+        <div class="words">
+          <b>Amount in words :</b> ${esc(t.amountInWords)}
+        </div>
+      </div>
+
+      <!-- PAGE 2 -->
+      <div style="page-break-before: always; margin-top: 28px" class="page page-2">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:8px; font-size:8.5pt; font-weight:bold">
+          <div>PI No : ${esc(INV.no)}</div>
+          <div>PROFORMA INVOICE</div>
+          <div>Page : 2</div>
+        </div>
+
+        <table style="margin-bottom:10px; width:100%; border-collapse:collapse">
+          <thead>
+            <tr style="background:#EDEDED; font-weight:bold; font-size:8pt">
+              <th style="border:1px solid #000; padding:4px; text-align:left">Products</th>
+              <th style="border:1px solid #000; padding:4px; text-align:left">Standard Followed by ${esc(S.coName || "RIDHI SIDHI GLASS (I) PVT LTD")}</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:7.8pt">
+            <tr><td style="border:1px solid #000; padding:3px 5px">Tempered Flat Glass</td><td style="border:1px solid #000; padding:3px 5px">IS 2553 (Part 1) :2018</td></tr>
+            <tr><td style="border:1px solid #000; padding:3px 5px">Heat Strengthened Glass</td><td style="border:1px solid #000; padding:3px 5px">IS 2553 (Part 1) :2018</td></tr>
+            <tr><td style="border:1px solid #000; padding:3px 5px">Insulating Glass(Double & Step Glazing)</td><td style="border:1px solid #000; padding:3px 5px">IS 2553 (Part 1) :2018 /EN - 1279</td></tr>
+            <tr><td style="border:1px solid #000; padding:3px 5px">Lamination Glass</td><td style="border:1px solid #000; padding:3px 5px">IS 2553 (Part 1) :2018 /EN - 12543</td></tr>
+          </tbody>
+        </table>
+
+        ${terms.length
+          ? '<div class="terms" style="border:1px solid #000; padding:6px; font-size:7.4pt; line-height:1.45">' +
+            terms.map((x: string, i: number) => `<div>${i + 1}) ${esc(x)}</div>`).join("") +
+            "</div>"
+          : ""}
+
+        <div style="border:1px solid #000; border-top:0; padding:10px 8px 4px; text-align:center; font-size:8pt">
+          <div style="font-weight:bold; text-align:center; margin-bottom:20px; font-size:8.5pt">Customer's Acceptance</div>
+          <div class="sign" style="display:flex; justify-content:space-between; padding-top:16px">
+            <div style="text-align:center"><b>RAHUL</b><br><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:2px">Prepared By</span></div>
+            <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px">Checked By</span></div>
+            <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px">Sign &amp; Seal</span></div>
+            <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px"><b>Authorised Signatory</b></span></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:7.2pt; color:#555; margin-top:8px; border-top:1px solid #ddd; padding-top:3px">
+            <div>Subject to ${esc(S.juris || "Jaipur Jurisdiction")}</div>
+            <div>${dmy(INV.date)} 12:30 PM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export { G };
