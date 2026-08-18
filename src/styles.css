@@ -299,6 +299,13 @@ input[type="number"]::-webkit-outer-spin-button {
   .overflow-y-auto, .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Document preview mobile container */
+  .doc-preview {
+    padding: 6px 4px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ── XS screens (< 375px) fine-tuning ── */

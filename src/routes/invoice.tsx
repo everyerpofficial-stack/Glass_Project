@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Share2,
+  MoveHorizontal,
 } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -53,36 +54,38 @@ export function InvoiceViewPage() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* ---------- Action Bar (Hidden on Print) ---------- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4 print:hidden">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="outline" size="sm">
+    <div className="space-y-4 sm:space-y-6 pb-20">
+      {/* ---------- Mobile / Desktop Action Header ---------- */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-3 sm:pb-4 print:hidden">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Button asChild variant="outline" size="sm" className="h-9 px-2.5 shrink-0">
             <Link to="/quotes">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back to Quotes
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Back to Quotes</span>
             </Link>
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Proforma Invoice #{targetInv.no}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground truncate">
+                Invoice #{targetInv.no}
               </h1>
               {targetInv.sync === "synced" ? (
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] py-0">
                   <CheckCircle2 className="h-3 w-3 mr-1" /> Synced
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px]">Local Record</Badge>
+                <Badge variant="outline" className="text-[10px] py-0">Local</Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Customer: {targetInv.cust?.name || "Unnamed"} · Date: {dmy(targetInv.date)}
+            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+              {targetInv.cust?.name || "Unnamed"} · {dmy(targetInv.date)}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopySummary}>
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopySummary} className="h-9 text-xs">
             <Share2 className="h-3.5 w-3.5 mr-1" /> Copy Summary
           </Button>
 
@@ -93,6 +96,7 @@ export function InvoiceViewPage() {
               loadInvoice(targetInv.id, false);
               navigate({ to: "/quote" });
             }}
+            className="h-9 text-xs"
           >
             <Edit className="h-3.5 w-3.5 mr-1" /> Edit Quote
           </Button>
@@ -104,29 +108,41 @@ export function InvoiceViewPage() {
               loadInvoice(targetInv.id, true);
               navigate({ to: "/quote" });
             }}
+            className="h-9 text-xs"
           >
             <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
           </Button>
 
           {settings.sheetUrl && (
-            <Button variant="outline" size="sm" onClick={() => syncOne(targetInv)}>
+            <Button variant="outline" size="sm" onClick={() => syncOne(targetInv)} className="h-9 text-xs">
               <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-emerald-500" /> Sync Sheet
             </Button>
           )}
 
-          <Button size="sm" onClick={handlePrint} className="shadow-sm">
+          <Button size="sm" onClick={handlePrint} className="col-span-2 sm:col-span-1 h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground">
             <Printer className="h-4 w-4 mr-1.5" /> Print / Save PDF
           </Button>
         </div>
       </div>
 
-      {/* ---------- Printable Document Card (100% Exact PDF Format) ---------- */}
-      <Card className="border border-border/80 shadow-xl bg-white text-black max-w-4xl mx-auto overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0">
-        <CardContent className="p-4 sm:p-8 print:p-0">
-          <div
-            className="doc-preview bg-white text-black"
-            dangerouslySetInnerHTML={{ __html: printHTML || "" }}
-          />
+      {/* Mobile Scroll Indicator Banner */}
+      <div className="flex sm:hidden items-center justify-between px-3 py-2 rounded-md bg-muted/40 border border-border/50 text-[11px] text-muted-foreground print:hidden">
+        <span className="flex items-center gap-1.5">
+          <MoveHorizontal className="h-3.5 w-3.5 text-primary animate-pulse" />
+          Swipe horizontally to view full Proforma Invoice PDF
+        </span>
+        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">A4 PDF Preview</Badge>
+      </div>
+
+      {/* ---------- Printable Document Card (100% Mobile & Print Responsive) ---------- */}
+      <Card className="border border-border/80 shadow-lg bg-white text-black max-w-4xl mx-auto overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0">
+        <CardContent className="p-1 sm:p-6 print:p-0">
+          <div className="overflow-x-auto w-full scrollbar-thin">
+            <div
+              className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0"
+              dangerouslySetInnerHTML={{ __html: printHTML || "" }}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
