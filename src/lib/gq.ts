@@ -171,11 +171,15 @@ export function blankItem() {
     desc: "",
     l1: "",
     l2: "",
+    l1mm: "",
+    l2mm: "",
     qty: 1,
     holes: 0,
     cutouts: 0,
     bigCutouts: 0,
     countersinks: 0,
+    csks: 0,
+    bigHoles: 0,
     rate: "",
     shape: "BLOCK",
     remark: "",
@@ -191,24 +195,60 @@ export function blankInvoice(S: any) {
     salesPerson: "Office",
     orderNo: "",
     projectRemark: "",
-    cust: { name: "", gstin: "", phone: "", email: "", addr: "", ship: "" },
+    inputUnit: S.inputUnit || "inch",  // 'inch' | 'mm'
+    productName: "TOUGHENED GLASS",
+    jobType: "WITH MATERIAL",
+    workOrderNo: "",
+    freightType: "To be Billed",
+    cust: { name: "", gstin: "", phone: "", email: "", addr: "", ship: "", clBalance: 0 },
     glass: {
       desc: "",
       thickness: 5,
       batchNo: "",
       defaultRate: S.rateUnit === "sqft" ? 69 : 807,
     },
+    // Layer system
+    layers: [
+      { id: uid("layer"), layerNo: "Layer - 1", productName: "TOUGHENED GLASS", thickness: 5, glassName: "", rate: "", process: "", status: "" },
+    ],
     items: [blankItem()],
     ch: {
       wastageMode: S.wastageMode,
       wastagePercent: S.wastagePercent,
       wastageArea: 0,
       wastageRate: S.wastageRate,
+      wastage2Mode: "none",
+      wastage2Percent: 0,
+      wastage2Area: 0,
+      wastage2Rate: 0,
       templateCharge: S.templateCharge,
       otherCharges: 0,
       adminCharge: S.adminCharge,
       discountPercent: 0,
       insurancePercent: S.insurancePercent,
+      // Extended charges (Party Invoice Particulars)
+      cskRate: S.cskRate || 85,
+      bigHoleRate: S.bigHoleRate || 150,
+      jamboChargePercent: S.jamboChargePercent || 0,
+      nonEconomicPercent: S.nonEconomicPercent || 0,
+      farmaCuttingPercent: S.farmaCuttingPercent || 10,
+      shapeCuttingPercent: S.shapeCuttingPercent || 10,
+      katraPolishRate: S.katraPolishRate || 150,
+      designRate: S.designRate || 0,
+      screenPrintRate: S.screenPrintRate || 800,
+      bewalingChargeRate: S.bewalingChargeRate || 0,
+      taperChargeRate: S.taperChargeRate || 0,
+      roundCornerRate: S.roundCornerRate || 0,
+      tapperRate: S.tapperRate || 0,
+      // Customer Invoice charges
+      freight: 0,
+      unloadingHandling: 0,
+      greenTax: 0,
+      tcsPercent: 0,
+      // Extra area
+      extraAreaFormula: S.extraAreaFormula || "none",
+      extraAreaCustomMM: S.extraAreaCustomMM || 0,
+      // GST
       gstType: S.gstType,
       cgstPercent: S.cgstPercent,
       sgstPercent: S.sgstPercent,
@@ -217,6 +257,17 @@ export function blankInvoice(S: any) {
       commissionValue: S.commissionValue,
       commissionBase: S.commissionBase,
       roundOff: S.roundOff ? 1 : 0,
+    },
+    // Delivery & Terms fields (Customer Invoice)
+    delivery: {
+      terms: "PI Terms",
+      paymentTerm: "",
+      validityOfPI: "The offer & rates are valid for 07 days",
+      unloadingType: "Should be arranged by you",
+      packingType: "Extra",
+      deliveryPeriod: "4/3 working days of SQUARE / 7 working days For Lam./CPU",
+      freightRemark: "Freight to pay basis",
+      piAdvance: "",
     },
     sync: "local",
     createdAt: new Date().toISOString(),
@@ -228,6 +279,7 @@ export function engineOpts(S: any, INV: any) {
   const o: any = Object.assign({}, S, INV.ch);
   o.thicknessMM = INV.glass.thickness;
   o.roundOff = String(INV.ch.roundOff) === "1";
+  o.inputUnit = INV.inputUnit || S.inputUnit || "inch";
   return G.settings(o);
 }
 

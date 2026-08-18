@@ -2,12 +2,14 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
   ChevronLeft,
+  ClipboardList,
   FileText,
   LayoutDashboard,
   Menu,
   Plus,
   Search,
   Settings,
+  ShoppingCart,
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -28,6 +30,8 @@ import { GlobalSearch } from "./GlobalSearch";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/booking", label: "Booking", icon: ClipboardList },
+  { to: "/order", label: "Order", icon: ShoppingCart },
   { to: "/quote", label: "New Quote", icon: Plus },
   { to: "/quotes", label: "Quotes", icon: FileText },
   { to: "/customers", label: "Customers", icon: Users },
@@ -37,6 +41,8 @@ const NAV = [
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
+  "/booking": "Party Invoice (Booking)",
+  "/order": "Order / Sales Invoice",
   "/quote": "New Quote",
   "/quotes": "Quotes",
   "/customers": "Customers",
