@@ -237,6 +237,25 @@
   main { padding: 0 !important; margin: 0 !important; }
   .doc-preview { padding: 0 !important; }
   #printroot { display: block; }
+
+  /* Work Order print */
+  .wo-print-area {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  /* Sticker Labels print */
+  .sticker-print-area {
+    padding: 0 !important;
+  }
+  .sticker-print-area .sticker-label {
+    border-radius: 0 !important;
+    border: 1px dashed #999 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }
 
 .pdoc { width: 100%; color: #000; font-family: system-ui, -apple-system, sans-serif; }

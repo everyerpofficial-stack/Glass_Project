@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Plus,
   Trash2,
@@ -10,6 +10,13 @@ import {
   ClipboardPaste,
   X,
   FileSpreadsheet,
+  Send,
+  Printer,
+  BarChart3,
+  Mail,
+  MessageSquare,
+  Database,
+  Globe,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -195,6 +202,7 @@ function BulkEntryModal({
 
 /* ─── Main Booking Page ──────────────────────────────────────────── */
 function BookingPage() {
+  const navigate = useNavigate();
   const {
     inv,
     setInv,
@@ -202,6 +210,7 @@ function BookingPage() {
     settings,
     saveInvoice,
     newInvoice,
+    updateInvoiceStatus,
   } = useGQ();
 
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -318,6 +327,14 @@ function BookingPage() {
 
   const layers = inv.layers || [{ id: "l1", layerNo: "Layer - 1", productName: inv.productName || "TOUGHENED GLASS", thickness: inv.glass?.thickness || 5, glassName: "", rate: "", process: "", status: "" }];
 
+  const handleSendPI = () => {
+    saveInvoice();
+    if (inv._saved && inv.id) {
+      updateInvoiceStatus(inv.id, "pi_sent");
+    }
+    toast.success("PI saved & marked as sent to customer");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── PAGE HEADER ───────────────────────────── */}
@@ -327,10 +344,20 @@ function BookingPage() {
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
               <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
               {" / "}
-              <span className="text-primary">Party Invoice (Booking)</span>
+              <span className="text-primary">SGU Booking</span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight">
               {inv._saved ? inv.no : "New Booking"}
+              {inv.status && (
+                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider ${
+                  inv.status === "pi_sent" ? "bg-blue-500/10 text-blue-600" :
+                  inv.status === "order_confirmed" ? "bg-emerald-500/10 text-emerald-600" :
+                  inv.status === "work_order_generated" ? "bg-amber-500/10 text-amber-600" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {inv.status === "pi_sent" ? "PI Sent" : inv.status === "order_confirmed" ? "Confirmed" : inv.status === "work_order_generated" ? "WO Generated" : "Draft"}
+                </span>
+              )}
             </h1>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -344,6 +371,13 @@ function BookingPage() {
               onClick={saveInvoice}
             >
               <Save className="h-3.5 w-3.5" /> Save
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleSendPI}
+            >
+              <Send className="h-3.5 w-3.5" /> Send PI
             </Button>
           </div>
         </div>
@@ -553,13 +587,13 @@ function BookingPage() {
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
                 <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "900px" : "1050px" }}>
                   <thead>
-                    <tr className="border-b border-border bg-muted/20">
+                    <tr className="border-b-2 border-green-600/30 bg-green-500/8">
                       {inputUnit === "mm"
                         ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", ""].map((h, i) => (
-                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
+                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                           ))
                         : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", ""].map((h, i) => (
-                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
+                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                           ))
                       }
                     </tr>
@@ -713,29 +747,27 @@ function BookingPage() {
             </Section>
 
             {/* 6. Bottom Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
-                <FieldLabel>Qty</FieldLabel>
-                <Input className="h-8 text-xs font-mono" value={inv.cust?.name ? "" : ""} readOnly placeholder="—" />
+                <FieldLabel>City</FieldLabel>
+                <Input className="h-8 text-xs" value={inv.cust?.city || ""} onChange={(e) => updateInvField("cust.city", e.target.value)} placeholder="Jaipur" />
               </div>
               <div>
                 <FieldLabel>Note</FieldLabel>
                 <Input className="h-8 text-xs" value={inv.glass?.batchNo || ""} onChange={(e) => updateInvField("glass.batchNo", e.target.value)} />
               </div>
               <div>
+                <FieldLabel>Process</FieldLabel>
+                <Input className="h-8 text-xs" value={inv.process || ""} onChange={(e) => updateInvField("process", e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div>
                 <FieldLabel>Total Qty</FieldLabel>
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
                   {totals.qty || 0}
                 </div>
               </div>
-              <div>
-                <FieldLabel>Weight</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.weightKg || "0.000"}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <FieldLabel>Act. Area SQM</FieldLabel>
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
@@ -760,6 +792,39 @@ function BookingPage() {
                   {totals.chargeSqft || totals.sqft || "0.000"}
                 </div>
               </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Weight</FieldLabel>
+                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                  {totals.weightKg || "0.000"}
+                </div>
+              </div>
+              <div>
+                <FieldLabel>Glass Name</FieldLabel>
+                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-green-500/10 text-xs text-foreground font-semibold">
+                  {inv.glass?.desc || `${inv.glass?.thickness || ""}mm ${inv.productName || "TOUGHENED GLASS"}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <Printer className="h-3 w-3" /> Cover Print
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <Mail className="h-3 w-3" /> Email
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <MessageSquare className="h-3 w-3" /> Send SMS
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <FileSpreadsheet className="h-3 w-3" /> Export to Excel
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <Database className="h-3 w-3" /> Backup
+              </Button>
             </div>
           </div>
 
@@ -965,6 +1030,30 @@ function BookingPage() {
                     <span className="font-mono font-bold text-lg text-emerald-600">₹ {nf(totals.grandTotal ?? 0)}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Right Side Quick Links */}
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="px-3 py-2 border-b border-border bg-sky-500/5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Quick Actions</span>
+              </div>
+              <div className="p-2 grid grid-cols-1 gap-1">
+                {[
+                  { label: "PI Status", icon: BarChart3 },
+                  { label: "Pending PI to Order", icon: FileSpreadsheet },
+                  { label: "Production Status", icon: BarChart3 },
+                  { label: "Glass Closing Stock", icon: Database },
+                  { label: "Entry Log", icon: FileSpreadsheet },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-500/8 transition-colors text-left"
+                  >
+                    <item.icon className="h-3 w-3 shrink-0" />
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -19,6 +19,8 @@ import { Route as QuoteRouteImport } from './routes/quote'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StickersRouteImport } from './routes/stickers'
+import { Route as WorkOrderRouteImport } from './routes/work-order'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +72,16 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StickersRoute = StickersRouteImport.update({
+  id: '/stickers',
+  path: '/stickers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkOrderRoute = WorkOrderRouteImport.update({
+  id: '/work-order',
+  path: '/work-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +94,8 @@ export interface FileRoutesByFullPath {
   '/quotes': typeof QuotesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stickers': typeof StickersRoute
+  '/work-order': typeof WorkOrderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +108,8 @@ export interface FileRoutesByTo {
   '/quotes': typeof QuotesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stickers': typeof StickersRoute
+  '/work-order': typeof WorkOrderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +123,8 @@ export interface FileRoutesById {
   '/quotes': typeof QuotesRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/stickers': typeof StickersRoute
+  '/work-order': typeof WorkOrderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +139,8 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/reports'
     | '/settings'
+    | '/stickers'
+    | '/work-order'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +153,8 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/reports'
     | '/settings'
+    | '/stickers'
+    | '/work-order'
   id:
     | '__root__'
     | '/'
@@ -145,6 +167,8 @@ export interface FileRouteTypes {
     | '/quotes'
     | '/reports'
     | '/settings'
+    | '/stickers'
+    | '/work-order'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +182,8 @@ export interface RootRouteChildren {
   QuotesRoute: typeof QuotesRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  StickersRoute: typeof StickersRoute
+  WorkOrderRoute: typeof WorkOrderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +258,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stickers': {
+      id: '/stickers'
+      path: '/stickers'
+      fullPath: '/stickers'
+      preLoaderRoute: typeof StickersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/work-order': {
+      id: '/work-order'
+      path: '/work-order'
+      fullPath: '/work-order'
+      preLoaderRoute: typeof WorkOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +286,8 @@ const rootRouteChildren: RootRouteChildren = {
   QuotesRoute: QuotesRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  StickersRoute: StickersRoute,
+  WorkOrderRoute: WorkOrderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

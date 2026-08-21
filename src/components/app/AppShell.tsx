@@ -11,6 +11,8 @@ import {
   Settings,
   ShoppingCart,
   Users,
+  Factory,
+  Tag,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,10 +32,10 @@ import { GlobalSearch } from "./GlobalSearch";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/booking", label: "Booking", icon: ClipboardList },
-  { to: "/order", label: "Order", icon: ShoppingCart },
-  { to: "/quote", label: "New Quote", icon: Plus },
-  { to: "/quotes", label: "Quotes", icon: FileText },
+  { to: "/booking", label: "SGU Booking", icon: ClipboardList },
+  { to: "/order", label: "Order Confirm", icon: ShoppingCart },
+  { to: "/work-order", label: "Work Order", icon: Factory },
+  { to: "/stickers", label: "Stickers", icon: Tag },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -41,10 +43,10 @@ const NAV = [
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/booking": "Party Invoice (Booking)",
-  "/order": "Order / Sales Invoice",
-  "/quote": "New Quote",
-  "/quotes": "Quotes",
+  "/booking": "SGU Booking",
+  "/order": "Order Confirm",
+  "/work-order": "Work Order",
+  "/stickers": "Sticker Labels",
   "/customers": "Customers",
   "/invoice": "Invoice",
   "/reports": "Reports",
@@ -324,11 +326,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <Search className="h-4 w-4" />
               </Button>
-              {/* New Quote CTA */}
+              {/* New Booking CTA */}
               <Button asChild size="sm" className="h-8 text-xs px-2.5 sm:px-3">
-                <Link to="/quote">
+                <Link to="/booking">
                   <Plus className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1">New Quote</span>
+                  <span className="hidden sm:inline ml-1">New Booking</span>
                 </Link>
               </Button>
             </div>

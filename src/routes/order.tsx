@@ -1,22 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
-  Plus,
-  Trash2,
   Save,
   RefreshCw,
   Printer,
   FileSpreadsheet,
   Search,
-  UserCheck,
   ChevronDown,
   CalendarDays,
   FileText,
   MessageSquare,
+  CheckCircle2,
+  XCircle,
+  Lock,
+  Unlock,
+  BarChart3,
+  Barcode,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { nf } from "@/lib/gq";
+import { nf, computeTotals } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/order")({
@@ -74,14 +76,25 @@ function OrderPage() {
     setInv,
     totals,
     settings,
+    invoices,
     customers,
     saveInvoice,
     saveCustomer,
     newInvoice,
+    loadInvoice,
+    confirmOrder,
+    updateInvoiceStatus,
   } = useGQ();
 
   const [custSearch, setCustSearch] = useState("");
   const [custDropOpen, setCustDropOpen] = useState(false);
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+
+  /* Get PI-sent bookings available for order confirmation */
+  const availableBookings = useMemo(
+    () => invoices.filter((x) => x.status === "pi_sent" || x.status === "draft"),
+    [invoices],
+  );
 
   /* ── field helpers ── */
   const updateInvField = (path: string, val: any) => {
@@ -118,6 +131,22 @@ function OrderPage() {
     toast.success(`Loaded ${c.name}`);
   };
 
+  /* select a booking to load into order */
+  const handleSelectBooking = (bookingId: string) => {
+    loadInvoice(bookingId, false);
+    toast.success("Booking loaded into order");
+  };
+
+  const handleConfirmOrder = () => {
+    if (!inv.id) {
+      toast.error("Save the order first");
+      return;
+    }
+    saveInvoice();
+    confirmOrder(inv.id);
+    toast.success("Order confirmed! Ready for Work Order generation.");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* ── PAGE HEADER ───────────────────────────── */}
@@ -127,13 +156,17 @@ function OrderPage() {
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
               <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
               {" / "}
-              <span className="text-primary">Customer Invoice (Order / Sales Invoice)</span>
+              <span className="text-primary">Order Confirm</span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight">
               {inv._saved ? inv.no : "New Order"}
             </h1>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Order Confirm Badge */}
+            <div className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-sm font-bold tracking-wide shadow-sm">
+              Order Confirm
+            </div>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
               <RefreshCw className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Start fresh</span>
@@ -173,7 +206,7 @@ function OrderPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <FieldLabel>Order No</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.orderNo || ""} onChange={(e) => updateInvField("orderNo", e.target.value)} />
+                  <Input className="h-8 text-xs font-mono bg-red-500/5" value={inv.orderNo || ""} onChange={(e) => updateInvField("orderNo", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Date</FieldLabel>
@@ -246,7 +279,7 @@ function OrderPage() {
                   <Select value={inv.freightType || "To be Billed"} onValueChange={(v) => updateInvField("freightType", v)}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="To be Billed">To be Billed</SelectItem>
+                      <SelectItem value="To be Billed">Tobe Billed</SelectItem>
                       <SelectItem value="Prepaid">Prepaid</SelectItem>
                       <SelectItem value="FOB">FOB</SelectItem>
                       <SelectItem value="Ex-Works">Ex-Works</SelectItem>
@@ -254,10 +287,48 @@ function OrderPage() {
                   </Select>
                 </div>
               </div>
+
+              {/* Action buttons row */}
+              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/40">
+                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
+                  <CalendarDays className="h-3 w-3" /> Change Delivery
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
+                  <FileText className="h-3 w-3" /> Document
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 text-red-600 border-red-500/30 hover:bg-red-500/5">
+                  <XCircle className="h-3 w-3" /> Order Cancel
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
+                  <Barcode className="h-3 w-3" /> Bar Code
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
+                  <Unlock className="h-3 w-3" /> UnLock Me
+                </Button>
+              </div>
             </Section>
 
-            {/* 3. Items Grid */}
-            <Section title="Booking Items">
+            {/* 3. Select Booking / Items Grid */}
+            <Section
+              title="Booking Items"
+              headerRight={
+                <Select onValueChange={handleSelectBooking}>
+                  <SelectTrigger className="h-7 text-xs w-48">
+                    <SelectValue placeholder="Load a booking…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableBookings.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No bookings available</div>
+                    )}
+                    {availableBookings.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.no} — {b.cust?.name?.split(" ")[0] || "—"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              }
+            >
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
                 <table className="w-full text-[11px] border-collapse" style={{ minWidth: "850px" }}>
                   <thead>
@@ -335,7 +406,7 @@ function OrderPage() {
                   <Input className="h-8 text-xs" value={inv.delivery?.validityOfPI || ""} onChange={(e) => updateInvField("delivery.validityOfPI", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Unloading Type</FieldLabel>
+                  <FieldLabel>Unloading by</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.delivery?.unloadingType || ""} onChange={(e) => updateInvField("delivery.unloadingType", e.target.value)} />
                 </div>
                 <div>
@@ -408,9 +479,19 @@ function OrderPage() {
               <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
                 <RefreshCw className="h-3.5 w-3.5" /> Update Sr. No
               </Button>
+              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                <BarChart3 className="h-3.5 w-3.5" /> Status
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
+                Name Change
+              </Button>
               <div className="ml-auto flex gap-2">
-                <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 bg-green-500/10 border-green-500/30 text-green-600 hover:bg-green-500/20">
-                  <CalendarDays className="h-3.5 w-3.5" /> Change Delivery Date
+                <Button
+                  size="sm"
+                  className="h-9 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white font-bold"
+                  onClick={handleConfirmOrder}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Confirm Order
                 </Button>
                 <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
                   <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
@@ -423,7 +504,13 @@ function OrderPage() {
           <div className="space-y-4">
             <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14">
               <div className="px-3 py-2 border-b border-border bg-red-500/10">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Particular</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Particular</span>
+                  <div className="flex gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Rate</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-4">Amount</span>
+                  </div>
+                </div>
               </div>
               <div className="px-3 py-2 space-y-0">
                 {/* Basic Amount */}
@@ -444,16 +531,10 @@ function OrderPage() {
                   <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.freight || ""} onChange={(e) => updateInvField("ch.freight", e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
 
-                {/* Unloading/Handling */}
+                {/* Packing Charges */}
                 <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Unloading/Handling</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.unloadingHandling || ""} onChange={(e) => updateInvField("ch.unloadingHandling", e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
-
-                {/* Green Tax */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Green tax</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.greenTax || ""} onChange={(e) => updateInvField("ch.greenTax", e.target.value === "" ? "" : Number(e.target.value))} />
+                  <span className="text-foreground">Packing Charges</span>
+                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right bg-green-500/15 border-green-500/30" value={inv.ch?.packingCharges || ""} onChange={(e) => updateInvField("ch.packingCharges", e.target.value === "" ? "" : Number(e.target.value))} />
                 </div>
 
                 {/* Total */}
@@ -470,7 +551,7 @@ function OrderPage() {
 
                 {/* Net Value */}
                 <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-red-500 font-bold">Net Value</span>
+                  <span className="text-red-500 font-bold">Ass. Value</span>
                   <span className="font-mono font-bold text-foreground bg-green-500/20 px-2 py-0.5 rounded">{nf(totals.assessableValue ?? 0)}</span>
                 </div>
 

@@ -14,6 +14,9 @@ import {
   uid,
 } from "./gq";
 
+/* ── Workflow status types ────────────────────────────────────────────── */
+export type WorkflowStatus = "draft" | "pi_sent" | "order_confirmed" | "work_order_generated";
+
 type Ctx = {
   hydrated: boolean;
   settings: any;
@@ -21,6 +24,7 @@ type Ctx = {
   saveSettings: (s: any) => void;
   invoices: any[];
   customers: any[];
+  workOrders: any[];
   inv: any;
   setInv: (updater: (prev: any) => any) => void;
   totals: any;
@@ -33,6 +37,12 @@ type Ctx = {
   deleteCustomer: (id: string) => void;
   syncOne: (rec: any) => Promise<boolean>;
   syncAll: () => void;
+  /* ── Workflow helpers ── */
+  updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
+  confirmOrder: (bookingId: string) => void;
+  generateWorkOrder: (orderId: string) => any;
+  getBookingsByStatus: (status: WorkflowStatus) => any[];
+  saveWorkOrder: (wo: any) => void;
 };
 
 const GQ = createContext<Ctx | null>(null);
@@ -42,6 +52,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<any>(() => Object.assign({}, loadSettings()));
   const [invoices, setInvoices] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
   const [inv, setInvState] = useState<any>(() => SAMPLE_INVOICE_07321);
   const [draftState, setDraftState] = useState("Draft saved automatically");
 
@@ -60,14 +71,21 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     const sampleRecord = buildRecord(SAMPLE_INVOICE_07321, computeTotals(s, SAMPLE_INVOICE_07321));
     const savedInvoices = LS.get<any[]>("invoices", []);
-    const initialInvoices = savedInvoices.length > 0 ? savedInvoices : [sampleRecord];
-    setInvoices(initialInvoices);
-    if (savedInvoices.length === 0) LS.set("invoices", initialInvoices);
+    /* Auto-migrate: ensure every invoice has a status field */
+    const migratedInvoices = (savedInvoices.length > 0 ? savedInvoices : [sampleRecord]).map(
+      (inv: any) => ({ ...inv, status: inv.status || "draft" }),
+    );
+    setInvoices(migratedInvoices);
+    LS.set("invoices", migratedInvoices);
 
     const savedCustomers = LS.get<any[]>("customers", []);
     const initialCustomers = savedCustomers.length > 0 ? savedCustomers : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
     setCustomers(initialCustomers);
     if (savedCustomers.length === 0) LS.set("customers", initialCustomers);
+
+    /* Load work orders */
+    const savedWorkOrders = LS.get<any[]>("workOrders", []);
+    setWorkOrders(savedWorkOrders);
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : sampleRecord;
@@ -106,7 +124,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
   const newInvoice = useCallback(() => {
     setInvState(blankInvoice(settings));
-    toast("Started a new blank quote");
+    toast("Started a new blank booking");
   }, [settings]);
 
   const syncOne = useCallback(
@@ -148,6 +166,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return;
     }
     const rec = buildRecord(inv, totals);
+    rec.status = inv.status || "draft";
     const existing = invoices.find((x) => x.id === inv.id);
 
     let next: any[];
@@ -164,7 +183,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setInvoices(next);
     LS.set("invoices", next);
     setInvState((prev: any) => ({ ...prev, _saved: true }));
-    toast.success("Quote " + rec.no + " saved");
+    toast.success("Booking " + rec.no + " saved");
     if (settings.sheetUrl) syncOne(rec);
   }, [inv, totals, invoices, settings, syncOne]);
 
@@ -179,6 +198,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         copy.date = new Date().toISOString().slice(0, 10);
         copy._saved = false;
         copy.sync = "local";
+        copy.status = "draft";
       }
       setInvState(copy);
       toast(asCopy ? "Duplicated — save when ready" : "Loaded " + copy.no);
@@ -192,7 +212,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       LS.set("invoices", next);
       return next;
     });
-    toast.success("Quote deleted");
+    toast.success("Booking deleted");
   }, []);
 
   const saveCustomer = useCallback(
@@ -238,6 +258,121 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     );
   }, [invoices, syncOne]);
 
+  /* ── Workflow helpers ────────────────────────────────────────────── */
+
+  const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
+    setInvoices((prev) => {
+      const next = prev.map((x) => (x.id === id ? { ...x, status } : x));
+      LS.set("invoices", next);
+      return next;
+    });
+  }, []);
+
+  const confirmOrder = useCallback((bookingId: string) => {
+    setInvoices((prev) => {
+      const next = prev.map((x) =>
+        x.id === bookingId ? { ...x, status: "order_confirmed" as WorkflowStatus } : x,
+      );
+      LS.set("invoices", next);
+      return next;
+    });
+    toast.success("Order confirmed successfully");
+  }, []);
+
+  const generateWorkOrder = useCallback(
+    (orderId: string) => {
+      const order = invoices.find((x) => x.id === orderId);
+      if (!order) {
+        toast.error("Order not found");
+        return null;
+      }
+      const orderTotals = computeTotals(settings, order);
+      const woNo = "WO-" + (order.orderNo || order.no || Date.now());
+      const pieces: any[] = [];
+      let globalSr = 0;
+      (order.items || []).forEach((item: any, idx: number) => {
+        const line = orderTotals.lines?.[idx];
+        if (!line?.ok) return;
+        const qty = Number(item.qty) || 1;
+        for (let p = 0; p < qty; p++) {
+          globalSr++;
+          const barcodeNum = String(
+            (order.orderNo || order.no || "0000").replace(/\D/g, ""),
+          ).padStart(4, "0") +
+            String(globalSr).padStart(4, "0") +
+            String(p + 1).padStart(2, "0");
+          pieces.push({
+            sr: globalSr,
+            l1: item.l1 || "",
+            l2: item.l2 || "",
+            l1mm: item.l1mm || line.lMM || "",
+            l2mm: item.l2mm || line.wMM || "",
+            heightMM: line.lMM,
+            widthMM: line.wMM,
+            qty: 1,
+            area: line.totalSqm,
+            areaFt: line.totalSqft,
+            hole: item.holes || 0,
+            bigHole: item.bigHoles || 0,
+            cutOut: item.cutouts || 0,
+            bigCutout: item.bigCutouts || 0,
+            shape: item.shape || "BLOCK",
+            barcode: barcodeNum,
+            remark: item.remark || "F" + String(globalSr).padStart(3, "0"),
+            pieceOf: `${p + 1} of ${qty}`,
+          });
+        }
+      });
+
+      const wo = {
+        id: uid("wo"),
+        woNo,
+        orderId,
+        orderNo: order.orderNo || order.no,
+        piNo: order.no,
+        piDate: order.date,
+        customer: order.cust?.name || "",
+        dispatchTo: order.cust?.city || order.delivery?.city || "",
+        poNo: order.poNo || "",
+        project: order.projectRemark || "",
+        glassDesc: order.glass?.desc || "",
+        thickness: order.glass?.thickness || "",
+        productName: order.productName || "TOUGHENED GLASS",
+        jobType: order.jobType || "WITH MATERIAL",
+        layerInfo: order.layers || [],
+        pieces,
+        totalPieces: pieces.length,
+        totalQty: orderTotals.qty,
+        totalSqm: orderTotals.sqm,
+        totalSqft: orderTotals.sqft,
+        weightKg: orderTotals.weightKg,
+        createdAt: new Date().toISOString(),
+      };
+
+      return wo;
+    },
+    [invoices, settings],
+  );
+
+  const saveWorkOrder = useCallback((wo: any) => {
+    setWorkOrders((prev) => {
+      const existing = prev.findIndex((x) => x.id === wo.id);
+      const next = existing >= 0
+        ? prev.map((x, i) => (i === existing ? wo : x))
+        : [wo, ...prev];
+      LS.set("workOrders", next);
+      return next;
+    });
+    toast.success("Work Order " + wo.woNo + " saved");
+  }, []);
+
+  const getBookingsByStatus = useCallback(
+    (status: WorkflowStatus) => {
+      return invoices.filter((x) => (x.status || "draft") === status);
+    },
+    [invoices],
+  );
+
   const value: Ctx = {
     hydrated,
     settings,
@@ -245,6 +380,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     saveSettings,
     invoices,
     customers,
+    workOrders,
     inv,
     setInv,
     totals,
@@ -257,6 +393,12 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     deleteCustomer,
     syncOne,
     syncAll,
+    /* workflow */
+    updateInvoiceStatus,
+    confirmOrder,
+    generateWorkOrder,
+    getBookingsByStatus,
+    saveWorkOrder,
   };
 
   return <GQ.Provider value={value}>{children}</GQ.Provider>;

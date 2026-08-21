@@ -8,6 +8,10 @@ import {
   ArrowUpRight,
   Settings,
   TrendingUp,
+  ClipboardList,
+  ShoppingCart,
+  Factory,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";
@@ -18,74 +22,117 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { invoices, customers, settings } = useGQ();
+  const { invoices, customers, workOrders, settings } = useGQ();
 
-  const totalQuotes = invoices.length;
+  const totalBookings = invoices.length;
   const totalCustomers = customers.length;
-  const syncedQuotes = invoices.filter((x) => x.sync === "synced").length;
+  const draftCount = invoices.filter((x) => (x.status || "draft") === "draft").length;
+  const piSentCount = invoices.filter((x) => x.status === "pi_sent").length;
+  const confirmedCount = invoices.filter((x) => x.status === "order_confirmed").length;
+  const woGeneratedCount = invoices.filter((x) => x.status === "work_order_generated").length;
   const totalRevenue = invoices.reduce(
     (acc, inv) => acc + (Number(inv.totals?.grandTotal) || 0),
     0
   );
-  const recentQuotes = invoices.slice(0, 8);
+  const recentBookings = invoices.slice(0, 8);
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-5 pb-12">
 
-      {/* ── Metrics ─────────────────────────────────────────────────── */}
+      {/* ── Workflow Pipeline ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
-          label="Quotations"
-          value={String(totalQuotes)}
-          sub={totalQuotes === 0 ? "none yet" : `${syncedQuotes} synced`}
+          label="Draft Bookings"
+          value={String(draftCount)}
+          sub={draftCount === 0 ? "all clear" : "pending PI"}
+          icon={ClipboardList}
+          accent="blue"
         />
         <MetricCard
-          label="Customers"
-          value={String(totalCustomers)}
-          sub={totalCustomers === 0 ? "none yet" : "saved profiles"}
+          label="PI Sent"
+          value={String(piSentCount)}
+          sub={piSentCount === 0 ? "none pending" : "awaiting payment"}
+          icon={FileText}
+          accent="amber"
         />
         <MetricCard
-          label="Quote Value"
+          label="Orders Confirmed"
+          value={String(confirmedCount + woGeneratedCount)}
+          sub={`${workOrders.length} work orders`}
+          icon={CheckCircle2}
+          accent="green"
+        />
+        <MetricCard
+          label="Total Revenue"
           value={totalRevenue > 0 ? cur(totalRevenue, settings.currency) : "—"}
-          sub="combined total"
+          sub={`${totalBookings} bookings`}
+          icon={TrendingUp}
+          accent="purple"
           mono
         />
-        <MetricCard
-          label="Sheet Sync"
-          value={`${syncedQuotes} / ${totalQuotes}`}
-          sub={settings.sheetUrl ? "connected" : "not configured"}
-          status={settings.sheetUrl ? "ok" : "warn"}
-          mono
-        />
+      </div>
+
+      {/* ── Workflow Steps ─────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm font-semibold text-foreground">Workflow Pipeline</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { step: "1", label: "SGU Booking", count: draftCount, color: "bg-blue-500", to: "/booking" },
+            { step: "2", label: "Order Confirm", count: piSentCount, color: "bg-amber-500", to: "/order" },
+            { step: "3", label: "Work Order", count: confirmedCount, color: "bg-emerald-500", to: "/work-order" },
+            { step: "4", label: "Stickers", count: woGeneratedCount, color: "bg-purple-500", to: "/stickers" },
+          ].map((item, i) => (
+            <Link
+              key={i}
+              to={item.to}
+              className="group relative flex flex-col items-center gap-1.5 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
+            >
+              <div className={`h-8 w-8 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold`}>
+                {item.step}
+              </div>
+              <span className="text-[11px] font-medium text-foreground text-center">{item.label}</span>
+              {item.count > 0 && (
+                <span className={`absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full ${item.color} text-white text-[10px] font-bold flex items-center justify-center`}>
+                  {item.count}
+                </span>
+              )}
+              {i < 3 && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 text-muted-foreground/30 text-lg font-light hidden lg:block">→</div>
+              )}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* ── Main content ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_256px] gap-5">
 
-        {/* Recent quotes */}
+        {/* Recent bookings */}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium text-foreground">Recent Quotations</span>
+            <span className="text-sm font-medium text-foreground">Recent Bookings</span>
             <Link
-              to="/quotes"
+              to="/booking"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              All quotes <ArrowUpRight className="h-3 w-3" />
+              New Booking <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
 
-          {recentQuotes.length === 0 ? (
+          {recentBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-6">
               <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-3">
                 <FileText className="h-4 w-4 text-muted-foreground/50" />
               </div>
-              <p className="text-sm font-medium text-foreground">No quotations yet</p>
+              <p className="text-sm font-medium text-foreground">No bookings yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                Create your first quote to start tracking glass calculations and customer orders.
+                Create your first SGU Booking to start tracking glass calculations and customer orders.
               </p>
               <Button asChild size="sm" className="mt-4 h-8 text-xs px-4">
-                <Link to="/quote">
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Create Quote
+                <Link to="/booking">
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Booking
                 </Link>
               </Button>
             </div>
@@ -93,18 +140,18 @@ function Dashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Quote #</th>
+                  <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Booking #</th>
                   <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Customer</th>
                   <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Date</th>
                   <th className="text-right py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
-                  <th className="py-2.5 px-4 w-16" />
+                  <th className="py-2.5 px-4 w-20 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {recentQuotes.map((q, i) => (
+                {recentBookings.map((q, i) => (
                   <tr
                     key={q.id}
-                    className={`border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? "" : ""}`}
+                    className="border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors"
                   >
                     <td className="py-3 px-4 font-mono text-[11px] font-medium text-foreground">{q.no || "—"}</td>
                     <td className="py-3 px-4">
@@ -120,13 +167,7 @@ function Dashboard() {
                       {cur(q.totals?.grandTotal || 0, settings.currency)}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-                        q.sync === "synced"
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20"
-                          : "bg-stone-50 text-stone-500 ring-stone-400/20 dark:bg-stone-500/10 dark:text-stone-400"
-                      }`}>
-                        {q.sync === "synced" ? "Synced" : "Local"}
-                      </span>
+                      <StatusBadge status={q.status || "draft"} />
                     </td>
                   </tr>
                 ))}
@@ -201,10 +242,22 @@ function Dashboard() {
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-2">
             <Link
-              to="/quotes"
+              to="/booking"
               className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
             >
-              <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Quotes
+              <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" /> Booking
+            </Link>
+            <Link
+              to="/order"
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" /> Orders
+            </Link>
+            <Link
+              to="/work-order"
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <Factory className="h-3.5 w-3.5 text-muted-foreground" /> Work Order
             </Link>
             <Link
               to="/customers"
@@ -219,29 +272,59 @@ function Dashboard() {
   );
 }
 
+/* ── Status Badge ─────────────────────────────────────────────────── */
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    draft: "bg-stone-50 text-stone-500 ring-stone-400/20 dark:bg-stone-500/10 dark:text-stone-400",
+    pi_sent: "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-400",
+    order_confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400",
+    work_order_generated: "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400",
+  };
+  const labels: Record<string, string> = {
+    draft: "Draft",
+    pi_sent: "PI Sent",
+    order_confirmed: "Confirmed",
+    work_order_generated: "WO Done",
+  };
+  return (
+    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${styles[status] || styles.draft}`}>
+      {labels[status] || "Draft"}
+    </span>
+  );
+}
+
 function MetricCard({
   label,
   value,
   sub,
   mono = false,
-  status,
+  icon: Icon,
+  accent,
 }: {
   label: string;
   value: string;
   sub?: string;
   mono?: boolean;
-  status?: "ok" | "warn";
+  icon?: any;
+  accent?: string;
 }) {
+  const accentColors: Record<string, string> = {
+    blue: "text-blue-500",
+    amber: "text-amber-500",
+    green: "text-emerald-500",
+    purple: "text-purple-500",
+  };
   return (
     <div className="rounded-lg border border-border bg-card px-4 py-3.5">
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
-      <p className={`mt-1.5 text-xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+        {Icon && <Icon className={`h-4 w-4 ${accentColors[accent || "blue"] || "text-muted-foreground"}`} />}
+      </div>
+      <p className={`text-xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}>
         {value}
       </p>
       {sub && (
-        <p className="text-[11px] mt-0.5 flex items-center gap-1 text-muted-foreground">
-          {status === "ok" && <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />}
-          {status === "warn" && <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />}
+        <p className="text-[11px] mt-0.5 text-muted-foreground">
           {sub}
         </p>
       )}
