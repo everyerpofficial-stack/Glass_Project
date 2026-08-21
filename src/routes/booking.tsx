@@ -384,11 +384,11 @@ function BookingPage() {
       </div>
 
       {/* ── CONTENT ─────────────────────────────────── */}
-      <div className="p-3 sm:p-4">
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4">
+      <div className="p-3 sm:p-4 w-full">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
 
           {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {/* 1. Booking Header */}
             <Section title="Booking Details">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
