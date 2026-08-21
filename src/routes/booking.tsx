@@ -1025,35 +1025,34 @@ function BookingPage() {
                       <span className="font-mono text-foreground">₹ {nf(totals.igst)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-baseline py-2 text-sm mt-1 border-t border-border">
+                  <div className="flex justify-between py-2 text-sm mt-1 border-t border-border">
                     <span className="font-bold text-emerald-600">Grand Total</span>
                     <span className="font-mono font-bold text-lg text-emerald-600">₹ {nf(totals.grandTotal ?? 0)}</span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Right Side Quick Links */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <div className="px-3 py-2 border-b border-border bg-sky-500/5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Quick Actions</span>
-              </div>
-              <div className="p-2 grid grid-cols-1 gap-1">
-                {[
-                  { label: "PI Status", icon: BarChart3 },
-                  { label: "Pending PI to Order", icon: FileSpreadsheet },
-                  { label: "Production Status", icon: BarChart3 },
-                  { label: "Glass Closing Stock", icon: Database },
-                  { label: "Entry Log", icon: FileSpreadsheet },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-500/8 transition-colors text-left"
-                  >
-                    <item.icon className="h-3 w-3 shrink-0" />
-                    {item.label}
-                  </button>
-                ))}
+                {/* Right Side Quick Links */}
+                <div className="mt-4 pt-3 border-t border-border">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Quick Actions</div>
+                  <div className="grid grid-cols-1 gap-1">
+                    {[
+                      { label: "PI Status", icon: BarChart3 },
+                      { label: "Pending PI to Order", icon: FileSpreadsheet },
+                      { label: "Production Status", icon: BarChart3 },
+                      { label: "Glass Closing Stock", icon: Database },
+                      { label: "Entry Log", icon: FileSpreadsheet },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-500/8 transition-colors text-left w-full"
+                      >
+                        <item.icon className="h-3 w-3 shrink-0" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
