@@ -380,14 +380,28 @@ function OrderPage() {
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
               <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
               {" / "}
-              <span className="text-primary font-semibold">Proforma Invoice</span>
+              {showForm ? (
+                <button onClick={() => setShowForm(false)} className="hover:text-foreground transition-colors">
+                  Proforma Invoice
+                </button>
+              ) : (
+                <span className="text-primary font-semibold">Proforma Invoice</span>
+              )}
+              {showForm && (
+                <>
+                  {" / "}
+                  <span className="text-primary font-semibold">
+                    {inv._saved ? `Edit (${inv.no})` : "New Invoice"}
+                  </span>
+                </>
+              )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              Proforma Invoice Management
+              {showForm ? (inv._saved ? "Edit Proforma Invoice" : "New Invoice") : "Proforma Invoice Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                  Editing: {inv.no}
+                  {inv.no}
                 </span>
               )}
             </h1>
@@ -424,7 +438,7 @@ function OrderPage() {
                 </Button>
               </>
             ) : (
-              /* RIGHT BUTTONS: Select Pre Proforma & Add Proforma Invoice */
+              /* RIGHT BUTTONS: Select Pre Proforma & New Invoice */
               <div className="flex items-center gap-2 flex-wrap">
                 <PreProformaSelector
                   availableBookings={availableBookings}
@@ -449,40 +463,42 @@ function OrderPage() {
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  Add Blank Invoice
+                  New Invoice
                 </Button>
               </div>
             )}
           </div>
         </div>
 
-        {/* ── KPI METRICS CARDS ─────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-            <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
-            <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
-          </div>
-          <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
-            <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
-              <Clock className="h-3 w-3" /> Pending Order
+        {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
+        {!showForm && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
+              <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
             </div>
-            <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">Ready for workflow</div>
-          </div>
-          <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
-            <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
-              <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+            <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
+              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
+                <Clock className="h-3 w-3" /> Pending Order
+              </div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Ready for workflow</div>
             </div>
-            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{confirmedCount}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">In workflow</div>
+            <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
+              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
+                <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+              </div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{confirmedCount}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">In workflow</div>
+            </div>
+            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">₹ {nf(totalSavedValue)}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Proforma invoices value</div>
+            </div>
           </div>
-          <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-            <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
-            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">₹ {nf(totalSavedValue)}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">Proforma invoices value</div>
-          </div>
-        </div>
+        )}
       </div>
 
       {!showForm ? (
@@ -518,7 +534,7 @@ function OrderPage() {
                     setShowForm(true);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Add Proforma Invoice
+                  <Plus className="h-3.5 w-3.5" /> New Invoice
                 </Button>
               </div>
             ) : (
