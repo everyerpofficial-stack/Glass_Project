@@ -404,7 +404,7 @@ function BookingPage() {
     if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
       toast.success("Pre Proforma generated & sent to customer! Moving to Proforma Invoice.");
-      navigate({ to: "/order" });
+      navigate({ to: "/order", search: { view: undefined } });
     }
   };
 
@@ -422,6 +422,7 @@ function BookingPage() {
         </Link>
         <Link
           to="/order"
+          search={{ view: undefined }}
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
         >
           2. Proforma Invoice

@@ -77,14 +77,15 @@ function Dashboard() {
         </div>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { step: "1", label: "Pre Proforma", count: draftCount, color: "bg-blue-500", to: "/booking" },
-            { step: "2", label: "Proforma Invoice", count: piSentCount, color: "bg-amber-500", to: "/order" },
-            { step: "3", label: "Work Order", count: confirmedCount, color: "bg-emerald-500", to: "/work-order" },
-            { step: "4", label: "Stickers", count: woGeneratedCount, color: "bg-purple-500", to: "/stickers" },
-          ].map((item, i) => (
+            { step: "1", label: "Pre Proforma", count: draftCount, color: "bg-blue-500", to: "/booking", search: undefined },
+            { step: "2", label: "Proforma Invoice", count: piSentCount, color: "bg-amber-500", to: "/order", search: { view: undefined } },
+            { step: "3", label: "Work Order", count: confirmedCount, color: "bg-emerald-500", to: "/work-order", search: undefined },
+            { step: "4", label: "Stickers", count: woGeneratedCount, color: "bg-purple-500", to: "/stickers", search: undefined },
+          ].map((item: any, i) => (
             <Link
               key={i}
               to={item.to}
+              search={item.search}
               className="group relative flex flex-col items-center gap-1.5 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
             >
               <div className={`h-8 w-8 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold`}>
@@ -247,6 +248,7 @@ function Dashboard() {
             </Link>
             <Link
               to="/order"
+              search={{ view: undefined }}
               className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
             >
               <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" /> Orders

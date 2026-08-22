@@ -37,8 +37,8 @@ import { nf } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/order")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    view: typeof search.view === "string" ? search.view : undefined,
+  validateSearch: (search: Record<string, unknown>): { view?: string | undefined } => ({
+    view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
   }),
   component: OrderPage,
 });
@@ -356,6 +356,7 @@ function OrderPage() {
         </Link>
         <Link
           to="/order"
+          search={{ view: undefined }}
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
