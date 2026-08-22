@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { blankItem, G, nf, uid } from "@/lib/gq";
+import { blankItem, nf, uid } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/booking")({

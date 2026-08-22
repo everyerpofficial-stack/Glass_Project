@@ -4,14 +4,12 @@ import {
   Plus,
   Users,
   CheckCircle2,
-  AlertCircle,
   ArrowUpRight,
   Settings,
   TrendingUp,
   ClipboardList,
   ShoppingCart,
   Factory,
-  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";

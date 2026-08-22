@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { nf, computeTotals } from "@/lib/gq";
+import { nf } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/order")({
