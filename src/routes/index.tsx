@@ -42,21 +42,21 @@ function Dashboard() {
       {/* ── Workflow Pipeline ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
-          label="Draft Bookings"
+          label="Draft Pre Proformas"
           value={String(draftCount)}
-          sub={draftCount === 0 ? "all clear" : "pending PI"}
+          sub={draftCount === 0 ? "all clear" : "pending Proforma Invoice"}
           icon={ClipboardList}
           accent="blue"
         />
         <MetricCard
-          label="PI Sent"
+          label="Pre Proformas Sent"
           value={String(piSentCount)}
-          sub={piSentCount === 0 ? "none pending" : "awaiting payment"}
+          sub={piSentCount === 0 ? "none pending" : "ready for Proforma Invoice"}
           icon={FileText}
           accent="amber"
         />
         <MetricCard
-          label="Orders Confirmed"
+          label="Proforma Invoices Confirmed"
           value={String(confirmedCount + woGeneratedCount)}
           sub={`${workOrders.length} work orders`}
           icon={CheckCircle2}
@@ -65,7 +65,7 @@ function Dashboard() {
         <MetricCard
           label="Total Revenue"
           value={totalRevenue > 0 ? cur(totalRevenue, settings.currency) : "—"}
-          sub={`${totalBookings} bookings`}
+          sub={`${totalBookings} records`}
           icon={TrendingUp}
           accent="purple"
           mono
@@ -79,8 +79,8 @@ function Dashboard() {
         </div>
         <div className="grid grid-cols-4 gap-2">
           {[
-            { step: "1", label: "SGU Booking", count: draftCount, color: "bg-blue-500", to: "/booking" },
-            { step: "2", label: "Order Confirm", count: piSentCount, color: "bg-amber-500", to: "/order" },
+            { step: "1", label: "Pre Proforma", count: draftCount, color: "bg-blue-500", to: "/booking" },
+            { step: "2", label: "Proforma Invoice", count: piSentCount, color: "bg-amber-500", to: "/order" },
             { step: "3", label: "Work Order", count: confirmedCount, color: "bg-emerald-500", to: "/work-order" },
             { step: "4", label: "Stickers", count: woGeneratedCount, color: "bg-purple-500", to: "/stickers" },
           ].map((item, i) => (
@@ -112,12 +112,12 @@ function Dashboard() {
         {/* Recent bookings */}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium text-foreground">Recent Bookings</span>
+            <span className="text-sm font-medium text-foreground">Recent Pre Proformas</span>
             <Link
               to="/booking"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              New Booking <ArrowUpRight className="h-3 w-3" />
+              New Pre Proforma <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
 
@@ -126,13 +126,13 @@ function Dashboard() {
               <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-3">
                 <FileText className="h-4 w-4 text-muted-foreground/50" />
               </div>
-              <p className="text-sm font-medium text-foreground">No bookings yet</p>
+              <p className="text-sm font-medium text-foreground">No Pre Proformas yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                Create your first SGU Booking to start tracking glass calculations and customer orders.
+                Create your first Pre Proforma to start tracking glass calculations and customer orders.
               </p>
               <Button asChild size="sm" className="mt-4 h-8 text-xs px-4">
                 <Link to="/booking">
-                  <Plus className="h-3.5 w-3.5 mr-1" /> New Booking
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Pre Proforma
                 </Link>
               </Button>
             </div>
@@ -287,7 +287,7 @@ function StatusBadge({ status }: { status: string }) {
     work_order_generated: "WO Done",
   };
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${styles[status] || styles.draft}`}>
+    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${styles[status] || styles["draft"]}`}>
       {labels[status] || "Draft"}
     </span>
   );

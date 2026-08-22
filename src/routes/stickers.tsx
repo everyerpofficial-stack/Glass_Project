@@ -60,7 +60,7 @@ function generateBarcodeSVG(text: string, height = 36, barWidth = 1.2): string {
   for (let i = 0; i < text.length; i++) {
     const charCode = text.charCodeAt(i) - 32;
     checksum += charCode * (i + 1);
-    pattern += CODE128B[text[i]] || "10101111000";
+    pattern += CODE128B[text.charAt(i)] || "10101111000";
   }
   const checksumChar = String.fromCharCode((checksum % 103) + 32);
   pattern += CODE128B[checksumChar] || "10101111000";

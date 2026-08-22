@@ -386,6 +386,10 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
         l.wMM +
         '</td><td class="c">' +
         l.qty +
+        '</td><td class="c">' +
+        (it.holes ? it.holes : "") +
+        '</td><td class="c">' +
+        (it.cutouts ? it.cutouts : "") +
         '</td><td class="n">' +
         (S.rateUnit === "sqft" ? l.totalSqft : l.totalSqm) +
         '</td><td class="n">' +
@@ -403,13 +407,13 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
   let opsRows = "";
   if (t.holes > 0) {
-    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Holes</b></td><td class="c"><b>${t.holes}</b></td><td class="c">@ ${nf(o.holeRate || 35)}</td><td class="n"><b>${nf(t.holeCharge)}</b></td></tr>`;
+    opsRows += `<tr><td colspan="9"></td><td style="text-align:right"><b>Holes</b></td><td class="c"><b>${t.holes}</b></td><td class="c">@ ${nf(o.holeRate || 35)}</td><td class="n"><b>${nf(t.holeCharge)}</b></td></tr>`;
   }
   if (t.cutouts > 0) {
-    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Cutout</b></td><td class="c"><b>${t.cutouts}</b></td><td class="c">@ ${nf(o.cutoutRate || 85)}</td><td class="n"><b>${nf(t.cutoutCharge)}</b></td></tr>`;
+    opsRows += `<tr><td colspan="9"></td><td style="text-align:right"><b>Cutout</b></td><td class="c"><b>${t.cutouts}</b></td><td class="c">@ ${nf(o.cutoutRate || 85)}</td><td class="n"><b>${nf(t.cutoutCharge)}</b></td></tr>`;
   }
   if (t.bigCutouts > 0) {
-    opsRows += `<tr><td colspan="7"></td><td style="text-align:right"><b>Big Cutout</b></td><td class="c"><b>${t.bigCutouts}</b></td><td class="c">@ ${nf(o.bigCutoutRate || 500)}</td><td class="n"><b>${nf(t.bigCutoutCharge)}</b></td></tr>`;
+    opsRows += `<tr><td colspan="9"></td><td style="text-align:right"><b>Big Cutout</b></td><td class="c"><b>${t.bigCutouts}</b></td><td class="c">@ ${nf(o.bigCutoutRate || 500)}</td><td class="n"><b>${nf(t.bigCutoutCharge)}</b></td></tr>`;
   }
 
   function fr(lbl: string, val: string, cls?: string) {
@@ -500,6 +504,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Height</th>
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Width</th>
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Qty</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Hole</th>
+              <th style="border:1px solid #000; background:#EDEDED; padding:3px">CutOu</th>
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Tot Area</th>
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Chargable Rate/${unitCol}</th>
               <th style="border:1px solid #000; background:#EDEDED; padding:3px">Amount</th>
@@ -512,6 +518,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
             <tr style="font-weight:bold; background:#EDEDED">
               <td colspan="5" style="border:1px solid #000">Total</td>
               <td class="c" style="border:1px solid #000">${t.qty}</td>
+              <td class="c" style="border:1px solid #000">${t.holes || ""}</td>
+              <td class="c" style="border:1px solid #000">${t.cutouts || ""}</td>
               <td class="n" style="border:1px solid #000">${S.rateUnit === "sqft" ? t.sqft : t.sqm}</td>
               <td style="border:1px solid #000"></td>
               <td class="n" style="border:1px solid #000">${nf(t.glassAmount)}</td>

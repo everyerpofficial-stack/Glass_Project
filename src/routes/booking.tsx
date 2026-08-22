@@ -17,6 +17,13 @@ import {
   MessageSquare,
   Database,
   Globe,
+  Search,
+  Edit3,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  ArrowLeft,
+  FileText,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -208,13 +215,46 @@ function BookingPage() {
     setInv,
     totals,
     settings,
+    invoices,
+    loadInvoice,
+    deleteInvoice,
     saveInvoice,
     newInvoice,
     updateInvoiceStatus,
   } = useGQ();
 
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [savedSearch, setSavedSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
   const inputUnit = inv.inputUnit || "inch";
+
+  const pendingCount = useMemo(
+    () => invoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
+    [invoices]
+  );
+  const confirmedCount = useMemo(
+    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
+    [invoices]
+  );
+  const totalSavedValue = useMemo(
+    () => invoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
+    [invoices]
+  );
+
+  const filteredSavedInvoices = useMemo(
+    () =>
+      invoices.filter((item: any) => {
+        const query = savedSearch.toLowerCase().trim();
+        if (!query) return true;
+        return (
+          item.no?.toLowerCase().includes(query) ||
+          item.cust?.name?.toLowerCase().includes(query) ||
+          item.cust?.phone?.toLowerCase().includes(query) ||
+          item.cust?.gstin?.toLowerCase().includes(query)
+        );
+      }),
+    [invoices, savedSearch]
+  );
 
   /* ── field helpers ── */
   const updateInvField = (path: string, val: any) => {
@@ -327,73 +367,339 @@ function BookingPage() {
 
   const layers = inv.layers || [{ id: "l1", layerNo: "Layer - 1", productName: inv.productName || "TOUGHENED GLASS", thickness: inv.glass?.thickness || 5, glassName: "", rate: "", process: "", status: "" }];
 
+  const { customers } = useGQ();
+  const [custSearch, setCustSearch] = useState("");
+  const [custDropOpen, setCustDropOpen] = useState(false);
+
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter((c: any) =>
+        c.name?.toLowerCase().includes(custSearch.toLowerCase())
+      ),
+    [customers, custSearch]
+  );
+
+  const selectCustomer = (c: any) => {
+    setInv((prev: any) => ({ ...prev, cust: { ...c } }));
+    setCustSearch("");
+    setCustDropOpen(false);
+    toast.success(`Loaded customer: ${c.name}`);
+  };
+
   const handleSendPI = () => {
     saveInvoice();
-    if (inv._saved && inv.id) {
+    if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
     }
-    toast.success("PI saved & marked as sent to customer");
+    toast.success("Pre Proforma saved & sent to customer for confirmation");
+  };
+
+  const handleAcceptAndMove = () => {
+    saveInvoice();
+    if (inv.id) {
+      updateInvoiceStatus(inv.id, "pi_sent");
+      toast.success("Pre Proforma generated & sent to customer! Moving to Proforma Invoice.");
+      navigate({ to: "/order" });
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ── PAGE HEADER ───────────────────────────── */}
-      <div className="border-b border-border bg-card px-3 sm:px-6 py-3">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
+      {/* ── UNIFIED SECTION TABS ───────────────────────── */}
+      <div className="bg-muted/40 border-b border-border px-3 sm:px-6 py-2 flex items-center gap-2 text-xs font-semibold flex-wrap">
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">Proforma Section:</span>
+        <Link
+          to="/booking"
+          className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          1. Pre Proforma
+        </Link>
+        <Link
+          to="/order"
+          className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
+        >
+          2. Proforma Invoice
+        </Link>
+      </div>
+
+      {/* ── KPI CARDS & HEADER ACTIONS ──────────────────── */}
+      <div className="border-b border-border bg-card px-3 sm:px-6 py-4 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
               <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
               {" / "}
-              <span className="text-primary">SGU Booking</span>
+              <span className="text-primary font-semibold">Pre Proforma</span>
             </div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight">
-              {inv._saved ? inv.no : "New Booking"}
-              {inv.status && (
-                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wider ${
-                  inv.status === "pi_sent" ? "bg-blue-500/10 text-blue-600" :
-                  inv.status === "order_confirmed" ? "bg-emerald-500/10 text-emerald-600" :
-                  inv.status === "work_order_generated" ? "bg-amber-500/10 text-amber-600" :
-                  "bg-muted text-muted-foreground"
-                }`}>
-                  {inv.status === "pi_sent" ? "PI Sent" : inv.status === "order_confirmed" ? "Confirmed" : inv.status === "work_order_generated" ? "WO Generated" : "Draft"}
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Pre Proforma Management
+              {inv._saved && showForm && (
+                <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  Editing: {inv.no}
                 </span>
               )}
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Start fresh</span>
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={saveInvoice}
-            >
-              <Save className="h-3.5 w-3.5" /> Save
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={handleSendPI}
-            >
-              <Send className="h-3.5 w-3.5" /> Send PI
-            </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {showForm ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setShowForm(false)}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Saved List
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Start Fresh</span>
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  onClick={saveInvoice}
+                >
+                  <Save className="h-3.5 w-3.5" /> Save Pre Proforma
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                  onClick={handleAcceptAndMove}
+                >
+                  <Send className="h-3.5 w-3.5" /> Generate & Send to Customer
+                </Button>
+              </>
+            ) : (
+              /* RIGHT BUTTON: Add Pre Proforma Invoice */
+              <Button
+                size="sm"
+                className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
+                onClick={() => {
+                  newInvoice();
+                  setShowForm(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Pre Proforma Invoice
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* ── KPI METRICS CARDS ─────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
+            <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Pre Proforma records</div>
+          </div>
+          <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
+            <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
+              <Clock className="h-3 w-3" /> Pending Order
+            </div>
+            <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting workflow</div>
+          </div>
+          <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
+            <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
+              <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+            </div>
+            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{confirmedCount}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Sent to workflow</div>
+          </div>
+          <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
+            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">₹ {nf(totalSavedValue)}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">Saved quotes value</div>
           </div>
         </div>
       </div>
 
-      {/* ── CONTENT ─────────────────────────────────── */}
-      <div className="p-3 sm:p-4 w-full">
+      {!showForm ? (
+        /* ── ALL SAVED PRE PROFORMAS TABLE (TOP DEFAULT VIEW) ────────── */
+        <div className="p-3 sm:p-4 bg-muted/20 border-b border-border">
+          <Section
+            title="All Saved Pre Proformas"
+            headerRight={
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
+                  <Input
+                    className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
+                    placeholder="Search saved pre proforma..."
+                    value={savedSearch}
+                    onChange={(e) => setSavedSearch(e.target.value)}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground font-medium">
+                  <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span> saved records
+                </span>
+              </div>
+            }
+          >
+            {filteredSavedInvoices.length === 0 ? (
+              <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
+                <p>{savedSearch ? "No matching Pre Proformas found." : "No saved Pre Proformas found."}</p>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
+                  onClick={() => {
+                    newInvoice();
+                    setShowForm(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Pre Proforma Invoice
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto -mx-3 sm:-mx-4">
+                <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "820px" }}>
+                  <thead>
+                    <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <th className="py-2.5 px-3">Pre Proforma No</th>
+                      <th className="py-2.5 px-3">Date</th>
+                      <th className="py-2.5 px-3">Customer / M/S Name</th>
+                      <th className="py-2.5 px-3">Phone / GSTIN</th>
+                      <th className="py-2.5 px-3 text-center">Items</th>
+                      <th className="py-2.5 px-3 text-right">Amount</th>
+                      <th className="py-2.5 px-3 text-center">Order Status</th>
+                      <th className="py-2.5 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-xs">
+                    {filteredSavedInvoices.map((item: any) => {
+                      const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
+
+                      return (
+                        <tr key={item.id} className="hover:bg-muted/15 transition-colors">
+                          <td className="py-2.5 px-3 font-mono font-semibold text-foreground">{item.no}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{item.date}</td>
+                          <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
+                          <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                            {item.cust?.phone || item.cust?.gstin || "—"}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
+                            ₹ {nf(item.totals?.grandTotal || 0)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
+                              isConfirmed
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                            }`}>
+                              {isConfirmed ? (
+                                <>
+                                  <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="h-3 w-3" /> Pending Confirmation
+                                </>
+                              )}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* GO TO PROFORMA INVOICE BUTTON */}
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs px-2.5 gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  toast.success(`Loaded Pre Proforma ${item.no}. Navigating to Proforma Invoice...`);
+                                  navigate({ to: "/order" });
+                                }}
+                                title="Go to Proforma Invoice"
+                              >
+                                Go to Proforma Invoice <ArrowRight className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/5"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  setShowForm(true);
+                                  toast.success(`Loaded Pre Proforma ${item.no} for editing`);
+                                }}
+                              >
+                                <Edit3 className="h-3 w-3" /> Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                onClick={() => deleteInvoice(item.id)}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+        </div>
+      ) : (
+        /* ── PRE PROFORMA CREATION / EDITING FORM SECTION ─────────────── */
+        <div id="pre-proforma-form" className="p-3 sm:p-4 w-full">
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
 
           {/* ════ LEFT COLUMN ════ */}
           <div className="space-y-4 min-w-0">
-            {/* 1. Booking Header */}
-            <Section title="Booking Details">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* 1. Customer & Pre Proforma Details */}
+            <Section
+              title="Customer & Pre Proforma Details"
+              headerRight={
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  <div className="relative">
+                    <div
+                      className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => setCustDropOpen((v) => !v)}
+                    >
+                      <Search className="h-3 w-3 text-muted-foreground" />
+                      <input
+                        className="w-28 sm:w-40 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
+                        placeholder="Search saved customer"
+                        value={custSearch}
+                        onChange={(e) => {
+                          setCustSearch(e.target.value);
+                          setCustDropOpen(true);
+                        }}
+                        onFocus={() => setCustDropOpen(true)}
+                      />
+                    </div>
+                    {custDropOpen && filteredCustomers.length > 0 && (
+                      <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-64 max-h-48 overflow-y-auto">
+                        {filteredCustomers.map((c: any) => (
+                          <div
+                            key={c.id || c.name}
+                            className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground border-b border-border/30 last:border-0"
+                            onMouseDown={() => selectCustomer(c)}
+                          >
+                            <div className="font-semibold">{c.name}</div>
+                            {c.phone && <div className="text-[10px] text-muted-foreground">{c.phone}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              }
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <FieldLabel>No</FieldLabel>
+                  <FieldLabel>Pre Proforma No</FieldLabel>
                   <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
                 </div>
                 <div>
@@ -401,12 +707,43 @@ function BookingPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Project Name</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.projectRemark || ""} onChange={(e) => updateInvField("projectRemark", e.target.value)} placeholder="—" />
+                  <FieldLabel>P.O. No.</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
                 </div>
                 <div>
-                  <FieldLabel>Party Name</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} />
+                  <FieldLabel>Sales Person</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} placeholder="Office" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-border/40">
+                <div className="sm:col-span-2">
+                  <FieldLabel>Customer / M/S. Name</FieldLabel>
+                  <Input className="h-8 text-xs font-medium" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} placeholder="Hindustan Float Glass Pvt Ltd" />
+                </div>
+                <div>
+                  <FieldLabel>GSTIN</FieldLabel>
+                  <Input className="h-8 text-xs font-mono" value={inv.cust?.gstin || ""} onChange={(e) => updateInvField("cust.gstin", e.target.value)} placeholder="08AACCH4208C1Z3" />
+                </div>
+                <div>
+                  <FieldLabel>Phone</FieldLabel>
+                  <Input className="h-8 text-xs font-mono" value={inv.cust?.phone || ""} onChange={(e) => updateInvField("cust.phone", e.target.value)} placeholder="9799998611" />
+                </div>
+                <div>
+                  <FieldLabel>Email</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.cust?.email || ""} onChange={(e) => updateInvField("cust.email", e.target.value)} placeholder="hindustan@live.in" />
+                </div>
+                <div>
+                  <FieldLabel>Project Remark</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.projectRemark || ""} onChange={(e) => updateInvField("projectRemark", e.target.value)} placeholder="Jhotwara Project" />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>Billing Address</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.cust?.addr || ""} onChange={(e) => updateInvField("cust.addr", e.target.value)} placeholder="S 5, Shri Govind Complex, Jhotwara, Jaipur" />
+                </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>Dispatch Address</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.cust?.ship || ""} onChange={(e) => updateInvField("cust.ship", e.target.value)} placeholder="Site / Shipping Address" />
                 </div>
               </div>
             </Section>
@@ -828,236 +1165,97 @@ function BookingPage() {
             </div>
           </div>
 
-          {/* ════ RIGHT COLUMN: Particulars Panel ════ */}
+          {/* ════ RIGHT COLUMN: Totals Panel ════ */}
           <div className="space-y-4">
-            <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14">
-              <div className="px-3 py-2 border-b border-border bg-green-500/10">
-                <div className="grid grid-cols-[1fr_50px_60px_40px_65px] gap-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <span>Particular</span>
-                  <span className="text-center">Qty</span>
-                  <span className="text-center">Rate</span>
-                  <span className="text-center">Per</span>
-                  <span className="text-right">Amount</span>
-                </div>
+            <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14 shadow-sm">
+              <div className="px-3.5 py-2.5 border-b border-border bg-emerald-500/5 flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 rounded-full bg-emerald-500 inline-block" />
+                  Totals
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                  • {settings.rateUnit === "sqft" ? "SQ.FT" : settings.rateUnit === "piece" ? "PIECE" : "SQ.MTR"} {settings.areaRounding === "round" ? "ROUND" : "EXACT"}
+                </span>
               </div>
-              <div className="px-3 py-1 max-h-[calc(100vh-120px)] overflow-y-auto">
-                <PRow label="Basic Amount" qty="" rate="" per="" amount={nf(totals.glassAmount ?? 0)} highlight />
-                <PRow
-                  label="Holes"
-                  qty={totals.holes || 0}
-                  rate={inv.ch?.holeRate ?? settings.holeRate ?? 35}
-                  per="No"
-                  amount={nf(totals.holeCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.holeRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Cutout"
-                  qty={totals.cutouts || 0}
-                  rate={inv.ch?.cutoutRate ?? settings.cutoutRate ?? 85}
-                  per="No"
-                  amount={nf(totals.cutoutCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.cutoutRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="CSK"
-                  qty={totals.csks || 0}
-                  rate={inv.ch?.cskRate ?? 85}
-                  per="No"
-                  amount={nf(totals.cskCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.cskRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Big Holes"
-                  qty={totals.bigHoles || 0}
-                  rate={inv.ch?.bigHoleRate ?? 150}
-                  per="No"
-                  amount={nf(totals.bigHoleCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.bigHoleRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Big Cutout"
-                  qty={totals.bigCutouts || 0}
-                  rate={inv.ch?.bigCutoutRate ?? settings.bigCutoutRate ?? 500}
-                  per="No"
-                  amount={nf(totals.bigCutoutCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.bigCutoutRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Jambo Charges"
-                  qty=""
-                  rate={inv.ch?.jamboChargePercent ?? 0}
-                  per="%"
-                  amount={nf(totals.jamboCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.jamboChargePercent", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Non Economic"
-                  qty=""
-                  rate={inv.ch?.nonEconomicPercent ?? 0}
-                  per="%"
-                  amount={nf(totals.nonEconomicCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.nonEconomicPercent", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Farma Cutting"
-                  qty=""
-                  rate={inv.ch?.farmaCuttingPercent ?? 10}
-                  per="%"
-                  amount={nf(totals.farmaCuttingCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.farmaCuttingPercent", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Shape Cutting"
-                  qty=""
-                  rate={inv.ch?.shapeCuttingPercent ?? 10}
-                  per="%"
-                  amount={nf(totals.shapeCuttingCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.shapeCuttingPercent", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Katra Polish"
-                  qty=""
-                  rate={inv.ch?.katraPolishRate ?? 150}
-                  per="SqM"
-                  amount={nf(totals.katraPolishCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.katraPolishRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Design"
-                  qty=""
-                  rate={inv.ch?.designRate ?? 0}
-                  per="SqM"
-                  amount={nf(totals.designCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.designRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Screen Print"
-                  qty=""
-                  rate={inv.ch?.screenPrintRate ?? 800}
-                  per="SqM"
-                  amount={nf(totals.screenPrintCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.screenPrintRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Bewaling Charge"
-                  qty=""
-                  rate={inv.ch?.bewalingChargeRate ?? 0}
-                  per="RMT"
-                  amount={nf(totals.bewalingCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.bewalingChargeRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Taper Charge"
-                  qty=""
-                  rate={inv.ch?.taperChargeRate ?? 0}
-                  per="RMT"
-                  amount={nf(totals.taperCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.taperChargeRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Round Corner"
-                  qty=""
-                  rate={inv.ch?.roundCornerRate ?? 0}
-                  per="NOS"
-                  amount={nf(totals.roundCornerCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.roundCornerRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Tapper"
-                  qty=""
-                  rate={inv.ch?.tapperRate ?? 0}
-                  per="SqM"
-                  amount={nf(totals.tapperCharge ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.tapperRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Wastage"
-                  qty=""
-                  rate={inv.ch?.wastageRate ?? 0}
-                  per="SqM"
-                  amount={nf(totals.wastageAmount ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.wastageRate", v === "" ? "" : Number(v))}
-                />
-                <PRow
-                  label="Wastage 2"
-                  qty=""
-                  rate={inv.ch?.wastage2Rate ?? 0}
-                  per="SqM"
-                  amount={nf(totals.wastage2Amount ?? 0)}
-                  onRateChange={(v) => updateInvField("ch.wastage2Rate", v === "" ? "" : Number(v))}
-                />
 
-                {/* Total section */}
-                <div className="mt-2 pt-2 border-t-2 border-border">
-                  <div className="flex justify-between items-baseline py-1 text-xs">
-                    <span className="font-semibold text-foreground">Basic Amount</span>
-                    <span className="font-mono font-bold text-foreground">₹ {nf(totals.basicAmount ?? 0)}</span>
-                  </div>
-                  <div className="flex justify-between items-baseline py-1 text-[11px]">
-                    <span className="text-muted-foreground">Admin Charge</span>
-                    <span className="font-mono text-foreground">₹ {nf(totals.adminCharge ?? 0)}</span>
-                  </div>
-                  <div className="flex justify-between items-baseline py-1 text-[11px]">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-mono font-semibold text-foreground">₹ {nf(totals.subTotal ?? 0)}</span>
-                  </div>
-                  {Boolean(totals.insurance) && (
-                    <div className="flex justify-between items-baseline py-1 text-[11px]">
-                      <span className="text-muted-foreground">Insurance</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.insurance)}</span>
-                    </div>
-                  )}
-                  {Boolean(totals.cgst) && (
-                    <div className="flex justify-between items-baseline py-1 text-[11px]">
-                      <span className="text-muted-foreground">C-GST</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.cgst)}</span>
-                    </div>
-                  )}
-                  {Boolean(totals.sgst) && (
-                    <div className="flex justify-between items-baseline py-1 text-[11px]">
-                      <span className="text-muted-foreground">S-GST</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.sgst)}</span>
-                    </div>
-                  )}
-                  {Boolean(totals.igst) && (
-                    <div className="flex justify-between items-baseline py-1 text-[11px]">
-                      <span className="text-muted-foreground">IGST</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.igst)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-2 text-sm mt-1 border-t border-border">
-                    <span className="font-bold text-emerald-600">Grand Total</span>
-                    <span className="font-mono font-bold text-lg text-emerald-600">₹ {nf(totals.grandTotal ?? 0)}</span>
-                  </div>
+              <div className="p-3 sm:p-4 text-xs space-y-2 font-sans">
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Pieces</span>
+                  <span className="font-mono font-semibold text-foreground">{totals.qty || 0}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Area (Sq.Mtr)</span>
+                  <span className="font-mono font-semibold text-foreground">{totals.sqm ?? "0.000"}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Sq.Ft/Sq.Mtr</span>
+                  <span className="font-mono font-semibold text-foreground">
+                    {totals.sqft ?? "0.000"} / {totals.sqm ?? "0.000"}
+                  </span>
                 </div>
 
-                {/* Right Side Quick Links */}
-                <div className="mt-4 pt-3 border-t border-border">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Quick Actions</div>
-                  <div className="grid grid-cols-1 gap-1">
-                    {[
-                      { label: "PI Status", icon: BarChart3 },
-                      { label: "Pending PI to Order", icon: FileSpreadsheet },
-                      { label: "Production Status", icon: BarChart3 },
-                      { label: "Glass Closing Stock", icon: Database },
-                      { label: "Entry Log", icon: FileSpreadsheet },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-400 hover:bg-sky-500/8 transition-colors text-left w-full"
-                      >
-                        <item.icon className="h-3 w-3 shrink-0" />
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Glass amount</span>
+                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.glassTotal ?? 0)}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Basic amount</span>
+                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.basicTotal ?? totals.subTotal ?? 0)}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Admin charge</span>
+                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.adminCharge ?? 0)}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-medium">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-mono text-foreground">₹ {nf(totals.taxableTotal ?? 0)}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Insurance {inv.insurancePct ?? 2}%</span>
+                  <span className="font-mono text-foreground">₹ {nf(totals.insuranceAmt ?? 0)}</span>
+                </div>
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-semibold">
+                  <span className="text-foreground">Assessable value</span>
+                  <span className="font-mono text-foreground">₹ {nf(totals.assessableVal ?? 0)}</span>
                 </div>
 
+                {inv.gstType === "igst" ? (
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">I-GST {inv.taxPct ?? 18}%</span>
+                    <span className="font-mono text-foreground">₹ {nf(totals.taxAmt ?? 0)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">C-GST {((inv.taxPct ?? 18) / 2)}%</span>
+                      <span className="font-mono text-foreground">₹ {nf(totals.cgstAmt ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">S-GST {((inv.taxPct ?? 18) / 2)}%</span>
+                      <span className="font-mono text-foreground">₹ {nf(totals.sgstAmt ?? 0)}</span>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <span className="text-muted-foreground">Gross total</span>
+                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.grossTotal ?? 0)}</span>
+                </div>
+
+                <div className="flex justify-between items-center py-2 px-2.5 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-md border border-emerald-500/20 mt-3">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Grand total</span>
+                  <span className="font-mono font-bold text-lg text-emerald-600 dark:text-emerald-400">₹ {nf(totals.grandTotal ?? 0)}</span>
+                </div>
+
+                <div className="pt-2 text-[11px] text-muted-foreground leading-normal border-t border-border/30 mt-3 font-medium">
+                  <span className="font-semibold text-foreground">Amount in words:</span> {totals.amountInWords}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* Bulk Entry Modal */}
       <BulkEntryModal
