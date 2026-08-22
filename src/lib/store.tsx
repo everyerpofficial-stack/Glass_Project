@@ -113,8 +113,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  const setInv = useCallback((updater: (prev: any) => any) => {
-    setInvState((prev: any) => updater(prev));
+  const setInv = useCallback((updater: any) => {
+    setInvState((prev: any) => (typeof updater === "function" ? updater(prev) : updater));
   }, []);
 
   /* debounced draft autosave — same 'gq.draft' key */

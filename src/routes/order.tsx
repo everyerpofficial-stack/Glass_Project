@@ -37,6 +37,9 @@ import { nf, computeTotals } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/order")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    view: typeof search.view === "string" ? search.view : undefined,
+  }),
   component: OrderPage,
 });
 
