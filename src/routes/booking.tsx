@@ -228,22 +228,27 @@ function BookingPage() {
   const [showForm, setShowForm] = useState(false);
   const inputUnit = inv.inputUnit || "inch";
 
-  const pendingCount = useMemo(
-    () => invoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
+  const preProformaInvoices = useMemo(
+    () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
     [invoices]
+  );
+
+  const pendingCount = useMemo(
+    () => preProformaInvoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
+    [preProformaInvoices]
   );
   const confirmedCount = useMemo(
-    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
-    [invoices]
+    () => preProformaInvoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
+    [preProformaInvoices]
   );
   const totalSavedValue = useMemo(
-    () => invoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
-    [invoices]
+    () => preProformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
+    [preProformaInvoices]
   );
 
   const filteredSavedInvoices = useMemo(
     () =>
-      invoices.filter((item: any) => {
+      preProformaInvoices.filter((item: any) => {
         const query = savedSearch.toLowerCase().trim();
         if (!query) return true;
         return (
@@ -253,7 +258,7 @@ function BookingPage() {
           item.cust?.gstin?.toLowerCase().includes(query)
         );
       }),
-    [invoices, savedSearch]
+    [preProformaInvoices, savedSearch]
   );
 
   /* ── field helpers ── */
@@ -480,6 +485,7 @@ function BookingPage() {
                 className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
                 onClick={() => {
                   newInvoice();
+                  setInv((prev: any) => ({ ...prev, docType: "pre_proforma" }));
                   setShowForm(true);
                 }}
               >
@@ -612,7 +618,7 @@ function BookingPage() {
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   toast.success(`Loaded Pre Proforma ${item.no}. Navigating to Proforma Invoice...`);
-                                  navigate({ to: "/order" });
+                                  navigate({ to: "/order", search: { view: "form" } });
                                 }}
                                 title="Go to Proforma Invoice"
                               >

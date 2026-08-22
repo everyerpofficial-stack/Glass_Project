@@ -69,11 +69,29 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setSettings(s);
     LS.set("settings", s);
 
-    const sampleRecord = buildRecord(SAMPLE_INVOICE_07321, computeTotals(s, SAMPLE_INVOICE_07321));
+    const samplePreProforma = buildRecord(
+      { ...SAMPLE_INVOICE_07321, docType: "pre_proforma" },
+      computeTotals(s, SAMPLE_INVOICE_07321)
+    );
+    const sampleProforma = buildRecord(
+      {
+        ...SAMPLE_INVOICE_07321,
+        id: "inv-pi-07321",
+        no: "PI-07321",
+        orderNo: "PI-07321",
+        docType: "proforma",
+        delivery: { paymentType: "Paid" },
+      },
+      computeTotals(s, SAMPLE_INVOICE_07321)
+    );
     const savedInvoices = LS.get<any[]>("invoices", []);
-    /* Auto-migrate: ensure every invoice has a status field */
-    const migratedInvoices = (savedInvoices.length > 0 ? savedInvoices : [sampleRecord]).map(
-      (inv: any) => ({ ...inv, status: inv.status || "draft" }),
+    /* Auto-migrate: ensure every invoice has status and docType fields */
+    const migratedInvoices = (savedInvoices.length > 0 ? savedInvoices : [samplePreProforma, sampleProforma]).map(
+      (inv: any) => ({
+        ...inv,
+        docType: inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma"),
+        status: inv.status || "draft",
+      })
     );
     setInvoices(migratedInvoices);
     LS.set("invoices", migratedInvoices);
@@ -88,9 +106,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setWorkOrders(savedWorkOrders);
 
     const draft = LS.get<any>("draft", null);
-    const initialInv = draft && draft.items ? draft : sampleRecord;
+    const initialInv = draft && draft.items ? draft : samplePreProforma;
     setInvState(initialInv);
-    if (!draft) LS.set("draft", sampleRecord);
+    if (!draft) LS.set("draft", samplePreProforma);
 
     setHydrated(true);
   }, []);
@@ -167,6 +185,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
+    rec.docType = inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma");
     const existing = invoices.find((x) => x.id === inv.id);
 
     let next: any[];

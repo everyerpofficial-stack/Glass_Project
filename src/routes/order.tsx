@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Save,
   RefreshCw,
@@ -22,7 +22,7 @@ import {
   ArrowRight,
   ArrowLeft,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -74,9 +74,131 @@ function Section({
   );
 }
 
+/* ─── Searchable Pre Proforma Dropdown ────────────────────────────── */
+function PreProformaSelector({
+  availableBookings,
+  selectedNo,
+  onSelect,
+  placeholder = "Select Pre Proforma Invoice...",
+  className = "",
+}: {
+  availableBookings: any[];
+  selectedNo?: string;
+  onSelect: (bookingId: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return availableBookings;
+    return availableBookings.filter((b) => {
+      const no = String(b.no || "").toLowerCase();
+      const cust = String(b.cust?.name || "").toLowerCase();
+      const po = String(b.poNo || "").toLowerCase();
+      const phone = String(b.cust?.phone || "").toLowerCase();
+      return no.includes(q) || cust.includes(q) || po.includes(q) || phone.includes(q);
+    });
+  }, [availableBookings, search]);
+
+  const selectedBooking = useMemo(
+    () => availableBookings.find((b) => b.no === selectedNo || b.id === selectedNo),
+    [availableBookings, selectedNo]
+  );
+
+  return (
+    <div className={`relative ${className}`}>
+      <div
+        className="flex items-center justify-between border border-emerald-500/50 rounded-md h-8 px-2.5 bg-background text-xs cursor-pointer hover:border-emerald-600 focus:outline-none transition-colors shadow-xs"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="truncate font-mono font-medium text-foreground flex items-center gap-1.5 min-w-0">
+          <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+          <span className="truncate">
+            {selectedBooking
+              ? `${selectedBooking.no} — ${selectedBooking.cust?.name || "No Name"}`
+              : (selectedNo || placeholder)}
+          </span>
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
+      </div>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-9 z-50 bg-popover border border-border rounded-md shadow-2xl w-72 sm:w-96 max-h-80 flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95">
+            {/* Search Input Box */}
+            <div className="p-2 border-b border-border bg-muted/40 sticky top-0 z-10">
+              <div className="relative flex items-center">
+                <Search className="h-3.5 w-3.5 absolute left-2.5 text-muted-foreground" />
+                <input
+                  autoFocus
+                  className="w-full bg-background border border-border rounded px-8 py-1.5 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-muted-foreground"
+                  placeholder={`Search ${availableBookings.length} Pre Proformas (PI No, Customer, PO)...`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button
+                    className="absolute right-2 text-xs text-muted-foreground hover:text-foreground font-bold"
+                    onClick={() => setSearch("")}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* List of Pre Proforma Records */}
+            <div className="overflow-y-auto divide-y divide-border/30 max-h-64">
+              {filtered.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">
+                  No matching Pre Proforma records found
+                </div>
+              ) : (
+                filtered.map((b) => {
+                  const isSel = b.no === selectedNo || b.id === selectedNo;
+                  return (
+                    <div
+                      key={b.id}
+                      className={`p-2.5 text-xs hover:bg-emerald-500/10 cursor-pointer transition-colors ${
+                        isSel ? "bg-emerald-500/15 font-semibold" : ""
+                      }`}
+                      onClick={() => {
+                        onSelect(b.id);
+                        setOpen(false);
+                        setSearch("");
+                      }}
+                    >
+                      <div className="flex items-center justify-between font-mono">
+                        <span className="font-bold text-emerald-700 dark:text-emerald-400">{b.no}</span>
+                        <span className="text-[10px] text-muted-foreground">{b.date}</span>
+                      </div>
+                      <div className="text-foreground truncate font-medium mt-0.5">
+                        {b.cust?.name || "Unnamed Customer"}
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1">
+                        <span>{b.items?.length || 0} items {b.poNo ? `• PO: ${b.poNo}` : ""}</span>
+                        <span className="font-mono text-emerald-600 font-semibold">₹ {nf(b.totals?.grandTotal || 0)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
   const navigate = useNavigate();
+  const searchParams = useSearch({ strict: false }) as { view?: string };
   const {
     inv,
     setInv,
@@ -97,24 +219,37 @@ function OrderPage() {
   const [custDropOpen, setCustDropOpen] = useState(false);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [savedSearch, setSavedSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(searchParams?.view === "form");
+
+  useEffect(() => {
+    if (searchParams?.view === "form") {
+      setShowForm(true);
+    } else if (searchParams?.view === "list") {
+      setShowForm(false);
+    }
+  }, [searchParams?.view]);
+
+  const proformaInvoices = useMemo(
+    () => invoices.filter((x: any) => x.docType === "proforma"),
+    [invoices]
+  );
 
   const pendingCount = useMemo(
-    () => invoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
-    [invoices]
+    () => proformaInvoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
+    [proformaInvoices]
   );
   const confirmedCount = useMemo(
-    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
-    [invoices]
+    () => proformaInvoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
+    [proformaInvoices]
   );
   const totalSavedValue = useMemo(
-    () => invoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
-    [invoices]
+    () => proformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
+    [proformaInvoices]
   );
 
   const filteredSavedInvoices = useMemo(
     () =>
-      invoices.filter((item: any) => {
+      proformaInvoices.filter((item: any) => {
         const query = savedSearch.toLowerCase().trim();
         if (!query) return true;
         return (
@@ -124,12 +259,12 @@ function OrderPage() {
           item.cust?.gstin?.toLowerCase().includes(query)
         );
       }),
-    [invoices, savedSearch]
+    [proformaInvoices, savedSearch]
   );
 
-  /* Get PI-sent bookings available for order confirmation */
+  /* Get Pre Proformas available for loading into Proforma Invoice */
   const availableBookings = useMemo(
-    () => invoices.filter((x) => x.status === "pi_sent" || x.status === "draft"),
+    () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
     [invoices],
   );
 
@@ -168,10 +303,24 @@ function OrderPage() {
     toast.success(`Loaded ${c.name}`);
   };
 
-  /* select a booking to load into order */
+  /* select a pre proforma booking to load into proforma invoice */
   const handleSelectBooking = (bookingId: string) => {
-    loadInvoice(bookingId, false);
-    toast.success("Pre Proforma details loaded into Proforma Invoice");
+    const booking = invoices.find((x: any) => x.id === bookingId);
+    if (!booking) return;
+    const copy = JSON.parse(JSON.stringify(booking));
+    copy.id = "pi-" + Date.now().toString(36);
+    copy.docType = "proforma";
+    copy.preProformaNo = booking.no;
+    copy.orderNo = booking.no ? (booking.no.startsWith("PI-") ? booking.no : "PI-" + booking.no) : "PI-" + Date.now().toString().slice(-4);
+    copy.no = copy.orderNo;
+    copy.date = new Date().toISOString().slice(0, 10);
+    copy.status = "draft";
+    copy._saved = false;
+    if (!copy.delivery) copy.delivery = {};
+    copy.delivery.paymentType = copy.delivery.paymentType || "Credit";
+    setInv(copy);
+    setShowForm(true);
+    toast.success(`✨ Auto-filled data from Pre Proforma ${booking.no} into Proforma Invoice`);
   };
 
   const handleConfirmOrder = () => {
@@ -275,18 +424,34 @@ function OrderPage() {
                 </Button>
               </>
             ) : (
-              /* RIGHT BUTTON: Add Proforma Invoice */
-              <Button
-                size="sm"
-                className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
-                onClick={() => {
-                  newInvoice();
-                  setShowForm(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                Add Proforma Invoice
-              </Button>
+              /* RIGHT BUTTONS: Select Pre Proforma & Add Proforma Invoice */
+              <div className="flex items-center gap-2 flex-wrap">
+                <PreProformaSelector
+                  availableBookings={availableBookings}
+                  onSelect={handleSelectBooking}
+                  placeholder="⚡ Auto-Fill from Pre Proforma..."
+                  className="w-64"
+                />
+                <Button
+                  size="sm"
+                  className="h-8 px-3 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
+                  onClick={() => {
+                    newInvoice();
+                    const newNo = "PI-" + Date.now().toString().slice(-4);
+                    setInv((prev: any) => ({
+                      ...prev,
+                      docType: "proforma",
+                      no: newNo,
+                      orderNo: newNo,
+                      delivery: { ...(prev.delivery || {}), paymentType: "Credit" },
+                    }));
+                    setShowForm(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Blank Invoice
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -367,6 +532,7 @@ function OrderPage() {
                       <th className="py-2.5 px-3">Phone / GSTIN</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
+                      <th className="py-2.5 px-3 text-center">Payment Type</th>
                       <th className="py-2.5 px-3 text-center">Order Status</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
@@ -374,6 +540,7 @@ function OrderPage() {
                   <tbody className="divide-y divide-border/40 text-xs">
                     {filteredSavedInvoices.map((item: any) => {
                       const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
+                      const payType = item.delivery?.paymentType || item.delivery?.paymentTerm || "Credit";
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
@@ -386,6 +553,15 @@ function OrderPage() {
                           <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
                             ₹ {nf(item.totals?.grandTotal || 0)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
+                              payType === "Paid"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                            }`}>
+                              {payType}
+                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
@@ -491,8 +667,13 @@ function OrderPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Pre Proforma PI No</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
+                  <FieldLabel>Select Pre Proforma (Auto-Fill)</FieldLabel>
+                  <PreProformaSelector
+                    availableBookings={availableBookings}
+                    selectedNo={inv.preProformaNo || inv.no}
+                    onSelect={handleSelectBooking}
+                    placeholder="Select Pre Proforma..."
+                  />
                 </div>
                 <div>
                   <FieldLabel>P.O. No.</FieldLabel>
@@ -606,21 +787,13 @@ function OrderPage() {
             <Section
               title="Pre Proforma Items & Details"
               headerRight={
-                <Select onValueChange={handleSelectBooking}>
-                  <SelectTrigger className="h-7 text-xs w-56 bg-background">
-                    <SelectValue placeholder="Load Pre Proforma…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableBookings.length === 0 && (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">No Pre Proformas available</div>
-                    )}
-                    {availableBookings.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.no} — {b.cust?.name?.split(" ")[0] || "—"} ({b.items?.length || 0} items)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PreProformaSelector
+                  availableBookings={availableBookings}
+                  selectedNo={inv.preProformaNo || inv.no}
+                  onSelect={handleSelectBooking}
+                  placeholder="Load Pre Proforma…"
+                  className="w-56 sm:w-64"
+                />
               }
             >
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
@@ -678,16 +851,12 @@ function OrderPage() {
                   </Select>
                 </div>
                 <div>
-                  <FieldLabel>Payment Term</FieldLabel>
-                  <Select value={inv.delivery?.paymentTerm || ""} onValueChange={(v) => updateInvField("delivery.paymentTerm", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <FieldLabel>Payment Type (Credit / Paid)</FieldLabel>
+                  <Select value={inv.delivery?.paymentType || inv.delivery?.paymentTerm || "Credit"} onValueChange={(v) => { updateInvField("delivery.paymentType", v); updateInvField("delivery.paymentTerm", v); }}>
+                    <SelectTrigger className="h-8 text-xs font-bold"><SelectValue placeholder="Select Payment Type" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="100% Advance">100% Advance</SelectItem>
-                      <SelectItem value="50% Advance">50% Advance</SelectItem>
-                      <SelectItem value="30 Days Credit">30 Days Credit</SelectItem>
-                      <SelectItem value="45 Days Credit">45 Days Credit</SelectItem>
-                      <SelectItem value="60 Days Credit">60 Days Credit</SelectItem>
-                      <SelectItem value="COD">COD</SelectItem>
+                      <SelectItem value="Credit" className="font-semibold text-amber-600 dark:text-amber-400">Credit</SelectItem>
+                      <SelectItem value="Paid" className="font-semibold text-emerald-600 dark:text-emerald-400">Paid</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
