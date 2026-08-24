@@ -326,13 +326,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <Search className="h-4 w-4" />
               </Button>
-              {/* New Booking CTA */}
-              <Button asChild size="sm" className="h-8 text-xs px-2.5 sm:px-3">
-                <Link to="/booking">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline ml-1">New Booking</span>
-                </Link>
-              </Button>
             </div>
           </div>
         </header>
