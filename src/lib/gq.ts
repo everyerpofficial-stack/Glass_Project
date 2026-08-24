@@ -440,6 +440,10 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (t.roundOff) summary.push(fr("Round Off", (t.roundOff > 0 ? "+" : "") + nf(t.roundOff)));
   summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
 
+  const isPre = INV.docType === "pre_proforma";
+  const docTitle = isPre ? "PRE PROFORMA INVOICE" : (S.title || "PROFORMA INVOICE");
+  const noLabel = isPre ? "Pre Proforma No" : "Proforma No";
+
   return `
     <div class="pdoc">
       <!-- PAGE 1 -->
@@ -458,18 +462,18 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
           </div>
         </div>
 
-        <div class="ptitle" style="border:1px solid #000; border-top:0">PROFORMA INVOICE</div>
+        <div class="ptitle" style="border:1px solid #000; border-top:0">${docTitle}</div>
 
         <table class="meta" style="border:1px solid #000; border-top:0">
           <tr>
             <td style="width:50%; border:1px solid #000; padding:4px">
-              <b>Proforma No : ${esc(INV.no)}</b><br>
-              PI Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
+              <b>${noLabel} : ${esc(INV.no)}</b><br>
+              Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
               Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(INV.orderNo || "—")}
             </td>
             <td style="border:1px solid #000; padding:4px">
               Project Remark : ${esc(INV.projectRemark || "—")}<br>
-              Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Mr.I.S.")}<br>
+              Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Office")}<br>
               Party PO No. &nbsp;&nbsp;&nbsp;: ${esc(INV.poNo || "—")}
             </td>
           </tr>
@@ -490,7 +494,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
             <td colspan="2" style="border:1px solid #000; background:#fafafa; font-weight:600; padding:4px">
               <span style="display:inline-block; min-width:60px; font-family:monospace; font-size:10pt">${esc(INV.glass?.batchNo || "12227")}</span>
               &nbsp;&nbsp;&nbsp;&nbsp;
-              ${esc(INV.glass?.desc || "12 mm Clear T.G.----+ With Polish Grinding")}
+              ${esc(INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "TOUGHENED GLASS"}` : (INV.productName || "TOUGHENED GLASS")))}
             </td>
           </tr>
         </table>

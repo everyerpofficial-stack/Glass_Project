@@ -487,6 +487,20 @@ function BookingPage() {
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1.5 border-emerald-600/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-semibold"
+                  onClick={() => {
+                    saveInvoice();
+                    if (inv.id) {
+                      toast.success(`Pre Proforma ${inv.no} saved. Opening PDF invoice...`);
+                      navigate({ to: "/invoice", search: { id: inv.id } });
+                    }
+                  }}
+                >
+                  <Printer className="h-3.5 w-3.5" /> Print / PDF
+                </Button>
+                <Button
+                  size="sm"
                   className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                   onClick={handleAcceptAndMove}
                 >
@@ -644,6 +658,19 @@ function BookingPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  toast.success(`Generating PDF for Pre Proforma ${item.no}...`);
+                                  navigate({ to: "/invoice", search: { id: item.id } });
+                                }}
+                                title="Print / Generate PDF"
+                              >
+                                <Printer className="h-3 w-3" /> PDF
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/5"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
@@ -771,105 +798,67 @@ function BookingPage() {
               </div>
             </Section>
 
-            {/* 2. Size & Rate Config */}
-            <Section title="Configuration" accent="bg-green-500/5">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div>
-                  <FieldLabel>Size Entry Type</FieldLabel>
-                  <Select value={inputUnit} onValueChange={(v) => updateInvField("inputUnit", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mm">MM</SelectItem>
-                      <SelectItem value="inch">Inch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Extra Area Formula</FieldLabel>
-                  <Select value={inv.ch?.extraAreaFormula || "none"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="+25mm">+ 25 MM</SelectItem>
-                      <SelectItem value="+50mm">+ 50 MM</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Rate Find Formula</FieldLabel>
-                  <Select value={settings.rateUnit} onValueChange={(v) => updateInvField("ch.rateUnit", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sqm">Sq. Metr Net</SelectItem>
-                      <SelectItem value="sqft">Sq. Feet Net</SelectItem>
-                      <SelectItem value="piece">Per Piece</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>WO</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.workOrderNo || ""} onChange={(e) => updateInvField("workOrderNo", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Final Rate</FieldLabel>
-                  <Input
-                    type="number"
-                    className="h-8 text-xs font-mono"
-                    value={inv.glass?.defaultRate ?? ""}
-                    onChange={(e) => updateInvField("glass.defaultRate", e.target.value === "" ? "" : Number(e.target.value))}
-                  />
-                </div>
-              </div>
-            </Section>
-
-            {/* 3. Product & Job Type */}
-            <Section title="Product">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                <div>
-                  <FieldLabel>Product Name</FieldLabel>
-                  <Select value={inv.productName || "TOUGHENED GLASS"} onValueChange={(v) => updateInvField("productName", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TOUGHENED GLASS">TOUGHENED GLASS</SelectItem>
-                      <SelectItem value="LAMINATED GLASS">LAMINATED GLASS</SelectItem>
-                      <SelectItem value="DGU">DGU (Double Glazing)</SelectItem>
-                      <SelectItem value="HEAT STRENGTHENED">HEAT STRENGTHENED</SelectItem>
-                      <SelectItem value="CLEAR FLOAT">CLEAR FLOAT</SelectItem>
-                      <SelectItem value="TINTED FLOAT">TINTED FLOAT</SelectItem>
-                      <SelectItem value="REFLECTIVE">REFLECTIVE</SelectItem>
-                      <SelectItem value="LOW-E">LOW-E</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Job Type</FieldLabel>
-                  <Select value={inv.jobType || "WITH MATERIAL"} onValueChange={(v) => updateInvField("jobType", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="WITH MATERIAL">WITH MATERIAL</SelectItem>
-                      <SelectItem value="WITHOUT MATERIAL">WITHOUT MATERIAL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Glass Description</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.glass?.desc || ""} onChange={(e) => updateInvField("glass.desc", e.target.value)} placeholder="12 mm Clear T.G." />
-                </div>
-                <div>
-                  <FieldLabel>Thickness (MM)</FieldLabel>
-                  <Input type="number" className="h-8 text-xs font-mono" value={inv.glass?.thickness || ""} onChange={(e) => updateInvField("glass.thickness", Number(e.target.value))} />
-                </div>
-              </div>
-            </Section>
-
-            {/* 4. Layer System */}
+            {/* Unified Product & Layers Section */}
             <Section
-              title="Layers"
+              title="Product & Layers"
               headerRight={
-                <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={addLayer}>
-                  <Plus className="h-3 w-3" /> Add Layer
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap justify-end text-xs">
+                  {/* Size Entry Type */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Size:</span>
+                    <Select value={inputUnit} onValueChange={(v) => updateInvField("inputUnit", v)}>
+                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[60px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mm">MM</SelectItem>
+                        <SelectItem value="inch">Inch</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Extra Area Formula */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Extra Area:</span>
+                    <Select value={inv.ch?.extraAreaFormula || "none"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
+                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[80px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="+25mm">+ 25 MM</SelectItem>
+                        <SelectItem value="+50mm">+ 50 MM</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Rate Find Formula */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Rate Formula:</span>
+                    <Select value={settings.rateUnit} onValueChange={(v) => updateInvField("ch.rateUnit", v)}>
+                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[105px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sqm">Sq. Metr Net</SelectItem>
+                        <SelectItem value="sqft">Sq. Feet Net</SelectItem>
+                        <SelectItem value="piece">Per Piece</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Final Rate */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Final Rate:</span>
+                    <Input
+                      type="number"
+                      className="h-6 text-[11px] font-mono border-0 shadow-none focus-visible:ring-0 w-[60px] px-1 py-0"
+                      value={inv.glass?.defaultRate ?? ""}
+                      onChange={(e) => updateInvField("glass.defaultRate", e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="807"
+                    />
+                  </div>
+
+                  {/* Add Layer Button */}
+                  <Button size="sm" className="h-7 text-[11px] px-2.5 gap-1 bg-primary text-primary-foreground font-semibold" onClick={addLayer}>
+                    <Plus className="h-3 w-3" /> Add Layer
+                  </Button>
+                </div>
               }
             >
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
@@ -889,13 +878,16 @@ function BookingPage() {
                         </td>
                         <td className="py-1.5 px-1">
                           <Select value={layer.productName || "TOUGHENED GLASS"} onValueChange={(v) => updateLayer(idx, "productName", v)}>
-                            <SelectTrigger className="h-7 text-xs min-w-[130px]"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs min-w-[140px]"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="TOUGHENED GLASS">TOUGHENED GLASS</SelectItem>
                               <SelectItem value="LAMINATED GLASS">LAMINATED GLASS</SelectItem>
                               <SelectItem value="DGU">DGU</SelectItem>
                               <SelectItem value="HEAT STRENGTHENED">HEAT STRENGTHENED</SelectItem>
                               <SelectItem value="CLEAR FLOAT">CLEAR FLOAT</SelectItem>
+                              <SelectItem value="TINTED FLOAT">TINTED FLOAT</SelectItem>
+                              <SelectItem value="REFLECTIVE">REFLECTIVE</SelectItem>
+                              <SelectItem value="LOW-E">LOW-E</SelectItem>
                             </SelectContent>
                           </Select>
                         </td>
@@ -903,7 +895,7 @@ function BookingPage() {
                           <Input type="number" className="h-7 text-xs font-mono w-[50px] text-center" value={layer.thickness || ""} onChange={(e) => updateLayer(idx, "thickness", Number(e.target.value))} />
                         </td>
                         <td className="py-1.5 px-1">
-                          <Input className="h-7 text-xs min-w-[90px]" value={layer.glassName || ""} onChange={(e) => updateLayer(idx, "glassName", e.target.value)} />
+                          <Input className="h-7 text-xs min-w-[90px]" value={layer.glassName || ""} onChange={(e) => updateLayer(idx, "glassName", e.target.value)} placeholder="Clear T.G." />
                         </td>
                         <td className="py-1.5 px-1">
                           <Input type="number" className="h-7 text-xs font-mono w-[65px]" value={layer.rate || ""} onChange={(e) => updateLayer(idx, "rate", e.target.value)} />
@@ -945,14 +937,14 @@ function BookingPage() {
               }
             >
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "900px" : "1050px" }}>
+                <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
                   <thead>
                     <tr className="border-b-2 border-green-600/30 bg-green-500/8">
                       {inputUnit === "mm"
-                        ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", ""].map((h, i) => (
+                        ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
                             <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                           ))
-                        : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", ""].map((h, i) => (
+                        : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
                             <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                           ))
                       }
@@ -1087,6 +1079,16 @@ function BookingPage() {
                             />
                           </td>
 
+                          {/* Remark */}
+                          <td className="py-1.5 px-1">
+                            <Input
+                              className="h-8 text-xs w-[90px]"
+                              value={item.remark || ""}
+                              onChange={(e) => updateItem(idx, "remark", e.target.value)}
+                              placeholder="Remark"
+                            />
+                          </td>
+
                           {/* Actions */}
                           <td className="py-1.5 px-1 w-[52px]">
                             <div className="flex items-center gap-0.5">
@@ -1170,8 +1172,19 @@ function BookingPage() {
 
             {/* Quick Actions Row */}
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <Printer className="h-3 w-3" /> Cover Print
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-[11px] gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/5 font-semibold"
+                onClick={() => {
+                  saveInvoice();
+                  if (inv.id) {
+                    toast.success(`Opening PDF view for ${inv.no}...`);
+                    navigate({ to: "/invoice", search: { id: inv.id } });
+                  }
+                }}
+              >
+                <Printer className="h-3 w-3" /> Print / PDF Invoice
               </Button>
               <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
                 <Mail className="h-3 w-3" /> Email
