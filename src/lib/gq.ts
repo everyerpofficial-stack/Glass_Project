@@ -285,18 +285,57 @@ export function engineOpts(S: any, INV: any) {
 
 /* single source of truth for every number shown in the UI */
 export function computeTotals(S: any, INV: any) {
-  const items = INV.items.map((it: any) =>
-    Object.assign({}, it, {
-      rate: it.rate === "" || it.rate == null ? INV.glass.defaultRate : it.rate,
-      desc: it.desc || INV.glass.desc,
-    }),
-  );
-  return G.calcInvoice(items, engineOpts(S, INV));
+  let allItems: any[] = [];
+  if (INV.layers && INV.layers.length > 0) {
+    allItems = INV.layers.flatMap((l: any, idx: number) => {
+      let lItems = l.items && l.items.length > 0 ? l.items : [];
+      if (idx === 0 && lItems.length === 0 && INV.items && INV.items.length > 0) {
+        lItems = INV.items;
+      }
+      return lItems.map((it: any) => {
+        const itemRate =
+          it.rate !== "" && it.rate != null
+            ? it.rate
+            : l.rate !== "" && l.rate != null
+            ? l.rate
+            : INV.glass?.defaultRate;
+        const itemDesc =
+          it.desc ||
+          l.glassName ||
+          (l.thickness
+            ? `${l.thickness} mm ${l.productName || "TOUGHENED GLASS"}`
+            : l.productName || INV.glass?.desc);
+        return Object.assign({}, it, {
+          rate: itemRate,
+          desc: itemDesc,
+          layerNo: l.layerNo || `Layer - ${idx + 1}`,
+          productName: l.productName || "TOUGHENED GLASS",
+          thickness: l.thickness,
+          glassName: l.glassName,
+        });
+      });
+    });
+  }
+  if (!allItems.length) {
+    allItems = (INV.items || []).map((it: any) =>
+      Object.assign({}, it, {
+        rate: it.rate === "" || it.rate == null ? INV.glass?.defaultRate : it.rate,
+        desc: it.desc || INV.glass?.desc,
+      }),
+    );
+  }
+  return G.calcInvoice(allItems, engineOpts(S, INV));
 }
 
 /* ---------- the saved record shape (unchanged columns) ---------- */
 export function buildRecord(INV: any, TOT: any) {
   const rec = JSON.parse(JSON.stringify(INV));
+  if (rec.layers && rec.layers.length > 0) {
+    rec.items = rec.layers.flatMap((l: any, idx: number) => {
+      const lItems = l.items && l.items.length > 0 ? l.items : (idx === 0 && INV.items ? INV.items : []);
+      return lItems;
+    });
+  }
   rec.totals = {
     qty: TOT.qty,
     sqm: TOT.sqm,
@@ -361,7 +400,28 @@ export function pingSheet(sheetUrl: string) {
 export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const t = TOT,
     o = t.settings;
-  const lines = TOT.lines.map((l: any, i: number) => ({ l, it: INV.items[i] })).filter(
+
+  let allItems: any[] = [];
+  if (INV.layers && INV.layers.length > 0) {
+    allItems = INV.layers.flatMap((l: any, idx: number) => {
+      let lItems = l.items && l.items.length > 0 ? l.items : [];
+      if (idx === 0 && lItems.length === 0 && INV.items && INV.items.length > 0) {
+        lItems = INV.items;
+      }
+      return lItems.map((it: any) => ({
+        ...it,
+        layerNo: l.layerNo || `Layer - ${idx + 1}`,
+        productName: l.productName || "TOUGHENED GLASS",
+        thickness: l.thickness,
+        glassName: l.glassName,
+      }));
+    });
+  }
+  if (!allItems.length) {
+    allItems = INV.items || [];
+  }
+
+  const lines = TOT.lines.map((l: any, i: number) => ({ l, it: allItems[i] || {} })).filter(
     (x: any) => x.l.ok,
   );
   if (!lines.length) return "";
@@ -373,6 +433,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     .map((x: any, i: number) => {
       const l = x.l,
         it = x.it;
+      const layerTag = it.layerNo ? ` (${it.layerNo})` : "";
       return (
         '<tr><td class="c">' +
         (i + 1) +
@@ -399,7 +460,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
         '</td><td class="c">' +
         esc(it.shape || "DRAWING") +
         '</td><td class="c">' +
-        esc(it.remark || (i + 1)) +
+        esc((it.remark || (i + 1)) + layerTag) +
         "</td></tr>"
       );
     })
@@ -443,6 +504,18 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const isPre = INV.docType === "pre_proforma";
   const docTitle = isPre ? "PRE PROFORMA INVOICE" : (S.title || "PROFORMA INVOICE");
   const noLabel = isPre ? "Pre Proforma No" : "Proforma No";
+
+  let glassDescText = "";
+  if (INV.layers && INV.layers.length > 0) {
+    glassDescText = INV.layers
+      .map((l: any) => {
+        const info = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "TOUGHENED GLASS"}` : (l.productName || "TOUGHENED GLASS"));
+        return `${l.layerNo || "Layer"}: ${info}`;
+      })
+      .join("  |  ");
+  } else {
+    glassDescText = INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "TOUGHENED GLASS"}` : (INV.productName || "TOUGHENED GLASS"));
+  }
 
   return `
     <div class="pdoc">
@@ -494,7 +567,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
             <td colspan="2" style="border:1px solid #000; background:#fafafa; font-weight:600; padding:4px">
               <span style="display:inline-block; min-width:60px; font-family:monospace; font-size:10pt">${esc(INV.glass?.batchNo || "12227")}</span>
               &nbsp;&nbsp;&nbsp;&nbsp;
-              ${esc(INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "TOUGHENED GLASS"}` : (INV.productName || "TOUGHENED GLASS")))}
+              ${esc(glassDescText)}
             </td>
           </tr>
         </table>

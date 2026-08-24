@@ -296,9 +296,9 @@ function BookingPage() {
         },
       ];
     }
-    return inv.layers.map((l: any) => ({
+    return inv.layers.map((l: any, idx: number) => ({
       ...l,
-      items: l.items && l.items.length > 0 ? l.items : [blankItem()],
+      items: l.items && l.items.length > 0 ? l.items : (idx === 0 && inv.items && inv.items.length > 0 ? inv.items : [blankItem()]),
     }));
   }, [inv.layers, inv.items, inv.productName, inv.glass?.thickness]);
 
@@ -306,14 +306,35 @@ function BookingPage() {
     return layers.flatMap((l: any) => l.items || []);
   }, [layers]);
 
+  const ensureLayersWithItems = (copy: any) => {
+    if (!copy.layers || copy.layers.length === 0) {
+      copy.layers = [
+        {
+          id: uid("layer"),
+          layerNo: "Layer - 1",
+          productName: copy.productName || "TOUGHENED GLASS",
+          thickness: copy.glass?.thickness || 5,
+          glassName: "",
+          rate: "",
+          process: "",
+          status: "",
+          items: copy.items && copy.items.length > 0 ? copy.items : [blankItem()],
+        },
+      ];
+    }
+    copy.layers.forEach((l: any, idx: number) => {
+      if (!l.items || l.items.length === 0) {
+        l.items = idx === 0 && copy.items && copy.items.length > 0 ? copy.items : [blankItem()];
+      }
+    });
+  };
+
   const updateLayerItem = (layerIdx: number, itemIdx: number, field: string, val: any) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers || copy.layers.length === 0) {
-        copy.layers = [{ id: uid("layer"), layerNo: "Layer - 1", items: copy.items || [blankItem()] }];
-      }
+      ensureLayersWithItems(copy);
       if (!copy.layers[layerIdx]) return prev;
-      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
+      if (!copy.layers[layerIdx].items[itemIdx]) return prev;
       copy.layers[layerIdx].items[itemIdx][field] = val;
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
@@ -323,11 +344,8 @@ function BookingPage() {
   const addLayerItemRow = (layerIdx: number) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers || copy.layers.length === 0) {
-        copy.layers = [{ id: uid("layer"), layerNo: "Layer - 1", items: copy.items || [blankItem()] }];
-      }
+      ensureLayersWithItems(copy);
       if (!copy.layers[layerIdx]) return prev;
-      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
       copy.layers[layerIdx].items.push(blankItem());
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
@@ -337,8 +355,9 @@ function BookingPage() {
   const removeLayerItemRow = (layerIdx: number, itemIdx: number) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers || !copy.layers[layerIdx]) return prev;
-      if (!copy.layers[layerIdx].items || copy.layers[layerIdx].items.length <= 1) {
+      ensureLayersWithItems(copy);
+      if (!copy.layers[layerIdx]) return prev;
+      if (copy.layers[layerIdx].items.length <= 1) {
         toast.error("At least one line item is required for this layer");
         return prev;
       }
@@ -351,9 +370,9 @@ function BookingPage() {
   const duplicateLayerItemRow = (layerIdx: number, itemIdx: number) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers || !copy.layers[layerIdx]) return prev;
-      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
-      const dup = { ...copy.layers[layerIdx].items[itemIdx], id: "it-" + Date.now() };
+      ensureLayersWithItems(copy);
+      if (!copy.layers[layerIdx]) return prev;
+      const dup = { ...copy.layers[layerIdx].items[itemIdx], id: uid("it") };
       copy.layers[layerIdx].items.splice(itemIdx + 1, 0, dup);
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
@@ -363,8 +382,8 @@ function BookingPage() {
   const handleBulkAdd = (layerIdx: number, itemsToAdd: any[]) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers || !copy.layers[layerIdx]) return prev;
-      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [];
+      ensureLayersWithItems(copy);
+      if (!copy.layers[layerIdx]) return prev;
       const currentItems = copy.layers[layerIdx].items;
       if (currentItems.length === 1 && !currentItems[0].l1 && !currentItems[0].l1mm) {
         copy.layers[layerIdx].items = itemsToAdd;
@@ -379,10 +398,7 @@ function BookingPage() {
   const addLayer = () => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers) copy.layers = [];
-      copy.layers.forEach((l: any) => {
-        if (!l.items) l.items = [blankItem()];
-      });
+      ensureLayersWithItems(copy);
       const num = copy.layers.length + 1;
       copy.layers.push({
         id: uid("layer"),
@@ -407,6 +423,7 @@ function BookingPage() {
         return prev;
       }
       const copy = JSON.parse(JSON.stringify(prev));
+      ensureLayersWithItems(copy);
       copy.layers.splice(index, 1);
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
@@ -416,8 +433,9 @@ function BookingPage() {
   const updateLayer = (index: number, field: string, val: any) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      if (!copy.layers) copy.layers = [];
+      ensureLayersWithItems(copy);
       if (copy.layers[index]) copy.layers[index][field] = val;
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
@@ -890,18 +908,6 @@ function BookingPage() {
                         <SelectItem value="piece">Per Piece</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  {/* Final Rate */}
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Final Rate:</span>
-                    <Input
-                      type="number"
-                      className="h-6 text-[11px] font-mono border-0 shadow-none focus-visible:ring-0 w-[60px] px-1 py-0"
-                      value={inv.glass?.defaultRate ?? ""}
-                      onChange={(e) => updateInvField("glass.defaultRate", e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="807"
-                    />
                   </div>
 
                   {/* Add Layer Button */}
