@@ -223,7 +223,7 @@ function BookingPage() {
     updateInvoiceStatus,
   } = useGQ();
 
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkOpenLayerIdx, setBulkOpenLayerIdx] = useState<number | null>(null);
   const [savedSearch, setSavedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const inputUnit = inv.inputUnit || "inch";
@@ -280,52 +280,98 @@ function BookingPage() {
     });
   };
 
-  const updateItem = (index: number, field: string, val: any) => {
+  const layers = useMemo(() => {
+    if (!inv.layers || inv.layers.length === 0) {
+      return [
+        {
+          id: "l1",
+          layerNo: "Layer - 1",
+          productName: inv.productName || "TOUGHENED GLASS",
+          thickness: inv.glass?.thickness || 5,
+          glassName: "",
+          rate: "",
+          process: "",
+          status: "",
+          items: inv.items && inv.items.length > 0 ? inv.items : [blankItem()],
+        },
+      ];
+    }
+    return inv.layers.map((l: any) => ({
+      ...l,
+      items: l.items && l.items.length > 0 ? l.items : [blankItem()],
+    }));
+  }, [inv.layers, inv.items, inv.productName, inv.glass?.thickness]);
+
+  const allFlatItems = useMemo(() => {
+    return layers.flatMap((l: any) => l.items || []);
+  }, [layers]);
+
+  const updateLayerItem = (layerIdx: number, itemIdx: number, field: string, val: any) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      copy.items[index][field] = val;
+      if (!copy.layers || copy.layers.length === 0) {
+        copy.layers = [{ id: uid("layer"), layerNo: "Layer - 1", items: copy.items || [blankItem()] }];
+      }
+      if (!copy.layers[layerIdx]) return prev;
+      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
+      copy.layers[layerIdx].items[itemIdx][field] = val;
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
 
-  const addItemRow = () => {
+  const addLayerItemRow = (layerIdx: number) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      copy.items.push(blankItem());
+      if (!copy.layers || copy.layers.length === 0) {
+        copy.layers = [{ id: uid("layer"), layerNo: "Layer - 1", items: copy.items || [blankItem()] }];
+      }
+      if (!copy.layers[layerIdx]) return prev;
+      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
+      copy.layers[layerIdx].items.push(blankItem());
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
 
-  const removeItemRow = (index: number) => {
+  const removeLayerItemRow = (layerIdx: number, itemIdx: number) => {
     setInv((prev: any) => {
-      if (prev.items.length <= 1) {
-        toast.error("At least one line item is required");
+      const copy = JSON.parse(JSON.stringify(prev));
+      if (!copy.layers || !copy.layers[layerIdx]) return prev;
+      if (!copy.layers[layerIdx].items || copy.layers[layerIdx].items.length <= 1) {
+        toast.error("At least one line item is required for this layer");
         return prev;
       }
-      const copy = JSON.parse(JSON.stringify(prev));
-      copy.items.splice(index, 1);
+      copy.layers[layerIdx].items.splice(itemIdx, 1);
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
 
-  const duplicateItemRow = (index: number) => {
+  const duplicateLayerItemRow = (layerIdx: number, itemIdx: number) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      const dup = { ...copy.items[index], id: "it-" + Date.now() };
-      copy.items.splice(index + 1, 0, dup);
+      if (!copy.layers || !copy.layers[layerIdx]) return prev;
+      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [blankItem()];
+      const dup = { ...copy.layers[layerIdx].items[itemIdx], id: "it-" + Date.now() };
+      copy.layers[layerIdx].items.splice(itemIdx + 1, 0, dup);
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
 
-  const handleBulkAdd = (items: any[]) => {
+  const handleBulkAdd = (layerIdx: number, itemsToAdd: any[]) => {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
-      // Remove empty first item if it exists
-      if (copy.items.length === 1 && !copy.items[0].l1 && !copy.items[0].l1mm) {
-        copy.items = items;
+      if (!copy.layers || !copy.layers[layerIdx]) return prev;
+      if (!copy.layers[layerIdx].items) copy.layers[layerIdx].items = [];
+      const currentItems = copy.layers[layerIdx].items;
+      if (currentItems.length === 1 && !currentItems[0].l1 && !currentItems[0].l1mm) {
+        copy.layers[layerIdx].items = itemsToAdd;
       } else {
-        copy.items.push(...items);
+        copy.layers[layerIdx].items.push(...itemsToAdd);
       }
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
@@ -334,6 +380,9 @@ function BookingPage() {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
       if (!copy.layers) copy.layers = [];
+      copy.layers.forEach((l: any) => {
+        if (!l.items) l.items = [blankItem()];
+      });
       const num = copy.layers.length + 1;
       copy.layers.push({
         id: uid("layer"),
@@ -344,7 +393,9 @@ function BookingPage() {
         rate: "",
         process: "",
         status: "",
+        items: [blankItem()],
       });
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
@@ -357,6 +408,7 @@ function BookingPage() {
       }
       const copy = JSON.parse(JSON.stringify(prev));
       copy.layers.splice(index, 1);
+      copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
   };
@@ -369,8 +421,6 @@ function BookingPage() {
       return copy;
     });
   };
-
-  const layers = inv.layers || [{ id: "l1", layerNo: "Layer - 1", productName: inv.productName || "TOUGHENED GLASS", thickness: inv.glass?.thickness || 5, glassName: "", rate: "", process: "", status: "" }];
 
   const { customers } = useGQ();
   const [custSearch, setCustSearch] = useState("");
@@ -922,191 +972,214 @@ function BookingPage() {
               </div>
             </Section>
 
-            {/* 5. Items Grid */}
-            <Section
-              title="Items"
-              headerRight={
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={() => setBulkOpen(true)}>
-                    <ClipboardPaste className="h-3 w-3" /> Bulk Entry
-                  </Button>
-                  <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={addItemRow}>
-                    <Plus className="h-3 w-3" /> Add Row
-                  </Button>
-                </div>
-              }
-            >
-              <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
-                  <thead>
-                    <tr className="border-b-2 border-green-600/30 bg-green-500/8">
-                      {inputUnit === "mm"
-                        ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
-                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
-                          ))
-                        : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
-                            <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
-                          ))
-                      }
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {inv.items.map((item: any, idx: number) => {
-                      const line = totals.lines?.[idx];
-                      const areaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.totalSqft) : String(line.totalSqm)) : "—";
-                      const chargeAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft) : String(line.chargeAreaSqm)) : "—";
-                      const totalAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft || line.totalSqft) : String(line.chargeAreaSqm || line.totalSqm)) : "—";
+            {/* 5. Items Grid per Layer */}
+            {layers.map((layer: any, layerIdx: number) => {
+              const layerName = layer.layerNo || `Layer - ${layerIdx + 1}`;
+              const prodInfo = `${layer.productName || "TOUGHENED GLASS"}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`;
+              const layerItems = layer.items || [blankItem()];
 
-                      return (
-                        <tr key={item.id || idx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}>
-                          {/* Sr No */}
-                          <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
-                            <span className="text-xs font-semibold">{idx + 1}</span>
-                          </td>
-
-                          {/* Inch columns (only if inputUnit is inch) */}
-                          {inputUnit !== "mm" && (
-                            <>
-                              <td className="py-1.5 px-1">
-                                <Input
-                                  className="h-8 text-xs font-mono text-center w-[80px]"
-                                  value={item.l1 || ""}
-                                  onChange={(e) => updateItem(idx, "l1", e.target.value)}
-                                  placeholder="36 3/8"
-                                />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input
-                                  className="h-8 text-xs font-mono text-center w-[80px]"
-                                  value={item.l2 || ""}
-                                  onChange={(e) => updateItem(idx, "l2", e.target.value)}
-                                  placeholder="13 3/8"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {/* MM columns */}
-                          {inputUnit === "mm" ? (
-                            <>
-                              <td className="py-1.5 px-1">
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[75px]"
-                                  value={item.l1mm ?? ""}
-                                  onChange={(e) => updateItem(idx, "l1mm", e.target.value)}
-                                  placeholder="60.3"
-                                  step="0.1"
-                                />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[75px]"
-                                  value={item.l2mm ?? ""}
-                                  onChange={(e) => updateItem(idx, "l2mm", e.target.value)}
-                                  placeholder="51.2"
-                                  step="0.1"
-                                />
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
-                                {line?.ok ? line.lMM : "—"}
-                              </td>
-                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
-                                {line?.ok ? line.wMM : "—"}
-                              </td>
-                            </>
-                          )}
-
-                          {/* Qty */}
-                          <td className="py-1.5 px-1">
-                            <Input
-                              type="number"
-                              className="h-8 text-xs font-mono text-center w-[44px]"
-                              value={item.qty || ""}
-                              min={1}
-                              onChange={(e) => updateItem(idx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
-                            />
-                          </td>
-
-                          {/* Area */}
-                          <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{areaText}</td>
-
-                          {/* Charge Area */}
-                          <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{chargeAreaText}</td>
-
-                          {/* Total Area */}
-                          <td className="py-1.5 px-2 font-mono text-[11px] text-foreground font-medium w-[65px]">{totalAreaText}</td>
-
-                          {/* Rate */}
-                          <td className="py-1.5 px-1">
-                            <Input
-                              type="number"
-                              className="h-8 text-xs font-mono text-center w-[62px]"
-                              value={item.rate ?? ""}
-                              onChange={(e) => updateItem(idx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
-                              placeholder={String(inv.glass?.defaultRate || "")}
-                            />
-                          </td>
-
-                          {/* Amount */}
-                          <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
-                            {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
-                          </td>
-
-                          {/* Hole */}
-                          <td className="py-1.5 px-1">
-                            <Input
-                              type="number"
-                              className="h-8 text-xs font-mono text-center w-[44px]"
-                              value={item.holes || ""}
-                              min={0}
-                              onChange={(e) => updateItem(idx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
-                            />
-                          </td>
-
-                          {/* Cut Out */}
-                          <td className="py-1.5 px-1">
-                            <Input
-                              type="number"
-                              className="h-8 text-xs font-mono text-center w-[44px]"
-                              value={item.cutouts || ""}
-                              min={0}
-                              onChange={(e) => updateItem(idx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
-                            />
-                          </td>
-
-                          {/* Remark */}
-                          <td className="py-1.5 px-1">
-                            <Input
-                              className="h-8 text-xs w-[90px]"
-                              value={item.remark || ""}
-                              onChange={(e) => updateItem(idx, "remark", e.target.value)}
-                              placeholder="Remark"
-                            />
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-1.5 px-1 w-[52px]">
-                            <div className="flex items-center gap-0.5">
-                              <button title="Duplicate" className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" onClick={() => duplicateItemRow(idx)}>
-                                <Copy className="h-3 w-3" />
-                              </button>
-                              <button title="Remove" className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeItemRow(idx)}>
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </td>
+              return (
+                <Section
+                  key={layer.id || layerIdx}
+                  title={`Items — ${layerName} (${prodInfo})`}
+                  headerRight={
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[11px] px-2 gap-1"
+                        onClick={() => setBulkOpenLayerIdx(layerIdx)}
+                      >
+                        <ClipboardPaste className="h-3 w-3" /> Bulk Entry
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 text-[11px] px-2 gap-1"
+                        onClick={() => addLayerItemRow(layerIdx)}
+                      >
+                        <Plus className="h-3 w-3" /> Add Row
+                      </Button>
+                    </div>
+                  }
+                >
+                  <div className="overflow-x-auto -mx-3 sm:-mx-4">
+                    <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
+                      <thead>
+                        <tr className="border-b-2 border-green-600/30 bg-green-500/8">
+                          {inputUnit === "mm"
+                            ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
+                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
+                              ))
+                            : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
+                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
+                              ))
+                          }
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Section>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {layerItems.map((item: any, itemIdx: number) => {
+                          let flatOffset = 0;
+                          for (let k = 0; k < layerIdx; k++) {
+                            flatOffset += (layers[k].items || []).length;
+                          }
+                          const flatIdx = flatOffset + itemIdx;
+                          const line = totals.lines?.[flatIdx];
+                          const areaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.totalSqft) : String(line.totalSqm)) : "—";
+                          const chargeAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft) : String(line.chargeAreaSqm)) : "—";
+                          const totalAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft || line.totalSqft) : String(line.chargeAreaSqm || line.totalSqm)) : "—";
+
+                          return (
+                            <tr key={item.id || itemIdx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}>
+                              {/* Sr No */}
+                              <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
+                                <span className="text-xs font-semibold">{itemIdx + 1}</span>
+                              </td>
+
+                              {/* Inch columns (only if inputUnit is inch) */}
+                              {inputUnit !== "mm" && (
+                                <>
+                                  <td className="py-1.5 px-1">
+                                    <Input
+                                      className="h-8 text-xs font-mono text-center w-[80px]"
+                                      value={item.l1 || ""}
+                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
+                                      placeholder="36 3/8"
+                                    />
+                                  </td>
+                                  <td className="py-1.5 px-1">
+                                    <Input
+                                      className="h-8 text-xs font-mono text-center w-[80px]"
+                                      value={item.l2 || ""}
+                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
+                                      placeholder="13 3/8"
+                                    />
+                                  </td>
+                                </>
+                              )}
+
+                              {/* MM columns */}
+                              {inputUnit === "mm" ? (
+                                <>
+                                  <td className="py-1.5 px-1">
+                                    <Input
+                                      type="number"
+                                      className="h-8 text-xs font-mono text-center w-[75px]"
+                                      value={item.l1mm ?? ""}
+                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1mm", e.target.value)}
+                                      placeholder="60.3"
+                                      step="0.1"
+                                    />
+                                  </td>
+                                  <td className="py-1.5 px-1">
+                                    <Input
+                                      type="number"
+                                      className="h-8 text-xs font-mono text-center w-[75px]"
+                                      value={item.l2mm ?? ""}
+                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2mm", e.target.value)}
+                                      placeholder="51.2"
+                                      step="0.1"
+                                    />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
+                                    {line?.ok ? line.lMM : "—"}
+                                  </td>
+                                  <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
+                                    {line?.ok ? line.wMM : "—"}
+                                  </td>
+                                </>
+                              )}
+
+                              {/* Qty */}
+                              <td className="py-1.5 px-1">
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs font-mono text-center w-[44px]"
+                                  value={item.qty || ""}
+                                  min={1}
+                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
+                                />
+                              </td>
+
+                              {/* Area */}
+                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{areaText}</td>
+
+                              {/* Charge Area */}
+                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{chargeAreaText}</td>
+
+                              {/* Total Area */}
+                              <td className="py-1.5 px-2 font-mono text-[11px] text-foreground font-medium w-[65px]">{totalAreaText}</td>
+
+                              {/* Rate */}
+                              <td className="py-1.5 px-1">
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs font-mono text-center w-[62px]"
+                                  value={item.rate ?? ""}
+                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
+                                  placeholder={String(layer.rate || inv.glass?.defaultRate || "")}
+                                />
+                              </td>
+
+                              {/* Amount */}
+                              <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
+                                {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
+                              </td>
+
+                              {/* Hole */}
+                              <td className="py-1.5 px-1">
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs font-mono text-center w-[44px]"
+                                  value={item.holes || ""}
+                                  min={0}
+                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
+                                />
+                              </td>
+
+                              {/* Cut Out */}
+                              <td className="py-1.5 px-1">
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs font-mono text-center w-[44px]"
+                                  value={item.cutouts || ""}
+                                  min={0}
+                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
+                                />
+                              </td>
+
+                              {/* Remark */}
+                              <td className="py-1.5 px-1">
+                                <Input
+                                  className="h-8 text-xs w-[90px]"
+                                  value={item.remark || ""}
+                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "remark", e.target.value)}
+                                  placeholder="Remark"
+                                />
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-1.5 px-1 w-[52px]">
+                                <div className="flex items-center gap-0.5">
+                                  <button title="Duplicate" className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" onClick={() => duplicateLayerItemRow(layerIdx, itemIdx)}>
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                  <button title="Remove" className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeLayerItemRow(layerIdx, itemIdx)}>
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Section>
+              );
+            })}
 
             {/* 6. Bottom Summary */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1295,9 +1368,13 @@ function BookingPage() {
 
       {/* Bulk Entry Modal */}
       <BulkEntryModal
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        onApply={handleBulkAdd}
+        open={bulkOpenLayerIdx !== null}
+        onClose={() => setBulkOpenLayerIdx(null)}
+        onApply={(items) => {
+          if (bulkOpenLayerIdx !== null) {
+            handleBulkAdd(bulkOpenLayerIdx, items);
+          }
+        }}
         inputUnit={inputUnit}
       />
     </div>
