@@ -944,7 +944,7 @@ function BookingPage() {
                         <table className="w-full text-[11px] border-collapse" style={{ minWidth: "600px" }}>
                           <thead>
                             <tr className="border-b border-border bg-green-500/5">
-                              {["ITEM", "PRODUCT NAME", "THK", "RATE", "PROCESS", ""].map((h, i) => (
+                              {["ITEM", "PRODUCT NAME", "THK", "RATE", ""].map((h, i) => (
                                 <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
                               ))}
                             </tr>
@@ -974,9 +974,6 @@ function BookingPage() {
                               </td>
                               <td className="py-1.5 px-1">
                                 <Input type="number" className="h-7 text-xs font-mono w-[65px]" value={layer.rate || ""} onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)} />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input className="h-7 text-xs min-w-[70px]" value={layer.process || ""} onChange={(e) => updateLayer(layerIdx, "process", e.target.value)} />
                               </td>
                               <td className="py-1.5 px-1 w-8">
                                 <button
@@ -1198,20 +1195,6 @@ function BookingPage() {
             </Section>
 
             {/* 6. Bottom Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <FieldLabel>City</FieldLabel>
-                <Input className="h-8 text-xs" value={inv.cust?.city || ""} onChange={(e) => updateInvField("cust.city", e.target.value)} placeholder="Jaipur" />
-              </div>
-              <div>
-                <FieldLabel>Note</FieldLabel>
-                <Input className="h-8 text-xs" value={inv.glass?.batchNo || ""} onChange={(e) => updateInvField("glass.batchNo", e.target.value)} />
-              </div>
-              <div>
-                <FieldLabel>Process</FieldLabel>
-                <Input className="h-8 text-xs" value={inv.process || ""} onChange={(e) => updateInvField("process", e.target.value)} />
-              </div>
-            </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <div>
                 <FieldLabel>Total Qty</FieldLabel>
