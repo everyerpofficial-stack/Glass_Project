@@ -209,7 +209,7 @@ export function blankInvoice(S: any) {
     },
     // Layer system
     layers: [
-      { id: uid("layer"), layerNo: "Layer - 1", productName: "TOUGHENED GLASS", thickness: 5, glassName: "", rate: "", process: "", status: "" },
+      { id: uid("layer"), layerNo: "Item 1", productName: "TOUGHENED GLASS", thickness: 5, glassName: "", rate: "", process: "", status: "" },
     ],
     items: [blankItem()],
     ch: {

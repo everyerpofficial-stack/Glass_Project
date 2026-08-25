@@ -280,12 +280,24 @@ function BookingPage() {
     });
   };
 
+  const sanitizeItemNo = (val: any, fallbackIdx: number) => {
+    if (!val) return `Item ${fallbackIdx + 1}`;
+    const str = String(val).trim();
+    if (/^Layer\s*-?\s*/i.test(str)) {
+      return str.replace(/^Layer\s*-?\s*/i, "Item ");
+    }
+    if (/^\d+$/.test(str)) {
+      return `Item ${str}`;
+    }
+    return str;
+  };
+
   const layers = useMemo(() => {
     if (!inv.layers || inv.layers.length === 0) {
       return [
         {
           id: "l1",
-          layerNo: "Layer - 1",
+          layerNo: "Item 1",
           productName: inv.productName || "TOUGHENED GLASS",
           thickness: inv.glass?.thickness || 5,
           glassName: "",
@@ -298,6 +310,7 @@ function BookingPage() {
     }
     return inv.layers.map((l: any, idx: number) => ({
       ...l,
+      layerNo: sanitizeItemNo(l.layerNo, idx),
       items: l.items && l.items.length > 0 ? l.items : (idx === 0 && inv.items && inv.items.length > 0 ? inv.items : [blankItem()]),
     }));
   }, [inv.layers, inv.items, inv.productName, inv.glass?.thickness]);
@@ -311,7 +324,7 @@ function BookingPage() {
       copy.layers = [
         {
           id: uid("layer"),
-          layerNo: "Layer - 1",
+          layerNo: "Item 1",
           productName: copy.productName || "TOUGHENED GLASS",
           thickness: copy.glass?.thickness || 5,
           glassName: "",
@@ -323,6 +336,7 @@ function BookingPage() {
       ];
     }
     copy.layers.forEach((l: any, idx: number) => {
+      l.layerNo = sanitizeItemNo(l.layerNo, idx);
       if (!l.items || l.items.length === 0) {
         l.items = idx === 0 && copy.items && copy.items.length > 0 ? copy.items : [blankItem()];
       }
@@ -402,7 +416,7 @@ function BookingPage() {
       const num = copy.layers.length + 1;
       copy.layers.push({
         id: uid("layer"),
-        layerNo: `Layer - ${num}`,
+        layerNo: `Item ${num}`,
         productName: "TOUGHENED GLASS",
         thickness: 5,
         glassName: "",
@@ -910,282 +924,278 @@ function BookingPage() {
                     </Select>
                   </div>
 
-                  {/* Add Layer Button */}
+                  {/* Add Item Button */}
                   <Button size="sm" className="h-7 text-[11px] px-2.5 gap-1 bg-primary text-primary-foreground font-semibold" onClick={addLayer}>
-                    <Plus className="h-3 w-3" /> Add Layer
+                    <Plus className="h-3 w-3" /> Add Item
                   </Button>
                 </div>
               }
             >
-              <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-[11px] border-collapse" style={{ minWidth: "600px" }}>
-                  <thead>
-                    <tr className="border-b border-border bg-green-500/5">
-                      {["Layer No", "Product Name", "Thk", "Glass Name", "Rate", "Process", "Status", ""].map((h, i) => (
-                        <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {layers.map((layer: any, idx: number) => (
-                      <tr key={layer.id || idx} className="hover:bg-muted/10">
-                        <td className="py-1.5 px-2">
-                          <Input className="h-7 text-xs w-[80px] bg-green-500/10" value={layer.layerNo || ""} onChange={(e) => updateLayer(idx, "layerNo", e.target.value)} />
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Select value={layer.productName || "TOUGHENED GLASS"} onValueChange={(v) => updateLayer(idx, "productName", v)}>
-                            <SelectTrigger className="h-7 text-xs min-w-[140px]"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="TOUGHENED GLASS">TOUGHENED GLASS</SelectItem>
-                              <SelectItem value="LAMINATED GLASS">LAMINATED GLASS</SelectItem>
-                              <SelectItem value="DGU">DGU</SelectItem>
-                              <SelectItem value="HEAT STRENGTHENED">HEAT STRENGTHENED</SelectItem>
-                              <SelectItem value="CLEAR FLOAT">CLEAR FLOAT</SelectItem>
-                              <SelectItem value="TINTED FLOAT">TINTED FLOAT</SelectItem>
-                              <SelectItem value="REFLECTIVE">REFLECTIVE</SelectItem>
-                              <SelectItem value="LOW-E">LOW-E</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Input type="number" className="h-7 text-xs font-mono w-[50px] text-center" value={layer.thickness || ""} onChange={(e) => updateLayer(idx, "thickness", Number(e.target.value))} />
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Input className="h-7 text-xs min-w-[90px]" value={layer.glassName || ""} onChange={(e) => updateLayer(idx, "glassName", e.target.value)} placeholder="Clear T.G." />
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Input type="number" className="h-7 text-xs font-mono w-[65px]" value={layer.rate || ""} onChange={(e) => updateLayer(idx, "rate", e.target.value)} />
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Input className="h-7 text-xs min-w-[70px]" value={layer.process || ""} onChange={(e) => updateLayer(idx, "process", e.target.value)} />
-                        </td>
-                        <td className="py-1.5 px-1">
-                          <Input className="h-7 text-xs w-[60px]" value={layer.status || ""} onChange={(e) => updateLayer(idx, "status", e.target.value)} />
-                        </td>
-                        <td className="py-1.5 px-1 w-8">
-                          <button
-                            title="Remove"
-                            className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={() => removeLayer(idx)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Section>
+              <div className="space-y-6">
+                {layers.map((layer: any, layerIdx: number) => {
+                  const layerName = layer.layerNo || `Item ${layerIdx + 1}`;
+                  const prodInfo = `${layer.productName || "TOUGHENED GLASS"}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`;
+                  const layerItems = layer.items || [blankItem()];
 
-            {/* 5. Items Grid per Layer */}
-            {layers.map((layer: any, layerIdx: number) => {
-              const layerName = layer.layerNo || `Layer - ${layerIdx + 1}`;
-              const prodInfo = `${layer.productName || "TOUGHENED GLASS"}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`;
-              const layerItems = layer.items || [blankItem()];
-
-              return (
-                <Section
-                  key={layer.id || layerIdx}
-                  title={`Items — ${layerName} (${prodInfo})`}
-                  headerRight={
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 text-[11px] px-2 gap-1"
-                        onClick={() => setBulkOpenLayerIdx(layerIdx)}
-                      >
-                        <ClipboardPaste className="h-3 w-3" /> Bulk Entry
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-6 text-[11px] px-2 gap-1"
-                        onClick={() => addLayerItemRow(layerIdx)}
-                      >
-                        <Plus className="h-3 w-3" /> Add Row
-                      </Button>
-                    </div>
-                  }
-                >
-                  <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                    <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
-                      <thead>
-                        <tr className="border-b-2 border-green-600/30 bg-green-500/8">
-                          {inputUnit === "mm"
-                            ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
-                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
-                              ))
-                            : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
-                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
-                              ))
-                          }
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {layerItems.map((item: any, itemIdx: number) => {
-                          let flatOffset = 0;
-                          for (let k = 0; k < layerIdx; k++) {
-                            flatOffset += (layers[k].items || []).length;
-                          }
-                          const flatIdx = flatOffset + itemIdx;
-                          const line = totals.lines?.[flatIdx];
-                          const areaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.totalSqft) : String(line.totalSqm)) : "—";
-                          const chargeAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft) : String(line.chargeAreaSqm)) : "—";
-                          const totalAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft || line.totalSqft) : String(line.chargeAreaSqm || line.totalSqm)) : "—";
-
-                          return (
-                            <tr key={item.id || itemIdx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}>
-                              {/* Sr No */}
-                              <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
-                                <span className="text-xs font-semibold">{itemIdx + 1}</span>
-                              </td>
-
-                              {/* Inch columns (only if inputUnit is inch) */}
-                              {inputUnit !== "mm" && (
-                                <>
-                                  <td className="py-1.5 px-1">
-                                    <Input
-                                      className="h-8 text-xs font-mono text-center w-[80px]"
-                                      value={item.l1 || ""}
-                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
-                                      placeholder="36 3/8"
-                                    />
-                                  </td>
-                                  <td className="py-1.5 px-1">
-                                    <Input
-                                      className="h-8 text-xs font-mono text-center w-[80px]"
-                                      value={item.l2 || ""}
-                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
-                                      placeholder="13 3/8"
-                                    />
-                                  </td>
-                                </>
-                              )}
-
-                              {/* MM columns */}
-                              {inputUnit === "mm" ? (
-                                <>
-                                  <td className="py-1.5 px-1">
-                                    <Input
-                                      type="number"
-                                      className="h-8 text-xs font-mono text-center w-[75px]"
-                                      value={item.l1mm ?? ""}
-                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1mm", e.target.value)}
-                                      placeholder="60.3"
-                                      step="0.1"
-                                    />
-                                  </td>
-                                  <td className="py-1.5 px-1">
-                                    <Input
-                                      type="number"
-                                      className="h-8 text-xs font-mono text-center w-[75px]"
-                                      value={item.l2mm ?? ""}
-                                      onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2mm", e.target.value)}
-                                      placeholder="51.2"
-                                      step="0.1"
-                                    />
-                                  </td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
-                                    {line?.ok ? line.lMM : "—"}
-                                  </td>
-                                  <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
-                                    {line?.ok ? line.wMM : "—"}
-                                  </td>
-                                </>
-                              )}
-
-                              {/* Qty */}
-                              <td className="py-1.5 px-1">
+                  return (
+                    <div key={layer.id || layerIdx} className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40">
+                      {/* Product Header Row for this layer */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[11px] border-collapse" style={{ minWidth: "600px" }}>
+                          <thead>
+                            <tr className="border-b border-border bg-green-500/5">
+                              {["ITEM", "PRODUCT NAME", "THK", "RATE", "PROCESS", ""].map((h, i) => (
+                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="hover:bg-muted/10">
+                              <td className="py-1.5 px-2">
                                 <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[44px]"
-                                  value={item.qty || ""}
-                                  min={1}
-                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
+                                  className="h-7 text-xs w-[85px] bg-green-500/10 text-center font-semibold"
+                                  value={layer.layerNo !== undefined && layer.layerNo !== "" ? layer.layerNo : `Item ${layerIdx + 1}`}
+                                  onChange={(e) => updateLayer(layerIdx, "layerNo", e.target.value)}
                                 />
                               </td>
-
-                              {/* Area */}
-                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{areaText}</td>
-
-                              {/* Charge Area */}
-                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{chargeAreaText}</td>
-
-                              {/* Total Area */}
-                              <td className="py-1.5 px-2 font-mono text-[11px] text-foreground font-medium w-[65px]">{totalAreaText}</td>
-
-                              {/* Rate */}
                               <td className="py-1.5 px-1">
                                 <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[62px]"
-                                  value={item.rate ?? ""}
-                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
-                                  placeholder={String(layer.rate || inv.glass?.defaultRate || "")}
+                                  className="h-7 text-xs min-w-[160px]"
+                                  value={layer.productName ?? layer.glassName ?? ""}
+                                  onChange={(e) => {
+                                    updateLayer(layerIdx, "productName", e.target.value);
+                                    updateLayer(layerIdx, "glassName", e.target.value);
+                                  }}
+                                  placeholder="Product / Glass Name"
                                 />
                               </td>
-
-                              {/* Amount */}
-                              <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
-                                {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
-                              </td>
-
-                              {/* Hole */}
                               <td className="py-1.5 px-1">
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[44px]"
-                                  value={item.holes || ""}
-                                  min={0}
-                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
-                                />
+                                <Input type="number" className="h-7 text-xs font-mono w-[50px] text-center" value={layer.thickness || ""} onChange={(e) => updateLayer(layerIdx, "thickness", Number(e.target.value))} />
                               </td>
-
-                              {/* Cut Out */}
                               <td className="py-1.5 px-1">
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs font-mono text-center w-[44px]"
-                                  value={item.cutouts || ""}
-                                  min={0}
-                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
-                                />
+                                <Input type="number" className="h-7 text-xs font-mono w-[65px]" value={layer.rate || ""} onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)} />
                               </td>
-
-                              {/* Remark */}
                               <td className="py-1.5 px-1">
-                                <Input
-                                  className="h-8 text-xs w-[90px]"
-                                  value={item.remark || ""}
-                                  onChange={(e) => updateLayerItem(layerIdx, itemIdx, "remark", e.target.value)}
-                                  placeholder="Remark"
-                                />
+                                <Input className="h-7 text-xs min-w-[70px]" value={layer.process || ""} onChange={(e) => updateLayer(layerIdx, "process", e.target.value)} />
                               </td>
-
-                              {/* Actions */}
-                              <td className="py-1.5 px-1 w-[52px]">
-                                <div className="flex items-center gap-0.5">
-                                  <button title="Duplicate" className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" onClick={() => duplicateLayerItemRow(layerIdx, itemIdx)}>
-                                    <Copy className="h-3 w-3" />
-                                  </button>
-                                  <button title="Remove" className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeLayerItemRow(layerIdx, itemIdx)}>
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
+                              <td className="py-1.5 px-1 w-8">
+                                <button
+                                  title="Remove"
+                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                  onClick={() => removeLayer(layerIdx)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </td>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </Section>
-              );
-            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Items Grid per Layer - Directly Below this layer header */}
+                      <Section
+                        title={`ITEMS — ${layerName.toUpperCase()} (${prodInfo.toUpperCase()})`}
+                        headerRight={
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[11px] px-2 gap-1"
+                              onClick={() => setBulkOpenLayerIdx(layerIdx)}
+                            >
+                              <ClipboardPaste className="h-3 w-3" /> Bulk Entry
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-6 text-[11px] px-2 gap-1"
+                              onClick={() => addLayerItemRow(layerIdx)}
+                            >
+                              <Plus className="h-3 w-3" /> Add Row
+                            </Button>
+                          </div>
+                        }
+                      >
+                        <div className="overflow-x-auto -mx-3 sm:-mx-4">
+                          <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
+                            <thead>
+                              <tr className="border-b-2 border-green-600/30 bg-green-500/8">
+                                {inputUnit === "mm"
+                                  ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
+                                      <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
+                                    ))
+                                  : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
+                                      <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
+                                    ))
+                                }
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/40">
+                              {layerItems.map((item: any, itemIdx: number) => {
+                                let flatOffset = 0;
+                                for (let k = 0; k < layerIdx; k++) {
+                                  flatOffset += (layers[k].items || []).length;
+                                }
+                                const flatIdx = flatOffset + itemIdx;
+                                const line = totals.lines?.[flatIdx];
+                                const areaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.totalSqft) : String(line.totalSqm)) : "—";
+                                const chargeAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft) : String(line.chargeAreaSqm)) : "—";
+                                const totalAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft || line.totalSqft) : String(line.chargeAreaSqm || line.totalSqm)) : "—";
+
+                                return (
+                                  <tr key={item.id || itemIdx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}>
+                                    {/* Sr No */}
+                                    <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
+                                      <span className="text-xs font-semibold">{itemIdx + 1}</span>
+                                    </td>
+
+                                    {/* Inch columns (only if inputUnit is inch) */}
+                                    {inputUnit !== "mm" && (
+                                      <>
+                                        <td className="py-1.5 px-1">
+                                          <Input
+                                            className="h-8 text-xs font-mono text-center w-[80px]"
+                                            value={item.l1 || ""}
+                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
+                                            placeholder="36 3/8"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-1">
+                                          <Input
+                                            className="h-8 text-xs font-mono text-center w-[80px]"
+                                            value={item.l2 || ""}
+                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
+                                            placeholder="13 3/8"
+                                          />
+                                        </td>
+                                      </>
+                                    )}
+
+                                    {/* MM columns */}
+                                    {inputUnit === "mm" ? (
+                                      <>
+                                        <td className="py-1.5 px-1">
+                                          <Input
+                                            type="number"
+                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            value={item.l1mm ?? ""}
+                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1mm", e.target.value)}
+                                            placeholder="60.3"
+                                            step="0.1"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-1">
+                                          <Input
+                                            type="number"
+                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            value={item.l2mm ?? ""}
+                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2mm", e.target.value)}
+                                            placeholder="51.2"
+                                            step="0.1"
+                                          />
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
+                                          {line?.ok ? line.lMM : "—"}
+                                        </td>
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap w-[60px]">
+                                          {line?.ok ? line.wMM : "—"}
+                                        </td>
+                                      </>
+                                    )}
+
+                                    {/* Qty */}
+                                    <td className="py-1.5 px-1">
+                                      <Input
+                                        type="number"
+                                        className="h-8 text-xs font-mono text-center w-[44px]"
+                                        value={item.qty || ""}
+                                        min={1}
+                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
+                                      />
+                                    </td>
+
+                                    {/* Area */}
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{areaText}</td>
+
+                                    {/* Charge Area */}
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground w-[65px]">{chargeAreaText}</td>
+
+                                    {/* Total Area */}
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-foreground font-medium w-[65px]">{totalAreaText}</td>
+
+                                    {/* Rate */}
+                                    <td className="py-1.5 px-1">
+                                      <Input
+                                        type="number"
+                                        className="h-8 text-xs font-mono text-center w-[62px]"
+                                        value={item.rate ?? ""}
+                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
+                                        placeholder={String(layer.rate || inv.glass?.defaultRate || "")}
+                                      />
+                                    </td>
+
+                                    {/* Amount */}
+                                    <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
+                                      {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
+                                    </td>
+
+                                    {/* Hole */}
+                                    <td className="py-1.5 px-1">
+                                      <Input
+                                        type="number"
+                                        className="h-8 text-xs font-mono text-center w-[44px]"
+                                        value={item.holes || ""}
+                                        min={0}
+                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
+                                      />
+                                    </td>
+
+                                    {/* Cut Out */}
+                                    <td className="py-1.5 px-1">
+                                      <Input
+                                        type="number"
+                                        className="h-8 text-xs font-mono text-center w-[44px]"
+                                        value={item.cutouts || ""}
+                                        min={0}
+                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
+                                      />
+                                    </td>
+
+                                    {/* Remark */}
+                                    <td className="py-1.5 px-1">
+                                      <Input
+                                        className="h-8 text-xs w-[90px]"
+                                        value={item.remark || ""}
+                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "remark", e.target.value)}
+                                        placeholder="Remark"
+                                      />
+                                    </td>
+
+                                    {/* Actions */}
+                                    <td className="py-1.5 px-1 w-[52px]">
+                                      <div className="flex items-center gap-0.5">
+                                        <button title="Duplicate" className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" onClick={() => duplicateLayerItemRow(layerIdx, itemIdx)}>
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                        <button title="Remove" className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeLayerItemRow(layerIdx, itemIdx)}>
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </Section>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
 
             {/* 6. Bottom Summary */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
