@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useGQ } from "@/lib/store";
@@ -136,7 +136,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="app-shell flex min-h-screen bg-background text-foreground">
+    <TooltipProvider delayDuration={100}>
+      <div className="app-shell flex min-h-screen bg-background text-foreground">
       {/* ══════════ DESKTOP SIDEBAR ══════════ */}
       <aside
         className={cn(
@@ -442,7 +443,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </nav>
 
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-    </div>
+        <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      </div>
+    </TooltipProvider>
   );
 }
