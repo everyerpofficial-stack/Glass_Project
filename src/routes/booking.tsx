@@ -940,53 +940,59 @@ function BookingPage() {
                   return (
                     <div key={layer.id || layerIdx} className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40">
                       {/* Product Header Row for this layer */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-[11px] border-collapse" style={{ minWidth: "600px" }}>
-                          <thead>
-                            <tr className="border-b border-border bg-green-500/5">
-                              {["ITEM", "PRODUCT NAME", "THK", "RATE", ""].map((h, i) => (
-                                <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="hover:bg-muted/10">
-                              <td className="py-1.5 px-2">
-                                <Input
-                                  className="h-7 text-xs w-[85px] bg-green-500/10 text-center font-semibold"
-                                  value={layer.layerNo !== undefined && layer.layerNo !== "" ? layer.layerNo : `Item ${layerIdx + 1}`}
-                                  onChange={(e) => updateLayer(layerIdx, "layerNo", e.target.value)}
-                                />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input
-                                  className="h-7 text-xs min-w-[160px]"
-                                  value={layer.productName ?? layer.glassName ?? ""}
-                                  onChange={(e) => {
-                                    updateLayer(layerIdx, "productName", e.target.value);
-                                    updateLayer(layerIdx, "glassName", e.target.value);
-                                  }}
-                                  placeholder="Product / Glass Name"
-                                />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input type="number" className="h-7 text-xs font-mono w-[50px] text-center" value={layer.thickness || ""} onChange={(e) => updateLayer(layerIdx, "thickness", Number(e.target.value))} />
-                              </td>
-                              <td className="py-1.5 px-1">
-                                <Input type="number" className="h-7 text-xs font-mono w-[65px]" value={layer.rate || ""} onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)} />
-                              </td>
-                              <td className="py-1.5 px-1 w-8">
-                                <button
-                                  title="Remove"
-                                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                  onClick={() => removeLayer(layerIdx)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                      <div className="rounded-md border border-border/80 overflow-hidden bg-card shadow-xs">
+                        <div className="grid grid-cols-[100px_1fr_75px_95px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          <div className="text-center">ITEM</div>
+                          <div>PRODUCT NAME</div>
+                          <div className="text-center">THK</div>
+                          <div className="text-center">RATE</div>
+                          <div></div>
+                        </div>
+                        <div className="grid grid-cols-[100px_1fr_75px_95px_36px] gap-2 items-center px-3 py-2">
+                          <div>
+                            <Input
+                              className="h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
+                              value={layer.layerNo !== undefined && layer.layerNo !== "" ? layer.layerNo : `Item ${layerIdx + 1}`}
+                              onChange={(e) => updateLayer(layerIdx, "layerNo", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              className="h-7 text-xs w-full"
+                              value={layer.productName ?? layer.glassName ?? ""}
+                              onChange={(e) => {
+                                updateLayer(layerIdx, "productName", e.target.value);
+                                updateLayer(layerIdx, "glassName", e.target.value);
+                              }}
+                              placeholder="Product / Glass Name"
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              type="number"
+                              className="h-7 text-xs font-mono w-full text-center"
+                              value={layer.thickness || ""}
+                              onChange={(e) => updateLayer(layerIdx, "thickness", Number(e.target.value))}
+                            />
+                          </div>
+                          <div>
+                            <Input
+                              type="number"
+                              className="h-7 text-xs font-mono w-full text-center"
+                              value={layer.rate || ""}
+                              onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)}
+                            />
+                          </div>
+                          <div className="flex justify-center">
+                            <button
+                              title="Remove"
+                              className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              onClick={() => removeLayer(layerIdx)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Items Grid per Layer - Directly Below this layer header */}
@@ -1195,7 +1201,7 @@ function BookingPage() {
             </Section>
 
             {/* 6. Bottom Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
               <div>
                 <FieldLabel>Total Qty</FieldLabel>
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
@@ -1226,18 +1232,10 @@ function BookingPage() {
                   {totals.chargeSqft || totals.sqft || "0.000"}
                 </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
               <div>
-                <FieldLabel>Weight</FieldLabel>
+                <FieldLabel>Wastage</FieldLabel>
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.weightKg || "0.000"}
-                </div>
-              </div>
-              <div>
-                <FieldLabel>Glass Name</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-green-500/10 text-xs text-foreground font-semibold">
-                  {inv.glass?.desc || `${inv.glass?.thickness || ""}mm ${inv.productName || "TOUGHENED GLASS"}`}
+                  {totals.wastageArea ?? "0.000"}
                 </div>
               </div>
             </div>
