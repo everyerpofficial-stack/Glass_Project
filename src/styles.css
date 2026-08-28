@@ -123,15 +123,15 @@
   --chart-4: oklch(0.64 0.12 68);
   --chart-5: oklch(0.55 0.14 22);
 
-  /* Sidebar — dark navy (#1a2332 equivalent) */
-  --sidebar:                  oklch(0.20 0.030 250);    /* Dark navy */
-  --sidebar-foreground:       oklch(0.80 0.010 250);
-  --sidebar-primary:          oklch(0.58 0.18 260);     /* Vivid blue for active */
-  --sidebar-primary-foreground: oklch(0.98 0.005 260);
-  --sidebar-accent:           oklch(0.28 0.035 250);    /* Subtle hover bg */
-  --sidebar-accent-foreground:oklch(0.96 0.006 258);
-  --sidebar-border:           oklch(0.26 0.025 250);    /* Subtle navy border */
-  --sidebar-ring:             oklch(0.58 0.18 260);
+  /* Sidebar — Clean white theme */
+  --sidebar:                  oklch(1 0 0);             /* Pure white */
+  --sidebar-foreground:       oklch(0.35 0.02 260);     /* Slate gray text */
+  --sidebar-primary:          oklch(0.55 0.20 260);     /* Bright blue active */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent:           oklch(0.96 0.006 260);    /* Soft hover gray */
+  --sidebar-accent-foreground:oklch(0.15 0.02 260);
+  --sidebar-border:           oklch(0.92 0.006 260);    /* Subtle right border */
+  --sidebar-ring:             oklch(0.55 0.20 260);
 
   /* Shadows — sharp, purposeful */
   --shadow-xs:    0 1px 2px oklch(0 0 0 / 0.06);

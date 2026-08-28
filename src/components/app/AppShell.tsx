@@ -67,17 +67,17 @@ function NavLink({
       to={item.to}
       onClick={onClick}
       className={cn(
-        "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
+        "group relative flex items-center gap-3 rounded-lg transition-all duration-150 text-[13px]",
+        collapsed ? "h-10 w-10 mx-auto justify-center px-0" : "px-3 py-2.5 font-medium",
         active
-          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-        collapsed && "justify-center px-0",
+          ? "bg-blue-600 text-white font-semibold shadow-sm"
+          : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground font-medium",
       )}
     >
       <item.icon
         className={cn(
-          "h-[17px] w-[17px] shrink-0",
-          active ? "text-white" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80",
+          "h-[18px] w-[18px] shrink-0",
+          active ? "text-white" : "text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground",
         )}
       />
       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -140,42 +140,52 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ══════════ DESKTOP SIDEBAR ══════════ */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out md:flex",
-          collapsed ? "w-[74px]" : "w-[240px]",
+          "sticky top-0 hidden h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out md:flex",
+          collapsed ? "w-[68px]" : "w-[240px]",
         )}
       >
         {/* Logo & Company Header */}
-        <div className="flex h-16 items-center gap-3 px-4 overflow-hidden">
-          {settings.logo ? (
-            <img src={settings.logo} alt="Company Logo" className="h-9 w-auto max-w-[180px] object-contain bg-white/10 p-1 rounded-lg" />
-          ) : (
-            <>
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold tracking-wider text-white">
+        <div className={cn("flex h-16 items-center border-b border-sidebar-border/60 px-4 overflow-hidden", collapsed ? "justify-center px-0" : "gap-3")}>
+          {collapsed ? (
+            settings.logo ? (
+              <img src={settings.logo} alt="Logo" className="h-8 w-8 object-contain rounded-md" />
+            ) : (
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold text-white shadow-xs">
                 {initials.slice(0, 2)}
               </div>
-              {!collapsed && (
-                <div className="min-w-0">
-                  <div className="truncate text-[14px] font-bold text-white tracking-tight leading-tight">
-                    {company.split(" ").slice(0, 2).join(" ")}
-                  </div>
-                  <div className="truncate text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/40 font-medium">
-                    {company.split(" ").slice(2).join(" ") || "GLASS PVT. LTD."}
-                  </div>
+            )
+          ) : settings.logo ? (
+            <img src={settings.logo} alt="Company Logo" className="h-9 w-auto max-w-[170px] object-contain" />
+          ) : (
+            <>
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold tracking-wider text-white shadow-xs">
+                {initials.slice(0, 2)}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[14px] font-bold text-foreground tracking-tight leading-tight">
+                  {company.split(" ").slice(0, 2).join(" ")}
                 </div>
-              )}
+                <div className="truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
+                  {company.split(" ").slice(2).join(" ") || "GLASS PVT. LTD."}
+                </div>
+              </div>
             </>
           )}
         </div>
 
         {/* Nav items */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+        <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-4">
           {NAV.map((item) =>
             collapsed ? (
-              <Tooltip key={item.to}>
+              <Tooltip key={item.to} delayDuration={100}>
                 <TooltipTrigger asChild>
-                  <NavLink item={item} pathname={pathname} collapsed />
+                  <div>
+                    <NavLink item={item} pathname={pathname} collapsed />
+                  </div>
                 </TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
+                <TooltipContent side="right" className="font-medium text-xs">
+                  {item.label}
+                </TooltipContent>
               </Tooltip>
             ) : (
               <NavLink key={item.to} item={item} pathname={pathname} />
@@ -184,47 +194,70 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Company footer + collapse toggle */}
-        <div className="border-t border-sidebar-border/50 p-3">
-          <Link
-            to="/settings"
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-sidebar-accent/60",
-              collapsed && "justify-center",
-            )}
-          >
-            {settings.logo ? (
-              <img src={settings.logo} alt="Logo" className="h-7 w-7 shrink-0 object-contain rounded-md bg-white/10 p-0.5" />
-            ) : (
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
-                {initials}
-              </div>
-            )}
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[12px] font-semibold text-sidebar-foreground/90">
-                  {company}
+        <div className="border-t border-sidebar-border/60 p-3 space-y-2">
+          {collapsed ? (
+            <Tooltip delayDuration={100}>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/settings"
+                  className="flex h-9 w-9 items-center justify-center mx-auto rounded-lg hover:bg-sidebar-accent transition-colors"
+                >
+                  {settings.logo ? (
+                    <img src={settings.logo} alt="Logo" className="h-7 w-7 object-contain rounded-md" />
+                  ) : (
+                    <div className="grid h-8 w-8 place-items-center rounded-lg bg-sidebar-accent text-[11px] font-bold text-sidebar-accent-foreground">
+                      {initials}
+                    </div>
+                  )}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium text-xs">
+                {company}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <>
+              <Link
+                to="/settings"
+                className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-sidebar-accent"
+              >
+                {settings.logo ? (
+                  <img src={settings.logo} alt="Logo" className="h-7 w-7 shrink-0 object-contain rounded-md" />
+                ) : (
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
+                    {initials}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12px] font-semibold text-foreground">
+                    {company}
+                  </div>
+                  <div className="truncate text-[10px] text-muted-foreground">
+                    {settings.gstin || "Add GSTIN in settings"}
+                  </div>
                 </div>
-                <div className="truncate text-[10px] text-sidebar-foreground/40">
-                  {settings.gstin || "Add GSTIN in settings"}
-                </div>
-              </div>
-            )}
-          </Link>
-          {!collapsed && (
-            <Link
-              to="/settings"
-              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium text-sidebar-foreground/40 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground/70 border border-sidebar-border/30"
-            >
-              <ChevronRight className="h-3 w-3" />
-              View Profile
-            </Link>
+              </Link>
+              <Link
+                to="/settings"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground border border-sidebar-border/60 bg-background/50"
+              >
+                <ChevronRight className="h-3 w-3" />
+                View Profile
+              </Link>
+            </>
           )}
+
+          {/* Collapse Toggle Button */}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-lg py-1.5 text-[11px] font-medium text-sidebar-foreground/30 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground/60"
+            className={cn(
+              "flex items-center justify-center rounded-lg transition-colors hover:bg-sidebar-accent text-muted-foreground hover:text-foreground",
+              collapsed ? "h-9 w-9 mx-auto" : "w-full gap-2 px-3 py-1.5 text-[11px] font-medium border border-sidebar-border/60"
+            )}
+            title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform", collapsed && "rotate-180")} />
-            {!collapsed && "Collapse"}
+            <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform duration-200", collapsed && "rotate-180")} />
+            {!collapsed && <span>Collapse</span>}
           </button>
         </div>
       </aside>
