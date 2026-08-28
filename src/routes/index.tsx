@@ -5,19 +5,32 @@ import {
   Users,
   CheckCircle2,
   ArrowUpRight,
+  ArrowRight,
   Settings,
   TrendingUp,
   ClipboardList,
   ShoppingCart,
   Factory,
+  Tag,
+  Calendar,
 } from "lucide-react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";
 import { cur, nf } from "@/lib/gq";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/")(
+  {
   component: Dashboard,
 });
+
+/* ── Greeting helper ─── */
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function Dashboard() {
   const { invoices, customers, workOrders, settings } = useGQ();
@@ -32,104 +45,124 @@ function Dashboard() {
     (acc, inv) => acc + (Number(inv.totals?.grandTotal) || 0),
     0
   );
-  const recentBookings = invoices.slice(0, 8);
+  const recentBookings = invoices.slice(0, 5);
+  const userName = settings.salesPerson || "Admin";
 
   return (
-    <div className="max-w-[1100px] mx-auto space-y-5 pb-12">
+    <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
 
-      {/* ── Workflow Pipeline ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── Greeting Banner ───────────────────────────────────────── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            {getGreeting()}, {userName}! 👋
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Here's what's happening with your business today.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white rounded-lg border border-border px-3 py-2 shadow-xs">
+          <Calendar className="h-4 w-4" />
+          <span className="font-medium">
+            {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+          </span>
+        </div>
+      </div>
+
+      {/* ── KPI Metric Cards ───────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Draft Pre Proformas"
           value={String(draftCount)}
-          sub={draftCount === 0 ? "all clear" : "pending Proforma Invoice"}
+          sub={draftCount === 0 ? "All clear" : "Pending invoice"}
           icon={ClipboardList}
-          accent="blue"
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
         />
         <MetricCard
           label="Pre Proformas Sent"
           value={String(piSentCount)}
-          sub={piSentCount === 0 ? "none pending" : "ready for Proforma Invoice"}
+          sub={piSentCount === 0 ? "None pending" : "Awaiting confirmation"}
           icon={FileText}
-          accent="amber"
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
         />
         <MetricCard
           label="Proforma Invoices Confirmed"
           value={String(confirmedCount + woGeneratedCount)}
           sub={`${workOrders.length} work orders`}
           icon={CheckCircle2}
-          accent="green"
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
         />
         <MetricCard
           label="Total Revenue"
-          value={totalRevenue > 0 ? cur(totalRevenue, settings.currency) : "—"}
+          value={totalRevenue > 0 ? cur(totalRevenue, settings.currency) : "₹ 0.00"}
           sub={`${totalBookings} records`}
           icon={TrendingUp}
-          accent="purple"
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
           mono
         />
       </div>
 
-      {/* ── Workflow Steps ─────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-semibold text-foreground">Workflow Pipeline</span>
-        </div>
-        <div className="grid grid-cols-4 gap-2">
+      {/* ── Workflow Pipeline ─────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-border p-5 shadow-xs">
+        <h2 className="text-sm font-semibold text-foreground mb-4">Workflow Pipeline</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3">
           {[
-            { step: "1", label: "Pre Proforma", count: draftCount, color: "bg-blue-500", to: "/booking", search: undefined },
-            { step: "2", label: "Proforma Invoice", count: piSentCount, color: "bg-amber-500", to: "/order", search: { view: undefined } },
-            { step: "3", label: "Work Order", count: confirmedCount, color: "bg-emerald-500", to: "/work-order", search: undefined },
-            { step: "4", label: "Stickers", count: woGeneratedCount, color: "bg-purple-500", to: "/stickers", search: undefined },
-          ].map((item: any, i) => (
-            <Link
-              key={i}
-              to={item.to}
-              search={item.search}
-              className="group relative flex flex-col items-center gap-1.5 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
-            >
-              <div className={`h-8 w-8 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold`}>
-                {item.step}
-              </div>
-              <span className="text-[11px] font-medium text-foreground text-center">{item.label}</span>
-              {item.count > 0 && (
-                <span className={`absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 rounded-full ${item.color} text-white text-[10px] font-bold flex items-center justify-center`}>
-                  {item.count}
-                </span>
+            { step: "1", label: "Pre Proforma", count: draftCount, sublabel: `${draftCount} Pending`, color: "bg-blue-500", to: "/booking" as const, search: undefined },
+            { step: "2", label: "Proforma Invoice", count: piSentCount, sublabel: `${piSentCount} Awaiting`, color: "bg-amber-500", to: "/order" as const, search: { view: undefined } },
+            { step: "3", label: "Work Order", count: confirmedCount, sublabel: `${confirmedCount} In Progress`, color: "bg-emerald-500", to: "/work-order" as const, search: undefined },
+            { step: "4", label: "Stickers", count: woGeneratedCount, sublabel: `${woGeneratedCount} Pending`, color: "bg-purple-500", to: "/stickers" as const, search: undefined },
+          ].map((item: any, i, arr) => (
+            <div key={i} className="flex items-center gap-3 flex-1 min-w-[180px]">
+              <Link
+                to={item.to}
+                search={item.search}
+                className="group flex items-center gap-3 rounded-xl border border-border bg-background/60 px-4 py-3 hover:bg-muted/40 transition-all flex-1"
+              >
+                <div className={`h-9 w-9 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm`}>
+                  {item.step}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold text-foreground truncate">{item.label}</div>
+                  <div className="text-[11px] text-muted-foreground">{item.sublabel}</div>
+                </div>
+              </Link>
+              {i < arr.length - 1 && (
+                <ArrowRight className="h-4 w-4 text-muted-foreground/30 shrink-0 hidden lg:block" />
               )}
-              {i < 3 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 text-muted-foreground/30 text-lg font-light hidden lg:block">→</div>
-              )}
-            </Link>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* ── Main content ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_256px] gap-5">
+      {/* ── Main Content Grid ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
 
-        {/* Recent bookings */}
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium text-foreground">Recent Pre Proformas</span>
+        {/* LEFT: Recent Pre Proformas Table */}
+        <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <h2 className="text-sm font-semibold text-foreground">Recent Pre Proformas</h2>
             <Link
               to="/booking"
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-muted/50 rounded-md px-3 py-1.5 hover:bg-muted"
             >
-              New Pre Proforma <ArrowUpRight className="h-3 w-3" />
+              View All
             </Link>
           </div>
 
           {recentBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-3">
-                <FileText className="h-4 w-4 text-muted-foreground/50" />
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
+                <FileText className="h-5 w-5 text-blue-400" />
               </div>
-              <p className="text-sm font-medium text-foreground">No Pre Proformas yet</p>
+              <p className="text-sm font-semibold text-foreground">No Pre Proformas yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
                 Create your first Pre Proforma to start tracking glass calculations and customer orders.
               </p>
-              <Button asChild size="sm" className="mt-4 h-8 text-xs px-4">
+              <Button asChild size="sm" className="mt-4 h-8 text-xs px-4 bg-blue-600 hover:bg-blue-700">
                 <Link to="/booking">
                   <Plus className="h-3.5 w-3.5 mr-1" /> New Pre Proforma
                 </Link>
@@ -139,33 +172,33 @@ function Dashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Booking #</th>
-                  <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Customer</th>
-                  <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Date</th>
-                  <th className="text-right py-2.5 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
-                  <th className="py-2.5 px-4 w-20 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</th>
+                  <th className="text-left py-3 px-5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Booking #</th>
+                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Customer</th>
+                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold hidden sm:table-cell">Date</th>
+                  <th className="text-right py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Amount</th>
+                  <th className="py-3 px-4 w-20 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {recentBookings.map((q, i) => (
+                {recentBookings.map((q) => (
                   <tr
                     key={q.id}
-                    className="border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors"
+                    className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                   >
-                    <td className="py-3 px-4 font-mono text-[11px] font-medium text-foreground">{q.no || "—"}</td>
-                    <td className="py-3 px-4">
-                      <p className="font-medium text-foreground truncate max-w-[140px]">
-                        {q.cust?.name || "Unnamed"}
+                    <td className="py-3.5 px-5 font-mono text-[12px] font-semibold text-foreground">{q.no || "—"}</td>
+                    <td className="py-3.5 px-4">
+                      <p className="font-semibold text-[12px] text-foreground truncate max-w-[180px]">
+                        {(q.cust?.name || "Unnamed").toUpperCase()}
                       </p>
-                      <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                      <p className="text-[10px] text-muted-foreground truncate max-w-[180px] mt-0.5">
                         {q.glass?.desc || "—"}
                       </p>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground tabular-nums hidden sm:table-cell">{q.date || "—"}</td>
-                    <td className="py-3 px-4 text-right font-mono font-semibold text-foreground tabular-nums">
+                    <td className="py-3.5 px-4 text-muted-foreground tabular-nums hidden sm:table-cell text-[12px]">{q.date || "—"}</td>
+                    <td className="py-3.5 px-4 text-right font-mono font-semibold text-foreground tabular-nums text-[12px]">
                       {cur(q.totals?.grandTotal || 0, settings.currency)}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       <StatusBadge status={q.status || "draft"} />
                     </td>
                   </tr>
@@ -175,15 +208,15 @@ function Dashboard() {
           )}
         </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-3">
+        {/* RIGHT: Sidebar Cards */}
+        <div className="space-y-4">
           {/* Engine Config */}
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-sm font-medium text-foreground">Engine Config</span>
-              <Button asChild variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground">
+          <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Engine Configuration</h3>
+              <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
                 <Link to="/settings" aria-label="Settings">
-                  <Settings className="h-3.5 w-3.5" />
+                  <Settings className="h-4 w-4" />
                 </Link>
               </Button>
             </div>
@@ -196,41 +229,54 @@ function Dashboard() {
               <ConfigRow
                 label="Sheet URL"
                 value={settings.sheetUrl ? "Configured" : "Not set"}
-                accent={settings.sheetUrl ? "green" : "amber"}
+                accent={settings.sheetUrl ? "green" : "red"}
                 last
               />
             </div>
           </div>
 
           {/* Customers */}
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-sm font-medium text-foreground">Customers</span>
-              <Link to="/customers" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                View all
+          <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Customers</h3>
+              <Link to="/customers" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                View All
               </Link>
             </div>
             <div className="px-4 py-3">
               {customers.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No customers saved yet.</p>
+                <p className="text-xs text-muted-foreground py-3 text-center">No customers saved yet.</p>
               ) : (
-                <div className="space-y-2.5">
-                  {customers.slice(0, 5).map((c) => (
-                    <div key={c.id || c.name} className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{c.name}</p>
+                <div className="space-y-3">
+                  {customers.slice(0, 4).map((c) => (
+                    <div key={c.id || c.name} className="flex items-center gap-3">
+                      <div className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-600 shrink-0">
+                        {String(c.name || "?")
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((w: string) => w[0]?.toUpperCase())
+                          .join("")}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold text-foreground truncate">{(c.name || "Unnamed").toUpperCase()}</p>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          {c.phone || c.email || "No contact"}
+                          {c.email || c.phone || "No contact"}
                         </p>
                       </div>
-                      {c.gstin && (
-                        <span className="text-[9px] text-muted-foreground font-mono shrink-0 mt-0.5 uppercase tracking-wide">GST</span>
-                      )}
+                      <div className="shrink-0 flex flex-col items-end gap-0.5">
+                        {c.gstin && (
+                          <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wide">GST</span>
+                        )}
+                        <span className="inline-flex items-center gap-1 text-[9px] font-medium text-emerald-600">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Active
+                        </span>
+                      </div>
                     </div>
                   ))}
-                  {customers.length > 5 && (
-                    <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
-                      +{customers.length - 5} more customers
+                  {customers.length > 4 && (
+                    <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/50 text-center">
+                      +{customers.length - 4} more customers
                     </p>
                   )}
                 </div>
@@ -242,28 +288,28 @@ function Dashboard() {
           <div className="grid grid-cols-2 gap-2">
             <Link
               to="/booking"
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-3.5 py-3 text-xs font-medium text-foreground hover:bg-muted/30 transition-colors shadow-xs"
             >
-              <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" /> Booking
+              <ClipboardList className="h-4 w-4 text-blue-500" /> Booking
             </Link>
             <Link
               to="/order"
               search={{ view: undefined }}
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-3.5 py-3 text-xs font-medium text-foreground hover:bg-muted/30 transition-colors shadow-xs"
             >
-              <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" /> Orders
+              <ShoppingCart className="h-4 w-4 text-amber-500" /> Orders
             </Link>
             <Link
               to="/work-order"
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-3.5 py-3 text-xs font-medium text-foreground hover:bg-muted/30 transition-colors shadow-xs"
             >
-              <Factory className="h-3.5 w-3.5 text-muted-foreground" /> Work Order
+              <Factory className="h-4 w-4 text-emerald-500" /> Work Order
             </Link>
             <Link
               to="/customers"
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/40 transition-colors"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-white px-3.5 py-3 text-xs font-medium text-foreground hover:bg-muted/30 transition-colors shadow-xs"
             >
-              <Users className="h-3.5 w-3.5 text-muted-foreground" /> Customers
+              <Users className="h-4 w-4 text-purple-500" /> Customers
             </Link>
           </div>
         </div>
@@ -275,10 +321,10 @@ function Dashboard() {
 /* ── Status Badge ─────────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    draft: "bg-stone-50 text-stone-500 ring-stone-400/20 dark:bg-stone-500/10 dark:text-stone-400",
-    pi_sent: "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-400",
-    order_confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400",
-    work_order_generated: "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400",
+    draft: "bg-stone-100 text-stone-600 ring-stone-300/40",
+    pi_sent: "bg-blue-50 text-blue-700 ring-blue-500/20",
+    order_confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-500/20",
+    work_order_generated: "bg-amber-50 text-amber-700 ring-amber-500/20",
   };
   const labels: Record<string, string> = {
     draft: "Draft",
@@ -287,7 +333,7 @@ function StatusBadge({ status }: { status: string }) {
     work_order_generated: "WO Done",
   };
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset ${styles[status] || styles["draft"]}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${styles[status] || styles["draft"]}`}>
       {labels[status] || "Draft"}
     </span>
   );
@@ -299,32 +345,32 @@ function MetricCard({
   sub,
   mono = false,
   icon: Icon,
-  accent,
+  iconBg,
+  iconColor,
 }: {
   label: string;
   value: string;
   sub?: string;
   mono?: boolean;
   icon?: any;
-  accent?: string;
+  iconBg?: string;
+  iconColor?: string;
 }) {
-  const accentColors: Record<string, string> = {
-    blue: "text-blue-500",
-    amber: "text-amber-500",
-    green: "text-emerald-500",
-    purple: "text-purple-500",
-  };
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3.5">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
-        {Icon && <Icon className={`h-4 w-4 ${accentColors[accent || "blue"] || "text-muted-foreground"}`} />}
+    <div className="bg-white rounded-xl border border-border px-5 py-4 shadow-xs">
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">{label}</p>
+        {Icon && (
+          <div className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}>
+            <Icon className={`h-[18px] w-[18px] ${iconColor || "text-blue-600"}`} />
+          </div>
+        )}
       </div>
-      <p className={`text-xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}>
+      <p className={`text-2xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}>
         {value}
       </p>
       {sub && (
-        <p className="text-[11px] mt-0.5 text-muted-foreground">
+        <p className="text-[11px] mt-1 text-muted-foreground">
           {sub}
         </p>
       )}
@@ -340,15 +386,16 @@ function ConfigRow({
 }: {
   label: string;
   value: string;
-  accent?: "green" | "amber";
+  accent?: "green" | "amber" | "red";
   last?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between py-2 ${!last ? "border-b border-border/40" : ""}`}>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`text-xs font-medium tabular-nums ${
-        accent === "green" ? "text-emerald-600 dark:text-emerald-400" :
-        accent === "amber" ? "text-amber-600 dark:text-amber-400" :
+    <div className={`flex items-center justify-between py-2.5 ${!last ? "border-b border-border/40" : ""}`}>
+      <span className="text-[12px] text-muted-foreground">{label}</span>
+      <span className={`text-[12px] font-semibold tabular-nums ${
+        accent === "green" ? "text-emerald-600" :
+        accent === "amber" ? "text-amber-600" :
+        accent === "red" ? "text-red-500" :
         "text-foreground"
       }`}>
         {value}

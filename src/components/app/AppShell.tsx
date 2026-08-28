@@ -1,30 +1,25 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
+  Bell,
+  ChevronDown,
   ChevronLeft,
   ClipboardList,
   FileText,
   LayoutDashboard,
   Menu,
-  Plus,
   Search,
   Settings,
   ShoppingCart,
   Users,
   Factory,
   Tag,
+  Calendar,
+  ChevronRight,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useGQ } from "@/lib/store";
@@ -54,7 +49,7 @@ const TITLES: Record<string, string> = {
   "/checks": "System Checks",
 };
 
-/* ── Sidebar nav link (reused in desktop sidebar & mobile sheet) ─── */
+/* ── Sidebar nav link ─── */
 function NavLink({
   item,
   pathname,
@@ -72,29 +67,29 @@ function NavLink({
       to={item.to}
       onClick={onClick}
       className={cn(
-        "group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-150",
+        "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
         collapsed && "justify-center px-0",
       )}
     >
-      {/* Active indicator pill */}
-      <span
-        className={cn(
-          "absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-sidebar-primary transition-all duration-200",
-          active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
-        )}
-      />
       <item.icon
         className={cn(
-          "h-[16px] w-[16px] shrink-0 transition-opacity",
-          active ? "opacity-100" : "opacity-60 group-hover:opacity-90",
+          "h-[17px] w-[17px] shrink-0",
+          active ? "text-white" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80",
         )}
       />
       {!collapsed && <span className="truncate">{item.label}</span>}
     </Link>
   );
+}
+
+/* ── Format date ─── */
+function formatDate() {
+  const now = new Date();
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -116,7 +111,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const company = settings.coName || "Your company";
+  const company = settings.coName || "Your Company";
+  const userName = settings.salesPerson || "Admin";
   const initials = useMemo(
     () =>
       String(company)
@@ -128,31 +124,42 @@ export function AppShell({ children }: { children: ReactNode }) {
     [company],
   );
 
+  const userInitials = useMemo(
+    () =>
+      String(userName)
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w: string) => w[0]?.toUpperCase())
+        .join("") || "A",
+    [userName],
+  );
+
   return (
     <div className="app-shell flex min-h-screen bg-background text-foreground">
       {/* ══════════ DESKTOP SIDEBAR ══════════ */}
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out md:flex",
-          collapsed ? "w-[74px]" : "w-[248px]",
+          "sticky top-0 hidden h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out md:flex",
+          collapsed ? "w-[74px]" : "w-[240px]",
         )}
       >
-        {/* Logo */}
-        <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4 overflow-hidden">
+        {/* Logo & Company Header */}
+        <div className="flex h-16 items-center gap-3 px-4 overflow-hidden">
           {settings.logo ? (
-            <img src={settings.logo} alt="Company Logo" className="h-8 w-auto max-w-[160px] object-contain bg-white/90 p-0.5 rounded" />
+            <img src={settings.logo} alt="Company Logo" className="h-9 w-auto max-w-[180px] object-contain bg-white/10 p-1 rounded-lg" />
           ) : (
             <>
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-sidebar-border bg-sidebar-accent text-[11px] font-bold tracking-widest text-sidebar-accent-foreground">
-                GQ
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold tracking-wider text-white">
+                {initials.slice(0, 2)}
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <div className="truncate text-[13px] font-semibold text-sidebar-accent-foreground tracking-tight">
-                    Glass Quote
+                  <div className="truncate text-[14px] font-bold text-white tracking-tight leading-tight">
+                    {company.split(" ").slice(0, 2).join(" ")}
                   </div>
                   <div className="truncate text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/40 font-medium">
-                    Pro
+                    {company.split(" ").slice(2).join(" ") || "GLASS PVT. LTD."}
                   </div>
                 </div>
               )}
@@ -161,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Nav items */}
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {NAV.map((item) =>
             collapsed ? (
               <Tooltip key={item.to}>
@@ -176,25 +183,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
 
-        {/* Company + collapse toggle */}
-        <div className="border-t border-sidebar-border p-2">
+        {/* Company footer + collapse toggle */}
+        <div className="border-t border-sidebar-border/50 p-3">
           <Link
             to="/settings"
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-sidebar-accent/50",
+              "flex items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-sidebar-accent/60",
               collapsed && "justify-center",
             )}
           >
             {settings.logo ? (
-              <img src={settings.logo} alt="Logo" className="h-7 w-7 shrink-0 object-contain rounded bg-white p-0.5" />
+              <img src={settings.logo} alt="Logo" className="h-7 w-7 shrink-0 object-contain rounded-md bg-white/10 p-0.5" />
             ) : (
-              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
                 {initials}
               </div>
             )}
             {!collapsed && (
-              <div className="min-w-0">
-                <div className="truncate text-[12px] font-medium text-sidebar-foreground/90">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-semibold text-sidebar-foreground/90">
                   {company}
                 </div>
                 <div className="truncate text-[10px] text-sidebar-foreground/40">
@@ -203,9 +210,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             )}
           </Link>
+          {!collapsed && (
+            <Link
+              to="/settings"
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium text-sidebar-foreground/40 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground/70 border border-sidebar-border/30"
+            >
+              <ChevronRight className="h-3 w-3" />
+              View Profile
+            </Link>
+          )}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-md py-1.5 text-[11px] font-medium text-sidebar-foreground/35 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground/70"
+            className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-lg py-1.5 text-[11px] font-medium text-sidebar-foreground/30 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground/60"
           >
             <ChevronLeft className={cn("h-3.5 w-3.5 transition-transform", collapsed && "rotate-180")} />
             {!collapsed && "Collapse"}
@@ -216,46 +232,46 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ══════════ MAIN COLUMN ══════════ */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* ── Top header ── */}
-        <header className="sticky top-0 z-30 flex h-12 items-center border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex flex-1 items-center justify-between gap-2 px-3 sm:px-5 lg:px-7">
+        <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-white">
+          <div className="flex flex-1 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
 
-            {/* Left side — mobile: hamburger menu + page title | desktop: breadcrumb */}
-            <div className="flex items-center gap-2 min-w-0">
+            {/* Left: Mobile hamburger + search */}
+            <div className="flex items-center gap-3 min-w-0">
               {/* Mobile hamburger → Sheet */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 md:hidden shrink-0"
+                    className="h-9 w-9 md:hidden shrink-0"
                     aria-label="Open navigation menu"
                   >
-                    <Menu className="h-4 w-4" />
+                    <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[272px] p-0 bg-sidebar border-sidebar-border">
                   {/* Sheet header */}
-                  <div className="flex h-14 items-center gap-3 border-b border-sidebar-border px-4">
+                  <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
                     {settings.logo ? (
-                      <img src={settings.logo} alt="Company Logo" className="h-8 w-auto max-w-[160px] object-contain bg-white/90 p-0.5 rounded" />
+                      <img src={settings.logo} alt="Company Logo" className="h-9 w-auto max-w-[180px] object-contain bg-white/10 p-1 rounded-lg" />
                     ) : (
                       <>
-                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-sidebar-border bg-sidebar-accent text-[11px] font-bold tracking-widest text-sidebar-accent-foreground">
-                          GQ
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold tracking-wider text-white">
+                          {initials.slice(0, 2)}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-[13px] font-semibold text-sidebar-accent-foreground tracking-tight">
-                            Glass Quote
+                          <div className="truncate text-[14px] font-bold text-white tracking-tight leading-tight">
+                            {company.split(" ").slice(0, 2).join(" ")}
                           </div>
                           <div className="truncate text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/40 font-medium">
-                            Pro
+                            {company.split(" ").slice(2).join(" ") || "GLASS PVT. LTD."}
                           </div>
                         </div>
                       </>
                     )}
                   </div>
                   {/* Nav links */}
-                  <nav className="flex flex-col gap-0.5 px-2 py-3">
+                  <nav className="flex flex-col gap-1 px-3 py-4">
                     {NAV.map((item) => (
                       <NavLink
                         key={item.to}
@@ -266,13 +282,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                     ))}
                   </nav>
                   {/* Company row at bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border p-3 bg-sidebar">
+                  <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border/50 p-3 bg-sidebar">
                     <div className="flex items-center gap-2.5">
-                      <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
                         {initials}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate text-[12px] font-medium text-sidebar-foreground/90">{company}</div>
+                        <div className="truncate text-[12px] font-semibold text-sidebar-foreground/90">{company}</div>
                         <div className="truncate text-[10px] text-sidebar-foreground/40">
                           {settings.gstin || "Add GSTIN in settings"}
                         </div>
@@ -282,56 +298,72 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </SheetContent>
               </Sheet>
 
-              {/* Mobile: compact page title */}
-              <span className="text-sm font-semibold text-foreground md:hidden truncate">{title}</span>
+              {/* Company selector (Desktop) */}
+              <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-muted/50 transition-colors cursor-default">
+                <div className="grid h-6 w-6 place-items-center rounded-md bg-blue-50 text-blue-600">
+                  <FileText className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{company}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
 
-              {/* Desktop: breadcrumb */}
-              <Breadcrumb className="hidden md:block">
-                <BreadcrumbList className="text-sm">
-                  <BreadcrumbItem>
-                    <BreadcrumbLink asChild>
-                      <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">Home</Link>
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  {pathname !== "/" && (
-                    <>
-                      <BreadcrumbSeparator />
-                      <BreadcrumbItem>
-                        <BreadcrumbPage className="font-medium text-foreground">{title}</BreadcrumbPage>
-                      </BreadcrumbItem>
-                    </>
-                  )}
-                </BreadcrumbList>
-              </Breadcrumb>
+              {/* Mobile: page title */}
+              <span className="text-sm font-semibold text-foreground md:hidden truncate">{title}</span>
             </div>
 
-            {/* Right: search + new quote */}
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {/* Right: search, notifications, date, user profile */}
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               {/* Desktop search box */}
               <button
                 onClick={() => setSearchOpen(true)}
-                className="hidden h-8 w-48 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs text-muted-foreground transition-colors hover:border-ring/40 hover:bg-muted/40 lg:flex"
+                className="hidden h-9 w-52 items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs text-muted-foreground transition-colors hover:border-ring/40 hover:bg-muted/40 lg:flex"
               >
                 <Search className="h-3.5 w-3.5" />
                 <span className="flex-1 text-left">Search…</span>
-                <kbd className="rounded border border-border px-1 text-[10px] font-mono">⌘K</kbd>
+                <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground/60">⌘K</kbd>
               </button>
               {/* Mobile search icon */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 lg:hidden"
+                className="h-9 w-9 lg:hidden"
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search"
               >
                 <Search className="h-4 w-4" />
               </Button>
+
+              {/* Notification bell */}
+              <button className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">
+                <Bell className="h-[18px] w-[18px] text-muted-foreground" />
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center ring-2 ring-white">
+                  2
+                </span>
+              </button>
+
+              {/* Date display (Desktop) */}
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="font-medium">{formatDate()}</span>
+              </div>
+
+              {/* User avatar + name */}
+              <div className="flex items-center gap-2 pl-2 border-l border-border">
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+                  {userInitials}
+                </div>
+                <div className="hidden sm:block min-w-0">
+                  <div className="text-[12px] font-semibold text-foreground leading-tight truncate">{userName}</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight">Admin</div>
+                </div>
+                <ChevronDown className="h-3 w-3 text-muted-foreground hidden sm:block" />
+              </div>
             </div>
           </div>
         </header>
 
         {/* ── Page content ── */}
-        <main className="min-w-0 flex-1 px-3 pb-24 pt-4 sm:px-5 md:pb-10 lg:px-7">
+        <main className="min-w-0 flex-1 pb-24 md:pb-10">
           {children}
         </main>
       </div>
@@ -346,12 +378,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               to={item.to}
               className={cn(
                 "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[9.5px] font-medium transition-colors min-w-0",
-                active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/55",
+                active ? "text-blue-400" : "text-sidebar-foreground/55",
               )}
             >
-              {/* Active dot indicator */}
               {active && (
-                <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-sidebar-primary" />
+                <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-blue-500" />
               )}
               <item.icon
                 className={cn(
@@ -363,16 +394,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {/* Settings — 6th item shown as "More" */}
         <Link
           to="/settings"
           className={cn(
             "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[9.5px] font-medium transition-colors min-w-0",
-            pathname === "/settings" ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/55",
+            pathname === "/settings" ? "text-blue-400" : "text-sidebar-foreground/55",
           )}
         >
           {pathname === "/settings" && (
-            <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-sidebar-primary" />
+            <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-blue-500" />
           )}
           <Settings className={cn("h-[18px] w-[18px] transition-transform duration-150", pathname === "/settings" && "scale-110")} />
           <span className="truncate max-w-full px-0.5">Settings</span>

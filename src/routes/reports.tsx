@@ -5,7 +5,6 @@ import {
   PieChart as PieChartIcon,
   Users,
   FileText,
-  DollarSign,
   Layers,
   ArrowUpRight,
 } from "lucide-react";
@@ -23,9 +22,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useGQ } from "@/lib/store";
 import { cur, nf } from "@/lib/gq";
 
@@ -64,7 +62,7 @@ function ReportsAnalyticsPage() {
     { name: "Local / Pending Sync", count: pendingCount, fill: "#f59e0b" },
   ], [syncedCount, pendingCount]);
 
-  // Monthly trend data mock/calculated from invoices
+  // Monthly trend data
   const monthlyTrendData = useMemo(() => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
     return months.map((m, idx) => {
@@ -78,116 +76,101 @@ function ReportsAnalyticsPage() {
   }, [invoices]);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* ---------- Top Header ---------- */}
-      <div className="border-b border-border/60 pb-4">
+    <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+      {/* Header */}
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics & Performance</h1>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Visual insights into quotation revenue, glass thickness trends, and sheet sync distribution
         </p>
       </div>
 
-      {/* ---------- KPI Summary Grid ---------- */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Total Quotation Volume
-            </CardTitle>
-            <FileText className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{invoices.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total saved quotes</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Gross Quotation Revenue
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{cur(totalRevenue, settings.currency)}</div>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3" /> Cumulative quote value
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Sheet Synced Quotes
-            </CardTitle>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
-              {syncedCount} / {invoices.length}
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{syncedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Uploaded to Google Sheet</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Customer Base
-            </CardTitle>
-            <Users className="h-4 w-4 text-indigo-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{customers.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Saved customer profiles</p>
-          </CardContent>
-        </Card>
+      {/* KPI Summary Grid */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          label="Total Quotation Volume"
+          value={String(invoices.length)}
+          sub="Total saved quotes"
+          icon={FileText}
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
+        />
+        <KPICard
+          label="Gross Quotation Revenue"
+          value={cur(totalRevenue, settings.currency)}
+          sub="Cumulative quote value"
+          subColor="text-emerald-600"
+          icon={TrendingUp}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+        />
+        <KPICard
+          label="Sheet Synced Quotes"
+          value={String(syncedCount)}
+          sub={`${syncedCount} / ${invoices.length} uploaded`}
+          icon={Layers}
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
+        />
+        <KPICard
+          label="Customer Base"
+          value={String(customers.length)}
+          sub="Saved customer profiles"
+          icon={Users}
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
+        />
       </div>
 
-      {/* ---------- Revenue & Volume Charts Grid ---------- */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Revenue & Thickness Charts Grid */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         {/* Monthly Revenue Area Chart */}
-        <Card className="lg:col-span-2 border border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" /> Monthly Quote Value Trend
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Value of quotations generated per month ({settings.currency})
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-48 sm:h-72 pt-4">
+        <div className="bg-white rounded-xl border border-border shadow-xs overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-blue-500" /> Monthly Quote Value Trend
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Value of quotations generated per month ({settings.currency})
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-1.5 font-medium">
+              This Year ▾
+            </div>
+          </div>
+          <div className="px-4 py-4 h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyTrendData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <RechartsTooltip />
-                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <RechartsTooltip
+                  contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Thickness Distribution Pie Chart */}
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <PieChartIcon className="h-4 w-4 text-indigo-500" /> Glass Thickness Split
-            </CardTitle>
-            <CardDescription className="text-xs">
+        <div className="bg-white rounded-xl border border-border shadow-xs overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <PieChartIcon className="h-4 w-4 text-purple-500" /> Glass Thickness Split
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               Distribution across glass thickness specs
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-48 sm:h-72 flex items-center justify-center">
+            </p>
+          </div>
+          <div className="px-4 py-4 h-[280px] flex items-center justify-center">
             {thicknessData.length === 0 ? (
               <div className="text-xs text-muted-foreground">No quote items yet.</div>
             ) : (
@@ -196,46 +179,95 @@ function ReportsAnalyticsPage() {
                   <Pie
                     data={thicknessData}
                     cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    cy="45%"
+                    innerRadius={55}
+                    outerRadius={85}
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {thicknessData.map((entry, index) => (
+                    {thicknessData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
+                  <RechartsTooltip
+                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value: string) => <span className="text-[11px] text-gray-600 ml-1">{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      {/* ---------- Sync Status Distribution Bar Chart ---------- */}
-      <Card className="border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+      {/* Sync Status Distribution Bar Chart */}
+      <div className="bg-white rounded-xl border border-border shadow-xs overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Layers className="h-4 w-4 text-emerald-500" /> Sheet Sync Status Split
-          </CardTitle>
-          <CardDescription className="text-xs">
+          </h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             Comparison between quotes synced to Google Sheet vs local browser storage
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="h-44 sm:h-60 pt-4">
+          </p>
+        </div>
+        <div className="px-4 py-4 h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={syncStatusData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <RechartsTooltip />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <RechartsTooltip
+                contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+              />
+              <Bar dataKey="count" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── KPI Card ─── */
+function KPICard({
+  label,
+  value,
+  sub,
+  subColor,
+  icon: Icon,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  subColor?: string;
+  icon?: any;
+  iconBg?: string;
+  iconColor?: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-border px-5 py-4 shadow-xs">
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">{label}</p>
+        {Icon && (
+          <div className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}>
+            <Icon className={`h-[18px] w-[18px] ${iconColor || "text-blue-600"}`} />
+          </div>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+      {sub && (
+        <p className={`text-[11px] mt-1 ${subColor || "text-muted-foreground"} flex items-center gap-1`}>
+          {subColor && <ArrowUpRight className="h-3 w-3" />}
+          {sub}
+        </p>
+      )}
     </div>
   );
 }

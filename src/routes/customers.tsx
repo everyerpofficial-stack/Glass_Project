@@ -150,15 +150,12 @@ function CustomersPage() {
   }, [customers, search, cityFilter, statusFilter]);
 
   return (
-    <div className="space-y-5 pb-12">
+    <div className="max-w-[1200px] mx-auto space-y-5 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
       {/* ── Page Title Header ───────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-            Operations / <span className="text-primary">Customers</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Customers</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Customers</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Manage your customer database and client billing history
           </p>
         </div>
@@ -271,10 +268,10 @@ function CustomersPage() {
       </div>
 
       {/* ── Summary Metric Cards (Matching Screenshot 3) ──────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border border-border/60 bg-card p-4 shadow-sm">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <Users className="h-5 w-5" />
             </div>
             <div>
@@ -282,11 +279,11 @@ function CustomersPage() {
               <div className="text-xl font-bold tracking-tight text-foreground">{totalCustomers}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="border border-border/60 bg-card p-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
@@ -294,11 +291,11 @@ function CustomersPage() {
               <div className="text-xl font-bold tracking-tight text-emerald-600">{activeCount || totalCustomers}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="border border-border/60 bg-card p-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -306,11 +303,11 @@ function CustomersPage() {
               <div className="text-xl font-bold tracking-tight text-amber-600">{pendingKycCount}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="border border-border/60 bg-card p-4 shadow-sm">
+        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
@@ -318,11 +315,11 @@ function CustomersPage() {
               <div className="text-xl font-bold tracking-tight text-rose-600">₹ 0</div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* ── Toolbar Row (Search + Filter Dropdowns + Count) ─────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card border border-border/60 rounded-lg p-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-border rounded-xl p-4 shadow-xs">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -364,7 +361,7 @@ function CustomersPage() {
       </div>
 
       {/* ── Customer Data Table (Matching Screenshot 3) ──────────────── */}
-      <div className="bg-card border border-border/60 rounded-lg overflow-hidden shadow-sm">
+      <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
         {filteredCustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">

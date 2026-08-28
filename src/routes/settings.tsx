@@ -76,41 +76,41 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
       {/* ---------- Top Header ---------- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Application Settings</h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Configure company branding, document defaults, Google Sheets sync, and calculation presets
           </p>
         </div>
 
-        <Button onClick={handleSubmit} size="sm" className="shadow-sm">
+        <Button onClick={handleSubmit} size="sm" className="shadow-sm bg-primary text-primary-foreground font-semibold">
           <Save className="h-4 w-4 mr-1.5" /> Save All Settings
         </Button>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="h-auto text-xs flex flex-wrap gap-1 p-1 w-full sm:w-auto sm:flex-nowrap sm:h-10">
-            <TabsTrigger value="company" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
-              <Building className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Company
+          <TabsList className="h-auto text-xs flex flex-wrap gap-1 p-1.5 w-full sm:w-auto sm:flex-nowrap sm:h-10 bg-white border border-border rounded-xl shadow-xs">
+            <TabsTrigger value="company" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+              <Building className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Company
             </TabsTrigger>
-            <TabsTrigger value="presets" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
-              <Calculator className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Calculation
+            <TabsTrigger value="presets" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+              <Calculator className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Calculation
             </TabsTrigger>
-            <TabsTrigger value="bank" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
-              <Landmark className="h-3.5 w-3.5 mr-1 hidden sm:inline" /> Bank & Terms
+            <TabsTrigger value="bank" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+              <Landmark className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Bank & Terms
             </TabsTrigger>
-            <TabsTrigger value="sync" className="flex-1 sm:flex-none px-2 sm:px-4 py-1.5 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 hidden sm:inline text-emerald-500" /> Sheet Sync
+            <TabsTrigger value="sync" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-emerald-500" /> Sheet Sync
             </TabsTrigger>
           </TabsList>
 
           {/* ---------- Tab 1: Company Profile ---------- */}
           <TabsContent value="company">
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
                 <CardTitle className="text-base font-semibold">Company Profile & Branding</CardTitle>
                 <CardDescription className="text-xs">
@@ -240,7 +240,7 @@ function SettingsPage() {
 
           {/* ---------- Tab 2: Presets & Calculation ---------- */}
           <TabsContent value="presets">
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
                 <CardTitle className="text-base font-semibold">Calculation Engine Presets</CardTitle>
                 <CardDescription className="text-xs">
@@ -330,7 +330,7 @@ function SettingsPage() {
 
           {/* ---------- Tab 3: Bank & Terms ---------- */}
           <TabsContent value="bank">
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
                 <CardTitle className="text-base font-semibold">Bank Details & Terms</CardTitle>
                 <CardDescription className="text-xs">
@@ -392,7 +392,7 @@ function SettingsPage() {
 
           {/* ---------- Tab 4: Google Sheets Sync ---------- */}
           <TabsContent value="sync">
-            <Card className="border border-border/60 shadow-sm">
+            <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Google Apps Script Integration
@@ -431,7 +431,7 @@ function SettingsPage() {
         </Tabs>
 
         <div className="flex justify-end pt-4">
-          <Button type="submit" size="sm" className="shadow-md w-full sm:w-auto">
+          <Button type="submit" size="sm" className="shadow-sm bg-primary text-primary-foreground font-semibold w-full sm:w-auto">
             <Save className="h-4 w-4 mr-1.5" /> Save All Settings
           </Button>
         </div>

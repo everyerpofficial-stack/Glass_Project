@@ -80,11 +80,11 @@
 
 /* ── Light mode ──────────────────────────────────────────────────────────── */
 :root {
-  --radius: 0.5rem;  /* Tighter radius — more precise, less playful */
+  --radius: 0.5rem;
 
-  /* Content backgrounds */
-  --background:         oklch(0.984 0.003 280);   /* Warm stone white */
-  --foreground:         oklch(0.145 0.012 265);   /* Near-black, blue-steel undertone */
+  /* Content backgrounds — light gray-blue tint for dashboard feel */
+  --background:         oklch(0.965 0.005 260);   /* Light gray-blue (#f5f6fa) */
+  --foreground:         oklch(0.18 0.015 260);    /* Deep navy text */
   --surface:            oklch(1 0 0);             /* Pure white for cards */
   --card:               oklch(1 0 0);
   --card-foreground:    oklch(0.145 0.012 265);
@@ -123,15 +123,15 @@
   --chart-4: oklch(0.64 0.12 68);
   --chart-5: oklch(0.55 0.14 22);
 
-  /* Sidebar — rich deep charcoal with blue-steel warmth */
-  --sidebar:                  oklch(0.108 0.014 262);
-  --sidebar-foreground:       oklch(0.84 0.010 258);
-  --sidebar-primary:          oklch(0.74 0.10 260);
-  --sidebar-primary-foreground: oklch(0.108 0.014 262);
-  --sidebar-accent:           oklch(0.175 0.018 262);
+  /* Sidebar — dark navy (#1a2332 equivalent) */
+  --sidebar:                  oklch(0.20 0.030 250);    /* Dark navy */
+  --sidebar-foreground:       oklch(0.80 0.010 250);
+  --sidebar-primary:          oklch(0.58 0.18 260);     /* Vivid blue for active */
+  --sidebar-primary-foreground: oklch(0.98 0.005 260);
+  --sidebar-accent:           oklch(0.28 0.035 250);    /* Subtle hover bg */
   --sidebar-accent-foreground:oklch(0.96 0.006 258);
-  --sidebar-border:           oklch(0.22 0.016 262);
-  --sidebar-ring:             oklch(0.60 0.12 260);
+  --sidebar-border:           oklch(0.26 0.025 250);    /* Subtle navy border */
+  --sidebar-ring:             oklch(0.58 0.18 260);
 
   /* Shadows — sharp, purposeful */
   --shadow-xs:    0 1px 2px oklch(0 0 0 / 0.06);
