@@ -124,6 +124,13 @@
     if ((m = t.match(/^(\d+)\/(\d+)$/)))            return frac(0, +m[1], +m[2], t);
     // whole number
     if ((m = t.match(/^(\d+)$/)))                   return ok(+m[1], t);
+
+    // Frequency mode shorthand (e.g. "36 2" -> 36 + 2/freq)
+    var freq = (opts && opts.freq) || s.freq;
+    if (freq && (m = t.match(/^(\d+)[\s-](\d+)$/))) {
+      return frac(+m[1], +m[2], +freq, t);
+    }
+
     // decimal
     if ((m = t.match(/^(\d*)\.(\d+)$/))) {
       var whole = m[1] === '' ? 0 : +m[1], dec = m[2];
@@ -205,8 +212,10 @@
       trace.push({ label: 'L1 (MM)', expr: Lm.input + ' mm', value: out.lMM + ' mm' });
       trace.push({ label: 'L2 (MM)', expr: Wm.input + ' mm', value: out.wMM + ' mm' });
     } else {
-      // Inch input (original)
-      L = parseInch(item.l1, s); W = parseInch(item.l2, s);
+      // Inch input
+      var itemFreq = s.frequencyEnabled ? (parseInt(item.freq, 10) || 8) : null;
+      var inchOpts = itemFreq ? Object.assign({}, s, { freq: itemFreq }) : s;
+      L = parseInch(item.l1, inchOpts); W = parseInch(item.l2, inchOpts);
       out.l1 = L; out.l2 = W;
       out.ok = L.ok && W.ok && qty > 0;
       if (!L.ok) out.errors.push('Length: ' + L.error);

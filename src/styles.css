@@ -297,6 +297,13 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* ── Lighten input placeholders so suggestions are faint and not confused with entered values ── */
+input::placeholder,
+textarea::placeholder {
+  opacity: 0.35 !important;
+  font-weight: 400 !important;
+}
+
 /* ── Mobile: minimum touch target size (44px) ── */
 @media (max-width: 767px) {
   /* Prevent horizontal overflow from any rogue element */

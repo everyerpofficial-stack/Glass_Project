@@ -169,6 +169,7 @@ export function blankItem() {
   return {
     id: uid("it"),
     desc: "",
+    freq: 8,
     l1: "",
     l2: "",
     l1mm: "",
@@ -196,6 +197,7 @@ export function blankInvoice(S: any) {
     orderNo: "",
     projectRemark: "",
     inputUnit: S.inputUnit || "inch",  // 'inch' | 'mm'
+    frequencyEnabled: false,
     productName: "TOUGHENED GLASS",
     jobType: "WITH MATERIAL",
     workOrderNo: "",
@@ -280,6 +282,7 @@ export function engineOpts(S: any, INV: any) {
   o.thicknessMM = INV.glass.thickness;
   o.roundOff = String(INV.ch.roundOff) === "1";
   o.inputUnit = INV.inputUnit || S.inputUnit || "inch";
+  o.frequencyEnabled = o.inputUnit === "mm" ? false : Boolean(INV.frequencyEnabled);
   return G.settings(o);
 }
 

@@ -33,6 +33,9 @@
     });
     check('sooth mode 13.6 = 13.75"', G.parseInch('13.6', { inputMode: 'sooth' }).inches, 13.75, 1e-9);
     check('sooth mode rejects 13.9', G.parseInch('13.9', { inputMode: 'sooth' }).ok, false);
+    check('frequency 16 mode 36 2 = 36.125"', G.parseInch('36 2', { freq: 16 }).inches, 36.125, 1e-9);
+    check('frequency 16 mode 32 2 = 32.125"', G.parseInch('32 2', { freq: 16 }).inches, 32.125, 1e-9);
+    check('frequency 8 mode 36 2 = 36.25"', G.parseInch('36 2', { freq: 8 }).inches, 36.25, 1e-9);
 
     /* --- B. inch -> mm ---------------------------------------------- */
     [['36', 914.4], ['36 3/8', 923.925], ['36 5/8', 930.275],

@@ -38,6 +38,59 @@ import {
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
 import { blankItem, nf, uid } from "@/lib/gq";
+
+const BASE_GLASS_PRODUCTS = [
+  "04 mm Clear Glass",
+  "05 mm Clear Glass",
+  "06 mm Clear - T.G.",
+  "08 mm Clear - T.G.",
+  "10 mm Clear - T.G.",
+  "12 mm Clear - T.G.",
+  "15 mm Clear - T.G.",
+  "19 mm Clear - T.G.",
+  "05 mm Toughened Glass",
+  "06 mm Toughened Glass",
+  "08 mm Toughened Glass",
+  "10 mm Toughened Glass",
+  "12 mm Toughened Glass",
+  "15 mm Toughened Glass",
+  "19 mm Toughened Glass",
+  "05 mm Frosted Glass",
+  "06 mm Frosted - T.G.",
+  "08 mm Frosted - T.G.",
+  "10 mm Frosted - T.G.",
+  "12 mm Frosted - T.G.",
+  "06 mm Tinted - T.G.",
+  "08 mm Tinted - T.G.",
+  "10 mm Tinted - T.G.",
+  "12 mm Tinted - T.G.",
+  "06 mm Reflective Glass",
+  "08 mm Reflective - T.G.",
+  "10 mm Reflective - T.G.",
+  "12 mm Reflective - T.G.",
+  "06 mm Laminated Glass",
+  "08 mm Laminated Glass",
+  "10 mm Laminated Glass",
+  "12 mm Laminated Glass",
+];
+
+function formatProductNameForUnit(name: string, targetUnit: string): string {
+  if (!name) return name;
+  if (targetUnit === "inch") {
+    return name.replace(/\b(\d+)\s*mm\b/gi, "$1 Inch");
+  } else {
+    return name.replace(/\b(\d+)\s*inch\b/gi, "$1 mm");
+  }
+}
+
+function extractThicknessFromProductName(name: string): number | null {
+  if (!name) return null;
+  const match = name.match(/^(\d+)\s*(?:mm|inch)/i);
+  if (match && match[1]) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/booking")({
@@ -227,6 +280,28 @@ function BookingPage() {
   const [savedSearch, setSavedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const inputUnit = inv.inputUnit || "inch";
+  const isFreqOn = inputUnit !== "mm" && Boolean(inv.frequencyEnabled);
+
+  const handleInputUnitChange = (newUnit: string) => {
+    setInv((prev: any) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.inputUnit = newUnit;
+      if (newUnit === "mm") {
+        copy.frequencyEnabled = false;
+      }
+      if (copy.layers && copy.layers.length > 0) {
+        copy.layers.forEach((l: any) => {
+          if (l.productName) {
+            l.productName = formatProductNameForUnit(l.productName, newUnit);
+          }
+          if (l.glassName) {
+            l.glassName = formatProductNameForUnit(l.glassName, newUnit);
+          }
+        });
+      }
+      return copy;
+    });
+  };
 
   const preProformaInvoices = useMemo(
     () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
@@ -888,11 +963,34 @@ function BookingPage() {
                   {/* Size Entry Type */}
                   <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Size:</span>
-                    <Select value={inputUnit} onValueChange={(v) => updateInvField("inputUnit", v)}>
+                    <Select value={inputUnit} onValueChange={(v) => handleInputUnitChange(v)}>
                       <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[60px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="mm">MM</SelectItem>
                         <SelectItem value="inch">Inch</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Frequency Toggle */}
+                  <div
+                    className={`flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs transition-opacity ${
+                      inputUnit === "mm" ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                    title={inputUnit === "mm" ? "Frequency is available for Inch mode only" : "Toggle Frequency column"}
+                  >
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Frequency:</span>
+                    <Select
+                      disabled={inputUnit === "mm"}
+                      value={isFreqOn ? "on" : "off"}
+                      onValueChange={(v) => updateInvField("frequencyEnabled", v === "on")}
+                    >
+                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[55px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">Off</SelectItem>
+                        <SelectItem value="on">On</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -958,14 +1056,26 @@ function BookingPage() {
                           </div>
                           <div>
                             <Input
-                              className="h-7 text-xs w-full"
+                              list={`product-list-${layerIdx}`}
+                              className="h-7 text-xs w-full bg-background"
                               value={layer.productName ?? layer.glassName ?? ""}
                               onChange={(e) => {
-                                updateLayer(layerIdx, "productName", e.target.value);
-                                updateLayer(layerIdx, "glassName", e.target.value);
+                                const val = e.target.value;
+                                updateLayer(layerIdx, "productName", val);
+                                updateLayer(layerIdx, "glassName", val);
+                                const thk = extractThicknessFromProductName(val);
+                                if (thk !== null) {
+                                  updateLayer(layerIdx, "thickness", thk);
+                                }
                               }}
-                              placeholder="Product / Glass Name"
+                              placeholder="Select or type Product / Glass Name"
                             />
+                            <datalist id={`product-list-${layerIdx}`}>
+                              {BASE_GLASS_PRODUCTS.map((baseName, pIdx) => {
+                                const formattedName = formatProductNameForUnit(baseName, inputUnit);
+                                return <option key={pIdx} value={formattedName} />;
+                              })}
+                            </datalist>
                           </div>
                           <div>
                             <Input
@@ -1019,14 +1129,17 @@ function BookingPage() {
                         }
                       >
                         <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                          <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : "1140px" }}>
+                          <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "980px" : isFreqOn ? "1200px" : "1140px" }}>
                             <thead>
                               <tr className="border-b-2 border-green-600/30 bg-green-500/8">
                                 {inputUnit === "mm"
                                   ? ["Sr No", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
                                       <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                                     ))
-                                  : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""].map((h, i) => (
+                                  : (isFreqOn
+                                      ? ["Sr No", "Freq", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""]
+                                      : ["Sr No", "L1 In", "L2 In", "L1 MM", "L2 MM", "Qty", "Area", "Charge Area", "Total Area", "Rate", "Amount", "Hole", "Cut Out", "Remark", ""]
+                                    ).map((h, i) => (
                                       <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-green-800 dark:text-green-400 whitespace-nowrap text-left">{h}</th>
                                     ))
                                 }
@@ -1054,12 +1167,28 @@ function BookingPage() {
                                     {/* Inch columns (only if inputUnit is inch) */}
                                     {inputUnit !== "mm" && (
                                       <>
+                                        {isFreqOn && (
+                                          <td className="py-1.5 px-1">
+                                            <Select
+                                              value={String(item.freq || 8)}
+                                              onValueChange={(v) => updateLayerItem(layerIdx, itemIdx, "freq", Number(v))}
+                                            >
+                                              <SelectTrigger className="h-8 text-xs font-mono text-center w-[58px] px-1 focus:ring-1">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="8">8</SelectItem>
+                                                <SelectItem value="16">16</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </td>
+                                        )}
                                         <td className="py-1.5 px-1">
                                           <Input
                                             className="h-8 text-xs font-mono text-center w-[80px]"
                                             value={item.l1 || ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
-                                            placeholder="36 3/8"
+                                            placeholder={isFreqOn ? "36 2" : "36 3/8"}
                                           />
                                         </td>
                                         <td className="py-1.5 px-1">
@@ -1067,7 +1196,7 @@ function BookingPage() {
                                             className="h-8 text-xs font-mono text-center w-[80px]"
                                             value={item.l2 || ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
-                                            placeholder="13 3/8"
+                                            placeholder={isFreqOn ? "32 2" : "13 3/8"}
                                           />
                                         </td>
                                       </>
