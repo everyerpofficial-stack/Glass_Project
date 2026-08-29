@@ -198,7 +198,7 @@ export function blankInvoice(S: any) {
     projectRemark: "",
     inputUnit: S.inputUnit || "inch",  // 'inch' | 'mm'
     frequencyEnabled: false,
-    productName: "TOUGHENED GLASS",
+    productName: "",
     jobType: "WITH MATERIAL",
     workOrderNo: "",
     freightType: "To be Billed",
@@ -211,7 +211,7 @@ export function blankInvoice(S: any) {
     },
     // Layer system
     layers: [
-      { id: uid("layer"), layerNo: "Item 1", productName: "TOUGHENED GLASS", thickness: 5, glassName: "", rate: "", process: "", status: "" },
+      { id: uid("layer"), layerNo: "Item 1", productName: "", thickness: 5, glassName: "", rate: "", process: "", status: "" },
     ],
     items: [blankItem()],
     ch: {
@@ -306,13 +306,13 @@ export function computeTotals(S: any, INV: any) {
           it.desc ||
           l.glassName ||
           (l.thickness
-            ? `${l.thickness} mm ${l.productName || "TOUGHENED GLASS"}`
+            ? `${l.thickness} mm ${l.productName || "Glass"}`
             : l.productName || INV.glass?.desc);
         return Object.assign({}, it, {
           rate: itemRate,
           desc: itemDesc,
           layerNo: l.layerNo || `Layer - ${idx + 1}`,
-          productName: l.productName || "TOUGHENED GLASS",
+          productName: l.productName || "",
           thickness: l.thickness,
           glassName: l.glassName,
         });
@@ -414,7 +414,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       return lItems.map((it: any) => ({
         ...it,
         layerNo: l.layerNo || `Layer - ${idx + 1}`,
-        productName: l.productName || "TOUGHENED GLASS",
+        productName: l.productName || "",
         thickness: l.thickness,
         glassName: l.glassName,
       }));
@@ -512,12 +512,12 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (INV.layers && INV.layers.length > 0) {
     glassDescText = INV.layers
       .map((l: any) => {
-        const info = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "TOUGHENED GLASS"}` : (l.productName || "TOUGHENED GLASS"));
+        const info = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
         return `${l.layerNo || "Layer"}: ${info}`;
       })
       .join("  |  ");
   } else {
-    glassDescText = INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "TOUGHENED GLASS"}` : (INV.productName || "TOUGHENED GLASS"));
+    glassDescText = INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "Glass"}` : (INV.productName || "Glass"));
   }
 
   return `

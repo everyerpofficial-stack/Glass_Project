@@ -356,7 +356,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         project: order.projectRemark || "",
         glassDesc: order.glass?.desc || "",
         thickness: order.glass?.thickness || "",
-        productName: order.productName || "TOUGHENED GLASS",
+        productName: order.productName || "",
         jobType: order.jobType || "WITH MATERIAL",
         layerInfo: order.layers || [],
         pieces,

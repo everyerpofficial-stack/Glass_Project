@@ -72,6 +72,13 @@ const BASE_GLASS_PRODUCTS = [
   "08 mm Laminated Glass",
   "10 mm Laminated Glass",
   "12 mm Laminated Glass",
+  "Toughened Glass",
+  "Clear Glass",
+  "Frosted Glass",
+  "Tinted Glass",
+  "Reflective Glass",
+  "Laminated Glass",
+  "Mirror Glass",
 ];
 
 function formatProductNameForUnit(name: string, targetUnit: string): string {
@@ -373,7 +380,7 @@ function BookingPage() {
         {
           id: "l1",
           layerNo: "Item 1",
-          productName: inv.productName || "TOUGHENED GLASS",
+          productName: inv.productName || "",
           thickness: inv.glass?.thickness || 5,
           glassName: "",
           rate: "",
@@ -400,7 +407,7 @@ function BookingPage() {
         {
           id: uid("layer"),
           layerNo: "Item 1",
-          productName: copy.productName || "TOUGHENED GLASS",
+          productName: copy.productName || "",
           thickness: copy.glass?.thickness || 5,
           glassName: "",
           rate: "",
@@ -492,7 +499,7 @@ function BookingPage() {
       copy.layers.push({
         id: uid("layer"),
         layerNo: `Item ${num}`,
-        productName: "TOUGHENED GLASS",
+        productName: "",
         thickness: 5,
         glassName: "",
         rate: "",
@@ -1032,8 +1039,17 @@ function BookingPage() {
               <div className="space-y-6">
                 {layers.map((layer: any, layerIdx: number) => {
                   const layerName = layer.layerNo || `Item ${layerIdx + 1}`;
-                  const prodInfo = `${layer.productName || "TOUGHENED GLASS"}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`;
+                  const prodInfo = layer.productName
+                    ? `${layer.productName}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`
+                    : (layer.thickness ? `Glass (${layer.thickness}mm)` : "");
                   const layerItems = layer.items || [blankItem()];
+
+                  const formattedProducts = BASE_GLASS_PRODUCTS.map((baseName) =>
+                    formatProductNameForUnit(baseName, inputUnit)
+                  );
+                  const curVal = layer.productName || layer.glassName || "";
+                  const isPredefined = formattedProducts.includes(curVal);
+                  const isCustomMode = layer.isCustomProduct || (curVal !== "" && !isPredefined);
 
                   return (
                     <div key={layer.id || layerIdx} className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40">
@@ -1055,27 +1071,68 @@ function BookingPage() {
                             />
                           </div>
                           <div>
-                            <Input
-                              list={`product-list-${layerIdx}`}
-                              className="h-7 text-xs w-full bg-background"
-                              value={layer.productName ?? layer.glassName ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                updateLayer(layerIdx, "productName", val);
-                                updateLayer(layerIdx, "glassName", val);
-                                const thk = extractThicknessFromProductName(val);
-                                if (thk !== null) {
-                                  updateLayer(layerIdx, "thickness", thk);
-                                }
-                              }}
-                              placeholder="Select or type Product / Glass Name"
-                            />
-                            <datalist id={`product-list-${layerIdx}`}>
-                              {BASE_GLASS_PRODUCTS.map((baseName, pIdx) => {
-                                const formattedName = formatProductNameForUnit(baseName, inputUnit);
-                                return <option key={pIdx} value={formattedName} />;
-                              })}
-                            </datalist>
+                            {isCustomMode ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  autoFocus
+                                  className="h-7 text-xs w-full bg-background"
+                                  value={layer.productName ?? layer.glassName ?? ""}
+                                  placeholder="Enter custom product name..."
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateLayer(layerIdx, "productName", val);
+                                    updateLayer(layerIdx, "glassName", val);
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                                  title="Select from dropdown list"
+                                  onClick={() => {
+                                    updateLayer(layerIdx, "isCustomProduct", false);
+                                  }}
+                                >
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Select
+                                value={layer.productName || layer.glassName || ""}
+                                onValueChange={(val) => {
+                                  if (val === "__custom__") {
+                                    updateLayer(layerIdx, "isCustomProduct", true);
+                                    updateLayer(layerIdx, "productName", "");
+                                    updateLayer(layerIdx, "glassName", "");
+                                  } else {
+                                    updateLayer(layerIdx, "productName", val);
+                                    updateLayer(layerIdx, "glassName", val);
+                                    const thk = extractThicknessFromProductName(val);
+                                    if (thk !== null) {
+                                      updateLayer(layerIdx, "thickness", thk);
+                                    }
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-full bg-background border-border">
+                                  <SelectValue placeholder="Select Product / Glass Name" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-64">
+                                  {BASE_GLASS_PRODUCTS.map((baseName, pIdx) => {
+                                    const formattedName = formatProductNameForUnit(baseName, inputUnit);
+                                    return (
+                                      <SelectItem key={pIdx} value={formattedName}>
+                                        {formattedName}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                  <SelectItem value="__custom__" className="font-semibold text-primary">
+                                    + Type Custom Product Name...
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </div>
                           <div>
                             <Input
