@@ -1245,7 +1245,7 @@ function BookingPage() {
                           <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "1200px" : isFreqOn ? "1380px" : "1320px" }}>
                             <thead className="bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-300">
                               <tr className="border-b border-emerald-600/30">
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle w-10">
                                   SR NO
                                 </th>
 
@@ -1253,34 +1253,34 @@ function BookingPage() {
                                   ACTUAL SIZE (ENTER)
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
                                   PCS
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[65px]">
                                   <div>AREA</div>
                                   <div className="text-[9px] font-normal lowercase tracking-normal">(sq mtr.)</div>
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
                                   HOLE
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]">
                                   CUT OUT
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]">
                                   <div>BIG</div>
                                   <div>HOLE</div>
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[70px]">
                                   <div>BIG</div>
                                   <div>CUT OUT</div>
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
                                   CSK
                                 </th>
 
@@ -1288,19 +1288,19 @@ function BookingPage() {
                                   CHARGEABLE SIZE (MM)
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[70px]">
                                   RATE
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-right border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-right border-r border-emerald-600/20 align-middle min-w-[75px]">
                                   AMOUNT
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-left border-r border-emerald-600/20 align-middle">
+                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-left border-r border-emerald-600/20 align-middle min-w-[100px]">
                                   REMARK
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center align-middle">
+                                <th rowSpan={2} className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center align-middle w-[52px]">
                                   
                                 </th>
                               </tr>
@@ -1309,11 +1309,11 @@ function BookingPage() {
                                 {/* Under ACTUAL SIZE (ENTER) */}
                                 {inputUnit === "mm" ? (
                                   <>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
                                       <div>HEIGHT</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                     </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
                                       <div>WIDTH</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                     </th>
@@ -1321,23 +1321,23 @@ function BookingPage() {
                                 ) : (
                                   <>
                                     {isFreqOn && (
-                                      <th className="py-1.5 px-1 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                      <th className="py-1.5 px-1 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
                                         FREQ
                                       </th>
                                     )}
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
                                       <div>HEIGHT</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(IN)</div>
                                     </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
                                       <div>WIDTH</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(IN)</div>
                                     </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
                                       <div>HEIGHT</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                     </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
                                       <div>WIDTH</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                     </th>
@@ -1347,22 +1347,22 @@ function BookingPage() {
                                 {/* Under CHARGEABLE SIZE (MM) */}
                                 {extraAreaLabel && (
                                   <>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                       <div>HEIGHT</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                       <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
                                     </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                       <div>WIDTH</div>
                                       <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
                                       <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
                                     </th>
                                   </>
                                 )}
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
                                   PCS
                                 </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                   <div>AREA</div>
                                   <div className="text-[8px] font-normal lowercase tracking-normal">(sq mtr.)</div>
                                 </th>
@@ -1395,7 +1395,7 @@ function BookingPage() {
                                               value={String(item.freq || 8)}
                                               onValueChange={(v) => updateLayerItem(layerIdx, itemIdx, "freq", Number(v))}
                                             >
-                                              <SelectTrigger className="h-8 text-xs font-mono text-center w-[52px] px-1 focus:ring-1">
+                                              <SelectTrigger className="h-8 text-xs font-mono text-center w-full px-1 focus:ring-1">
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
@@ -1407,7 +1407,7 @@ function BookingPage() {
                                         )}
                                         <td className="py-1.5 px-1">
                                           <Input
-                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            className="h-8 text-xs font-mono text-center w-full"
                                             value={item.l1 || ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
                                             placeholder={isFreqOn ? "36 2" : "36 3/8"}
@@ -1415,16 +1415,16 @@ function BookingPage() {
                                         </td>
                                         <td className="py-1.5 px-1">
                                           <Input
-                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            className="h-8 text-xs font-mono text-center w-full"
                                             value={item.l2 || ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
                                             placeholder={isFreqOn ? "32 2" : "13 3/8"}
                                           />
                                         </td>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap w-[55px]">
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[55px]">
                                           {line?.ok ? line.lMM : "—"}
                                         </td>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap w-[55px]">
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[55px]">
                                           {line?.ok ? line.wMM : "—"}
                                         </td>
                                       </>
@@ -1435,7 +1435,7 @@ function BookingPage() {
                                         <td className="py-1.5 px-1">
                                           <Input
                                             type="number"
-                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            className="h-8 text-xs font-mono text-center w-full"
                                             value={item.l1mm ?? ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1mm", e.target.value)}
                                             placeholder="60.3"
@@ -1445,7 +1445,7 @@ function BookingPage() {
                                         <td className="py-1.5 px-1">
                                           <Input
                                             type="number"
-                                            className="h-8 text-xs font-mono text-center w-[75px]"
+                                            className="h-8 text-xs font-mono text-center w-full"
                                             value={item.l2mm ?? ""}
                                             onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2mm", e.target.value)}
                                             placeholder="51.2"
@@ -1459,7 +1459,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[46px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.qty || ""}
                                         min={1}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1467,7 +1467,7 @@ function BookingPage() {
                                     </td>
 
                                     {/* Actual Area */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground w-[65px]">
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[65px]">
                                       {areaText}
                                     </td>
 
@@ -1475,7 +1475,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[42px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.holes || ""}
                                         min={0}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1486,7 +1486,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[42px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.cutouts || ""}
                                         min={0}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1497,7 +1497,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[42px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.bigHoles || ""}
                                         min={0}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "bigHoles", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1508,7 +1508,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[42px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.bigCutouts || ""}
                                         min={0}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "bigCutouts", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1519,7 +1519,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[42px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.csks || item.countersinks || ""}
                                         min={0}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "csks", e.target.value === "" ? "" : Number(e.target.value))}
@@ -1530,24 +1530,24 @@ function BookingPage() {
                                     {extraAreaLabel && (
                                       <>
                                         {/* Height (MM) */}
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
                                           {line?.ok ? line.lChgMM : "—"}
                                         </td>
 
                                         {/* Width (MM) */}
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
                                           {line?.ok ? line.wChgMM : "—"}
                                         </td>
                                       </>
                                     )}
 
                                     {/* PCS */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground w-[40px]">
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[45px]">
                                       {line?.ok ? item.qty : "—"}
                                     </td>
 
                                     {/* Chargeable Area (SQ MTR.) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-emerald-700 dark:text-emerald-400 font-medium w-[65px]">
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-emerald-700 dark:text-emerald-400 font-medium min-w-[65px]">
                                       {chargeAreaText}
                                     </td>
 
@@ -1555,7 +1555,7 @@ function BookingPage() {
                                     <td className="py-1.5 px-1">
                                       <Input
                                         type="number"
-                                        className="h-8 text-xs font-mono text-center w-[60px]"
+                                        className="h-8 text-xs font-mono text-center w-full"
                                         value={item.rate ?? ""}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
                                         placeholder={String(layer.rate || inv.glass?.defaultRate || "")}
@@ -1563,14 +1563,14 @@ function BookingPage() {
                                     </td>
 
                                     {/* Amount */}
-                                    <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap w-[80px]">
+                                    <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap min-w-[75px]">
                                       {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
                                     </td>
 
                                     {/* Remark */}
                                     <td className="py-1.5 px-1">
                                       <Input
-                                        className="h-8 text-xs w-[90px]"
+                                        className="h-8 text-xs w-full"
                                         value={item.remark || ""}
                                         onChange={(e) => updateLayerItem(layerIdx, itemIdx, "remark", e.target.value)}
                                         placeholder="Remark"
