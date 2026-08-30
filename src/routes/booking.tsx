@@ -1284,7 +1284,7 @@ function BookingPage() {
                                   CSK
                                 </th>
 
-                                <th colSpan={4} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
+                                <th colSpan={extraAreaLabel ? 4 : 2} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
                                   CHARGEABLE SIZE (MM)
                                 </th>
 
