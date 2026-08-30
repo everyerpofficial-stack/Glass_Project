@@ -39,7 +39,15 @@ type Ctx = {
   syncAll: () => void;
   /* ── Workflow helpers ── */
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
-  confirmOrder: (bookingId: string) => void;
+  confirmOrder: (
+    bookingId: string,
+    paymentDetails?: {
+      paidAmount?: number;
+      paymentType?: string;
+      refNo?: string;
+      notes?: string;
+    }
+  ) => void;
   generateWorkOrder: (orderId: string) => any;
   getBookingsByStatus: (status: WorkflowStatus) => any[];
   saveWorkOrder: (wo: any) => void;
@@ -309,16 +317,84 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const confirmOrder = useCallback((bookingId: string) => {
-    setInvoices((prev) => {
-      const next = prev.map((x) =>
-        x.id === bookingId ? { ...x, status: "order_confirmed" as WorkflowStatus } : x,
-      );
-      LS.set("invoices", next);
+  const savePayment = useCallback((pay: any) => {
+    setPayments((prev) => {
+      const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
+      const existing = prev.findIndex((x) => x.id === rec.id);
+      const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
+      LS.set("payments", next);
       return next;
     });
-    toast.success("Order confirmed successfully");
+    toast.success("Payment recorded successfully");
   }, []);
+
+  const confirmOrder = useCallback(
+    (
+      bookingId: string,
+      paymentDetails?: {
+        paidAmount?: number;
+        paymentType?: string;
+        refNo?: string;
+        notes?: string;
+      }
+    ) => {
+      let targetRecord: any = null;
+
+      setInvoices((prev) => {
+        const next = prev.map((x) => {
+          if (x.id === bookingId) {
+            const grandTotal = Number(x.totals?.grandTotal) || 0;
+            const paidAmount = Number(paymentDetails?.paidAmount ?? x.paidAmount ?? 0);
+            const remainingBalance = Math.max(0, grandTotal - paidAmount);
+            let paymentStatus = "Credit";
+            if (paidAmount >= grandTotal && grandTotal > 0) {
+              paymentStatus = "Paid";
+            } else if (paidAmount > 0) {
+              paymentStatus = "Partially Paid";
+            }
+            const paymentType = paymentDetails?.paymentType || x.delivery?.paymentType || "Credit";
+
+            const updatedDelivery = {
+              ...(x.delivery || {}),
+              paymentType,
+              paymentTerm: paymentType,
+            };
+
+            const updated = {
+              ...x,
+              status: "order_confirmed" as WorkflowStatus,
+              delivery: updatedDelivery,
+              paidAmount,
+              remainingBalance,
+              paymentStatus,
+            };
+            targetRecord = updated;
+            return updated;
+          }
+          return x;
+        });
+        LS.set("invoices", next);
+        return next;
+      });
+
+      if (paymentDetails && Number(paymentDetails.paidAmount) > 0) {
+        savePayment({
+          id: uid("pay"),
+          custName: targetRecord?.cust?.name || "Customer",
+          invoiceNo: targetRecord?.no || bookingId,
+          date: new Date().toISOString().slice(0, 10),
+          amount: Number(paymentDetails.paidAmount),
+          mode: paymentDetails.paymentType || "Credit",
+          refNo: paymentDetails.refNo || "",
+          notes: paymentDetails.notes || "Order Confirmation Payment",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      toast.success("Order confirmed & payment details saved!");
+    },
+    [savePayment]
+  );
 
   const generateWorkOrder = useCallback(
     (orderId: string) => {
@@ -414,16 +490,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [invoices],
   );
 
-  const savePayment = useCallback((pay: any) => {
-    setPayments((prev) => {
-      const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
-      const existing = prev.findIndex((x) => x.id === rec.id);
-      const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
-      LS.set("payments", next);
-      return next;
-    });
-    toast.success("Payment recorded successfully");
-  }, []);
+
 
   const deletePayment = useCallback((id: string) => {
     setPayments((prev) => {

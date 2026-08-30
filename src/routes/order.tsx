@@ -198,6 +198,291 @@ function PreProformaSelector({
   );
 }
 
+/* ─── Confirm Payment & Order Modal ────────────────────────────────────── */
+function ConfirmPaymentModal({
+  open,
+  invoice,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  invoice: any;
+  onClose: () => void;
+  onConfirm: (paymentDetails: {
+    paidAmount: number;
+    paymentType: string;
+    refNo: string;
+    notes: string;
+  }) => void;
+}) {
+  if (!open || !invoice) return null;
+
+  const grandTotal = Number(invoice.totals?.grandTotal) || 0;
+  const [paidAmountStr, setPaidAmountStr] = useState<string>(
+    invoice.paidAmount !== undefined && invoice.paidAmount !== null
+      ? String(invoice.paidAmount)
+      : "0"
+  );
+  const [paymentType, setPaymentType] = useState<string>(
+    invoice.delivery?.paymentType || "Credit"
+  );
+  const [refNo, setRefNo] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+
+  const numericPaid = Number(paidAmountStr) || 0;
+  const remainingBalance = Math.max(0, grandTotal - numericPaid);
+
+  const getStatusBadge = () => {
+    if (numericPaid >= grandTotal && grandTotal > 0) {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+          <CheckCircle2 className="h-3.5 w-3.5" /> PAID IN FULL
+        </span>
+      );
+    } else if (numericPaid > 0) {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
+          <Clock className="h-3.5 w-3.5" /> PARTIALLY PAID
+        </span>
+      );
+    } else {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+          <Clock className="h-3.5 w-3.5" /> CREDIT / UNPAID
+        </span>
+      );
+    }
+  };
+
+  const handleApplyPreset = (type: "zero" | "half" | "full") => {
+    if (type === "zero") {
+      setPaidAmountStr("0");
+      setPaymentType("Credit");
+    } else if (type === "half") {
+      setPaidAmountStr(String(Math.round(grandTotal / 2)));
+      if (paymentType === "Credit") setPaymentType("Bank Transfer");
+    } else if (type === "full") {
+      setPaidAmountStr(String(grandTotal));
+      if (paymentType === "Credit") setPaymentType("Bank Transfer");
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConfirm({
+      paidAmount: numericPaid,
+      paymentType,
+      refNo,
+      notes,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in-50">
+      <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full overflow-hidden my-auto">
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-4 text-white flex items-center justify-between">
+          <div>
+            <div className="text-[10px] uppercase font-bold tracking-widest text-emerald-100 flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Order Confirmation
+            </div>
+            <h3 className="text-base font-bold text-white mt-0.5">
+              Record Payment & Confirm Order
+            </h3>
+            <div className="text-xs text-emerald-100/90 font-mono mt-0.5">
+              PI No: <span className="font-bold underline">{invoice.no || invoice.orderNo}</span> · {invoice.cust?.name || "Customer"}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-emerald-100 hover:text-white bg-emerald-700/50 hover:bg-emerald-700 rounded-full h-7 w-7 flex items-center justify-center transition-colors text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 text-xs">
+          {/* Main Calculation Summary Card */}
+          <div className="bg-muted/40 border border-border rounded-lg p-3.5 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-border/50">
+              <span className="text-muted-foreground font-semibold uppercase text-[10px] tracking-wider">
+                Payment Status
+              </span>
+              {getStatusBadge()}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-background border border-border/80 rounded-md p-2">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase block">
+                  Total Amount
+                </span>
+                <span className="font-mono text-sm font-bold text-foreground block mt-0.5">
+                  ₹ {nf(grandTotal)}
+                </span>
+              </div>
+
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-md p-2">
+                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">
+                  Amount Paid
+                </span>
+                <span className="font-mono text-sm font-bold text-emerald-700 dark:text-emerald-300 block mt-0.5">
+                  ₹ {nf(numericPaid)}
+                </span>
+              </div>
+
+              <div
+                className={`border rounded-md p-2 ${
+                  remainingBalance > 0
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                <span className="text-[9px] font-bold uppercase block">
+                  Remaining
+                </span>
+                <span className="font-mono text-sm font-bold block mt-0.5">
+                  ₹ {nf(remainingBalance)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Payment Presets */}
+          <div>
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <span>Quick Amount Presets</span>
+              <span className="text-muted-foreground font-mono">Total: ₹ {nf(grandTotal)}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("zero")}
+                className={`py-1.5 px-2 rounded-md border text-[11px] font-medium transition-colors ${
+                  numericPaid === 0
+                    ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
+                    : "bg-background border-border hover:bg-muted text-foreground"
+                }`}
+              >
+                Full Credit (₹0)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("half")}
+                className={`py-1.5 px-2 rounded-md border text-[11px] font-medium transition-colors ${
+                  numericPaid === Math.round(grandTotal / 2) && numericPaid > 0
+                    ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
+                    : "bg-background border-border hover:bg-muted text-foreground"
+                }`}
+              >
+                50% (₹{nf(Math.round(grandTotal / 2))})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyPreset("full")}
+                className={`py-1.5 px-2 rounded-md border text-[11px] font-medium transition-colors ${
+                  numericPaid === grandTotal && grandTotal > 0
+                    ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
+                    : "bg-background border-border hover:bg-muted text-foreground"
+                }`}
+              >
+                100% (₹{nf(grandTotal)})
+              </button>
+            </div>
+          </div>
+
+          {/* Amount Paid Input & Payment Type */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Enter Paid Amount (₹)
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-2.5 text-muted-foreground font-bold text-xs">₹</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="pl-7 h-9 text-xs font-mono font-bold"
+                  placeholder="0.00"
+                  value={paidAmountStr}
+                  onChange={(e) => setPaidAmountStr(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Payment Type / Mode
+              </label>
+              <Select value={paymentType} onValueChange={setPaymentType}>
+                <SelectTrigger className="h-9 text-xs font-semibold">
+                  <SelectValue placeholder="Select Payment Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Credit">Credit / Pay Later</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer / NEFT</SelectItem>
+                  <SelectItem value="UPI">UPI / GPay / PhonePe</SelectItem>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Reference & Notes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Reference / Txn No (Optional)
+              </label>
+              <Input
+                className="h-8 text-xs font-mono"
+                placeholder="e.g. HDFC-98421"
+                value={refNo}
+                onChange={(e) => setRefNo(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Payment Note (Optional)
+              </label>
+              <Input
+                className="h-8 text-xs"
+                placeholder="e.g. Advance paid"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 text-xs"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 shadow-md"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Confirm Order & Move to Workflow
+              <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
   const navigate = useNavigate();
@@ -223,6 +508,8 @@ function OrderPage() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [savedSearch, setSavedSearch] = useState("");
   const [showForm, setShowForm] = useState(searchParams?.view === "form");
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [targetConfirmInvoice, setTargetConfirmInvoice] = useState<any>(null);
 
   useEffect(() => {
     if (searchParams?.view === "form") {
@@ -326,19 +613,39 @@ function OrderPage() {
     toast.success(`✨ Auto-filled data from Pre Proforma ${booking.no} into Proforma Invoice`);
   };
 
-  const handleConfirmOrder = () => {
-    if (!inv.id) {
+  const handleOpenConfirmModal = (targetRecord?: any) => {
+    const target = targetRecord || inv;
+    if (!target || !target.id) {
       toast.error("Save the Proforma Invoice first");
       return;
     }
-    if (inv.status === "work_order_generated") {
+    if (target.status === "work_order_generated") {
       toast.warning("This Proforma Invoice has already been sent to Work Order workflow and is locked from editing.");
       return;
     }
-    saveInvoice();
-    confirmOrder(inv.id);
-    toast.success("Proforma Invoice generated & confirmed! Moved to Work Order & Stickers.");
+    if (target === inv && !inv._saved) {
+      saveInvoice();
+    }
+    setTargetConfirmInvoice(target);
+    setConfirmModalOpen(true);
+  };
+
+  const handleConfirmPaymentAndMove = (paymentDetails: {
+    paidAmount: number;
+    paymentType: string;
+    refNo: string;
+    notes: string;
+  }) => {
+    if (!targetConfirmInvoice) return;
+    confirmOrder(targetConfirmInvoice.id, paymentDetails);
+    setConfirmModalOpen(false);
+    setTargetConfirmInvoice(null);
+    toast.success(`Order ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} confirmed & sent to workflow!`);
     navigate({ to: "/work-order" });
+  };
+
+  const handleConfirmOrder = () => {
+    handleOpenConfirmModal(inv);
   };
 
   const isWorkflowLocked = inv.status === "work_order_generated";
@@ -871,22 +1178,12 @@ function OrderPage() {
                   </Select>
                 </div>
                 <div>
-                  <FieldLabel>Payment Type (Credit / Paid)</FieldLabel>
-                  <Select value={inv.delivery?.paymentType || inv.delivery?.paymentTerm || "Credit"} onValueChange={(v) => { updateInvField("delivery.paymentType", v); updateInvField("delivery.paymentTerm", v); }}>
-                    <SelectTrigger className="h-8 text-xs font-bold"><SelectValue placeholder="Select Payment Type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Credit" className="font-semibold text-amber-600 dark:text-amber-400">Credit</SelectItem>
-                      <SelectItem value="Paid" className="font-semibold text-emerald-600 dark:text-emerald-400">Paid</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FieldLabel>Validity of PI</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.delivery?.validityOfPI || ""} onChange={(e) => updateInvField("delivery.validityOfPI", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Project Remark</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.projectRemark || ""} onChange={(e) => updateInvField("projectRemark", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Validity of PI</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.validityOfPI || ""} onChange={(e) => updateInvField("delivery.validityOfPI", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Unloading by</FieldLabel>
@@ -900,7 +1197,7 @@ function OrderPage() {
                   <FieldLabel>Delivery Period</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.delivery?.deliveryPeriod || ""} onChange={(e) => updateInvField("delivery.deliveryPeriod", e.target.value)} />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <FieldLabel>Freight Remark</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.delivery?.freightRemark || ""} onChange={(e) => updateInvField("delivery.freightRemark", e.target.value)} />
                 </div>
@@ -908,7 +1205,7 @@ function OrderPage() {
             </Section>
 
             {/* 5. Summary Fields */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
               <div>
                 <FieldLabel>Qty</FieldLabel>
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
@@ -944,10 +1241,6 @@ function OrderPage() {
                 <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
                   {totals.sqft ?? "0.000"}
                 </div>
-              </div>
-              <div>
-                <FieldLabel>PI Advance</FieldLabel>
-                <Input type="number" className="h-8 text-xs font-mono" value={inv.delivery?.piAdvance || ""} onChange={(e) => updateInvField("delivery.piAdvance", e.target.value)} />
               </div>
             </div>
 
@@ -1085,6 +1378,13 @@ function OrderPage() {
         </div>
       </div>
       )}
+      {/* ── CONFIRM PAYMENT MODAL ───────────────────────── */}
+      <ConfirmPaymentModal
+        open={confirmModalOpen}
+        invoice={targetConfirmInvoice}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={handleConfirmPaymentAndMove}
+      />
     </div>
   );
 }
