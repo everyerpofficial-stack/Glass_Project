@@ -11,7 +11,6 @@ import {
   Trash2,
   Building,
   UserPlus,
-  PlusCircle,
   Download,
   Upload,
   CheckCircle2,
@@ -20,18 +19,24 @@ import {
   Eye,
   ShieldCheck,
   UserCheck,
+  CreditCard,
+  Receipt,
+  Calendar,
+  IndianRupee,
+  ArrowRight,
+  Printer,
+  PlusCircle,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
-import { blankInvoice } from "@/lib/gq";
+import { blankInvoice, nf, today } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customers")({
@@ -59,12 +64,29 @@ const AVATAR_COLORS = [
 
 function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, invoices, saveCustomer, deleteCustomer, setInv, settings } = useGQ();
+  const { customers, invoices, payments, saveCustomer, deleteCustomer, savePayment, deletePayment, setInv, settings } = useGQ();
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  /* Edit / Add Modal state */
   const [openModal, setOpenModal] = useState(false);
   const [editCust, setEditCust] = useState<any>(null);
+
+  /* Customer Details Popup Modal state */
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [viewCust, setViewCust] = useState<any>(null);
+
+  /* Add Payment Form state inside Customer Details Popup */
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [payFormData, setPayFormData] = useState({
+    date: today(),
+    invoiceNo: "",
+    mode: "UPI",
+    amount: "",
+    refNo: "",
+    notes: "",
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -82,7 +104,8 @@ function CustomersPage() {
     setOpenModal(true);
   };
 
-  const handleOpenEdit = (c: any) => {
+  const handleOpenEdit = (c: any, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditCust(c);
     setFormData({
       name: c.name || "",
@@ -94,6 +117,13 @@ function CustomersPage() {
       ship: c.ship || "",
     });
     setOpenModal(true);
+  };
+
+  const handleOpenDetails = (c: any, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setViewCust(c);
+    setShowAddPayment(false);
+    setDetailModalOpen(true);
   };
 
   const handleSubmit = () => {
@@ -108,12 +138,66 @@ function CustomersPage() {
   };
 
   const createQuoteForCust = (c: any) => {
-    setInv((prev) => ({
+    setInv((prev: any) => ({
       ...blankInvoice(settings),
       cust: { ...c },
     }));
     toast.success(`Started Pre Proforma for ${c.name}`);
     navigate({ to: "/booking" });
+  };
+
+  /* Filter customer's invoices and payments when detail popup is open */
+  const customerInvoices = useMemo(() => {
+    if (!viewCust) return [];
+    return invoices.filter(
+      (inv) => String(inv.cust?.name || "").toLowerCase() === String(viewCust.name || "").toLowerCase()
+    );
+  }, [invoices, viewCust]);
+
+  const customerPayments = useMemo(() => {
+    if (!viewCust) return [];
+    return payments.filter(
+      (p) => String(p.custName || "").toLowerCase() === String(viewCust.name || "").toLowerCase()
+    );
+  }, [payments, viewCust]);
+
+  const totalInvoicedForViewCust = useMemo(() => {
+    return customerInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0);
+  }, [customerInvoices]);
+
+  const totalPaidForViewCust = useMemo(() => {
+    return customerPayments.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  }, [customerPayments]);
+
+  const dueBalanceForViewCust = totalInvoicedForViewCust - totalPaidForViewCust;
+
+  const handleAddPaymentSubmit = () => {
+    if (!payFormData.amount || Number(payFormData.amount) <= 0) {
+      toast.error("Enter a valid payment amount");
+      return;
+    }
+    if (!viewCust) return;
+
+    savePayment({
+      custName: viewCust.name,
+      custId: viewCust.id,
+      invoiceNo: payFormData.invoiceNo || customerInvoices[0]?.no || "",
+      date: payFormData.date,
+      amount: Number(payFormData.amount),
+      mode: payFormData.mode,
+      refNo: payFormData.refNo,
+      notes: payFormData.notes,
+    });
+
+    setPayFormData({
+      date: today(),
+      invoiceNo: "",
+      mode: "UPI",
+      amount: "",
+      refNo: "",
+      notes: "",
+    });
+    setShowAddPayment(false);
   };
 
   /* Metrics counts */
@@ -156,7 +240,7 @@ function CustomersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Customers</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage your customer database and client billing history
+            Manage customer database, invoice history, and payment records
           </p>
         </div>
 
@@ -168,6 +252,7 @@ function CustomersPage() {
             <Upload className="h-3.5 w-3.5" /> Import
           </Button>
 
+          {/* Add / Edit Customer Modal */}
           <Dialog open={openModal} onOpenChange={setOpenModal}>
             <DialogTrigger asChild>
               <Button size="sm" onClick={handleOpenAdd} className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-sm">
@@ -267,7 +352,7 @@ function CustomersPage() {
         </div>
       </div>
 
-      {/* ── Summary Metric Cards (Matching Screenshot 3) ──────────────── */}
+      {/* ── Summary Metric Cards ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
@@ -311,8 +396,8 @@ function CustomersPage() {
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Due Balance</div>
-              <div className="text-xl font-bold tracking-tight text-rose-600">₹ 0</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Recorded Payments</div>
+              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">₹ {nf(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0))}</div>
             </div>
           </div>
         </div>
@@ -360,7 +445,7 @@ function CustomersPage() {
         </div>
       </div>
 
-      {/* ── Customer Data Table (Matching Screenshot 3) ──────────────── */}
+      {/* ── Customer Data Table ────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
         {filteredCustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -384,7 +469,7 @@ function CustomersPage() {
                   <th className="py-3 px-4">Contact</th>
                   <th className="py-3 px-4">City</th>
                   <th className="py-3 px-4 text-center">Invoices</th>
-                  <th className="py-3 px-4 text-right">Due Balance</th>
+                  <th className="py-3 px-4 text-right">Payments Received</th>
                   <th className="py-3 px-4 text-center">KYC / GST</th>
                   <th className="py-3 px-4 text-center">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
@@ -395,11 +480,20 @@ function CustomersPage() {
                   const customerQuotes = invoices.filter(
                     (inv) => String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase()
                   );
+                  const custPays = payments.filter(
+                    (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase()
+                  );
+                  const totalPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
                   const colorClass = AVATAR_COLORS[i % AVATAR_COLORS.length];
                   const code = `CUS-${String(i + 230).padStart(4, "0")}`;
 
                   return (
-                    <tr key={c.id || i} className="hover:bg-muted/15 transition-colors">
+                    <tr
+                      key={c.id || i}
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={(e) => handleOpenDetails(c, e)}
+                    >
                       {/* Customer Info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
@@ -407,7 +501,9 @@ function CustomersPage() {
                             {getInitials(c.name)}
                           </div>
                           <div>
-                            <div className="font-semibold text-foreground leading-tight">{c.name}</div>
+                            <div className="font-semibold text-foreground leading-tight hover:underline text-primary">
+                              {c.name}
+                            </div>
                             <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{code}</div>
                           </div>
                         </div>
@@ -444,15 +540,16 @@ function CustomersPage() {
 
                       {/* Invoices Count */}
                       <td className="py-3 px-4 text-center">
-                        <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[11px] font-semibold">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[11px] font-semibold inline-flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
                           {customerQuotes.length} active
                         </span>
                       </td>
 
-                      {/* Due Balance */}
+                      {/* Payments Received */}
                       <td className="py-3 px-4 text-right font-mono font-semibold">
-                        <span className="text-emerald-600 font-bold">₹ 0</span>
-                        <div className="text-[10px] text-emerald-600 font-normal">Paid</div>
+                        <span className="text-emerald-600 font-bold">₹ {nf(totalPaid)}</span>
+                        <div className="text-[10px] text-muted-foreground font-normal">{custPays.length} payments</div>
                       </td>
 
                       {/* KYC / GST Status */}
@@ -482,23 +579,23 @@ function CustomersPage() {
                         </span>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions (Removed confusing + button as requested) */}
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-primary"
-                            onClick={() => createQuoteForCust(c)}
-                            title="New Pre Proforma"
+                            onClick={(e) => handleOpenDetails(c, e)}
+                            title="View Details, Invoices & Payment History"
                           >
-                            <PlusCircle className="h-3.5 w-3.5" />
+                            <Eye className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            onClick={() => handleOpenEdit(c)}
+                            onClick={(e) => handleOpenEdit(c, e)}
                             title="Edit Customer"
                           >
                             <Edit3 className="h-3.5 w-3.5" />
@@ -507,7 +604,8 @@ function CustomersPage() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               deleteCustomer(c.id);
                               toast.success("Customer deleted");
                             }}
@@ -525,6 +623,345 @@ function CustomersPage() {
           </div>
         )}
       </div>
+
+      {/* ── CUSTOMER DETAILS & PAYMENT HISTORY POPUP MODAL ─────────────── */}
+      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {viewCust && (
+            <div className="space-y-4">
+              {/* Header */}
+              <DialogHeader className="border-b border-border pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                    {getInitials(viewCust.name)}
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-bold text-foreground leading-tight flex items-center gap-2">
+                      {viewCust.name}
+                      <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        CUS-{viewCust.id?.slice(-4) || "0230"}
+                      </span>
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3 flex-wrap">
+                      {viewCust.phone && (
+                        <span className="flex items-center gap-1 font-mono">
+                          <Phone className="h-3 w-3" /> {viewCust.phone}
+                        </span>
+                      )}
+                      {viewCust.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" /> {viewCust.email}
+                        </span>
+                      )}
+                      {viewCust.city && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {viewCust.city}
+                        </span>
+                      )}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Tabs for Details, Invoice History, Payment History */}
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid grid-cols-3 w-full h-9 bg-muted/60 p-1">
+                  <TabsTrigger value="details" className="text-xs gap-1.5">
+                    <UserCheck className="h-3.5 w-3.5" /> Customer Details
+                  </TabsTrigger>
+                  <TabsTrigger value="invoices" className="text-xs gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Invoices ({customerInvoices.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="payments" className="text-xs gap-1.5">
+                    <CreditCard className="h-3.5 w-3.5" /> Payment History ({customerPayments.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* ── TAB 1: CUSTOMER DETAILS ────────────────────────────── */}
+                <TabsContent value="details" className="space-y-4 pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="bg-muted/20 border border-border rounded-lg p-3 space-y-2">
+                      <div className="font-semibold text-foreground text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Building className="h-3.5 w-3.5" /> Contact Information
+                      </div>
+                      <div className="space-y-1">
+                        <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{viewCust.name}</span></div>
+                        <div><span className="text-muted-foreground">Phone:</span> <span className="font-mono">{viewCust.phone || "N/A"}</span></div>
+                        <div><span className="text-muted-foreground">Email:</span> {viewCust.email || "N/A"}</div>
+                        <div><span className="text-muted-foreground">GSTIN:</span> <span className="font-mono">{viewCust.gstin || "N/A"}</span></div>
+                        <div><span className="text-muted-foreground">City:</span> {viewCust.city || "Jaipur"}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/20 border border-border rounded-lg p-3 space-y-2">
+                      <div className="font-semibold text-foreground text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" /> Address Details
+                      </div>
+                      <div className="space-y-1">
+                        <div>
+                          <span className="text-muted-foreground font-semibold">Billing Address:</span>
+                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">{viewCust.addr || "No billing address stored."}</p>
+                        </div>
+                        <div className="pt-1">
+                          <span className="text-muted-foreground font-semibold">Dispatch / Delivery Address:</span>
+                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">{viewCust.ship || "Same as billing address."}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financial Summary */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+                      <div className="text-[10px] font-bold uppercase text-blue-600">Total Billed</div>
+                      <div className="text-base font-bold font-mono text-blue-700 mt-0.5">₹ {nf(totalInvoicedForViewCust)}</div>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
+                      <div className="text-[10px] font-bold uppercase text-emerald-600">Total Paid</div>
+                      <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">₹ {nf(totalPaidForViewCust)}</div>
+                    </div>
+                    <div className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-rose-500/10 border-rose-500/20 text-rose-700" : "bg-muted/30 border-border text-foreground"}`}>
+                      <div className="text-[10px] font-bold uppercase text-muted-foreground">Due Balance</div>
+                      <div className="text-base font-bold font-mono mt-0.5">₹ {nf(Math.max(0, dueBalanceForViewCust))}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" size="sm" onClick={() => handleOpenEdit(viewCust)}>
+                      <Edit3 className="h-3.5 w-3.5 mr-1" /> Edit Customer Info
+                    </Button>
+                    <Button size="sm" onClick={() => createQuoteForCust(viewCust)}>
+                      <PlusCircle className="h-3.5 w-3.5 mr-1" /> Create Pre Proforma
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                {/* ── TAB 2: INVOICES & QUOTES ───────────────────────────── */}
+                <TabsContent value="invoices" className="space-y-3 pt-3">
+                  {customerInvoices.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-muted-foreground">
+                      No invoices or quotes recorded yet for {viewCust.name}.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-border rounded-lg">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
+                          <tr>
+                            <th className="p-2.5">Doc No</th>
+                            <th className="p-2.5">Date</th>
+                            <th className="p-2.5">Type</th>
+                            <th className="p-2.5 text-center">Items</th>
+                            <th className="p-2.5 text-right">Grand Total</th>
+                            <th className="p-2.5 text-center">Status</th>
+                            <th className="p-2.5 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40 font-mono">
+                          {customerInvoices.map((inv) => (
+                            <tr key={inv.id} className="hover:bg-muted/20">
+                              <td className="p-2.5 font-bold text-foreground">{inv.no}</td>
+                              <td className="p-2.5 text-muted-foreground font-sans">{inv.date}</td>
+                              <td className="p-2.5 font-sans">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
+                                  {inv.docType === "proforma" ? "Proforma Invoice" : "Pre Proforma"}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-center font-sans">{inv.items?.length || 0}</td>
+                              <td className="p-2.5 text-right font-bold text-emerald-600">₹ {nf(inv.totals?.grandTotal || 0)}</td>
+                              <td className="p-2.5 text-center font-sans">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  inv.status === "order_confirmed" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
+                                }`}>
+                                  {inv.status || "Draft"}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-right font-sans">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 gap-1"
+                                  onClick={() => {
+                                    setDetailModalOpen(false);
+                                    navigate({ to: "/invoice", search: { id: inv.id } });
+                                  }}
+                                >
+                                  <Printer className="h-3 w-3" /> PDF
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* ── TAB 3: PAYMENT HISTORY ─────────────────────────────── */}
+                <TabsContent value="payments" className="space-y-4 pt-3">
+                  {/* Top Bar with Totals + Add Payment Button */}
+                  <div className="flex items-center justify-between gap-2 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex-wrap">
+                    <div>
+                      <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Payment Ledger Summary</div>
+                      <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">
+                        Total Payments Received: <span className="font-bold font-mono">₹ {nf(totalPaidForViewCust)}</span> | Remaining Due: <span className="font-bold font-mono">₹ {nf(Math.max(0, dueBalanceForViewCust))}</span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                      onClick={() => setShowAddPayment((v) => !v)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {showAddPayment ? "Cancel Form" : "Record New Payment"}
+                    </Button>
+                  </div>
+
+                  {/* Add Payment Form */}
+                  {showAddPayment && (
+                    <div className="bg-card border border-border rounded-xl p-4 space-y-3 shadow-sm text-xs">
+                      <div className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                        <CreditCard className="h-4 w-4 text-emerald-600" /> Record Payment Received
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-[10px]">Payment Date</Label>
+                          <Input
+                            type="date"
+                            className="h-8 text-xs"
+                            value={payFormData.date}
+                            onChange={(e) => setPayFormData({ ...payFormData, date: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-[10px]">Payment Mode</Label>
+                          <Select
+                            value={payFormData.mode}
+                            onValueChange={(v) => setPayFormData({ ...payFormData, mode: v })}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="UPI">UPI / Google Pay</SelectItem>
+                              <SelectItem value="Bank Transfer">Bank Transfer (NEFT/RTGS)</SelectItem>
+                              <SelectItem value="Cash">Cash</SelectItem>
+                              <SelectItem value="Cheque">Cheque</SelectItem>
+                              <SelectItem value="Credit Card">Credit / Debit Card</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-[10px]">Amount Received (₹) *</Label>
+                          <Input
+                            type="number"
+                            className="h-8 text-xs font-mono font-bold"
+                            placeholder="e.g. 10000"
+                            value={payFormData.amount}
+                            onChange={(e) => setPayFormData({ ...payFormData, amount: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-[10px]">Invoice Ref / No (Optional)</Label>
+                          <Input
+                            className="h-8 text-xs font-mono"
+                            placeholder="e.g. PI-1001"
+                            value={payFormData.invoiceNo}
+                            onChange={(e) => setPayFormData({ ...payFormData, invoiceNo: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-[10px]">Transaction / Ref No.</Label>
+                          <Input
+                            className="h-8 text-xs font-mono"
+                            placeholder="e.g. UPI-9872134"
+                            value={payFormData.refNo}
+                            onChange={(e) => setPayFormData({ ...payFormData, refNo: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-[10px]">Notes / Remarks</Label>
+                          <Input
+                            className="h-8 text-xs"
+                            placeholder="e.g. 50% advance received"
+                            value={payFormData.notes}
+                            onChange={(e) => setPayFormData({ ...payFormData, notes: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowAddPayment(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" onClick={handleAddPaymentSubmit}>
+                          Save Payment Record
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment History Table */}
+                  {customerPayments.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
+                      <p>No payment entries recorded yet for {viewCust.name}.</p>
+                      <p className="text-[11px] text-muted-foreground/70">Click "Record New Payment" above to add payment logs.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-border rounded-lg">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
+                          <tr>
+                            <th className="p-2.5">Date</th>
+                            <th className="p-2.5">Payment Mode</th>
+                            <th className="p-2.5">Ref / Txn ID</th>
+                            <th className="p-2.5">Invoice #</th>
+                            <th className="p-2.5 text-right">Amount Paid</th>
+                            <th className="p-2.5">Notes</th>
+                            <th className="p-2.5 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40 text-xs">
+                          {customerPayments.map((pay) => (
+                            <tr key={pay.id} className="hover:bg-muted/20">
+                              <td className="p-2.5 font-mono text-muted-foreground">{pay.date}</td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                  {pay.mode || "UPI"}
+                                </span>
+                              </td>
+                              <td className="p-2.5 font-mono text-muted-foreground">{pay.refNo || "—"}</td>
+                              <td className="p-2.5 font-mono font-medium text-foreground">{pay.invoiceNo || "—"}</td>
+                              <td className="p-2.5 text-right font-mono font-bold text-emerald-600">₹ {nf(pay.amount)}</td>
+                              <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">{pay.notes || "—"}</td>
+                              <td className="p-2.5 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                                  onClick={() => deletePayment(pay.id)}
+                                  title="Delete Payment Record"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

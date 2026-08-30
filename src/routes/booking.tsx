@@ -24,6 +24,8 @@ import {
   ArrowRight,
   ArrowLeft,
   FileText,
+  Users,
+  UserCheck,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -931,6 +933,37 @@ function BookingPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-border/40">
+                {/* Secondary Old Customer Selector */}
+                <div className="sm:col-span-4 bg-muted/40 p-2.5 rounded-lg border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs mb-1">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-primary shrink-0" />
+                    <div>
+                      <span className="text-xs font-bold text-foreground">Select Old / Existing Customer</span>
+                      <p className="text-[10px] text-muted-foreground">Pick a saved customer from database to autofill customer details</p>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-72">
+                    <Select
+                      value={inv.cust?.name || ""}
+                      onValueChange={(val) => {
+                        const found = customers.find((c: any) => c.name === val);
+                        if (found) selectCustomer(found);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs bg-background">
+                        <SelectValue placeholder="-- Select Old Customer --" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c: any) => (
+                          <SelectItem key={c.id || c.name} value={c.name}>
+                            <span className="font-semibold">{c.name}</span> {c.phone ? `(${c.phone})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2">
                   <FieldLabel>Customer / M/S. Name</FieldLabel>
                   <Input className="h-8 text-xs font-medium" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} placeholder="Hindustan Float Glass Pvt Ltd" />

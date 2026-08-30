@@ -43,6 +43,9 @@ type Ctx = {
   generateWorkOrder: (orderId: string) => any;
   getBookingsByStatus: (status: WorkflowStatus) => any[];
   saveWorkOrder: (wo: any) => void;
+  payments: any[];
+  savePayment: (p: any) => void;
+  deletePayment: (id: string) => void;
 };
 
 const GQ = createContext<Ctx | null>(null);
@@ -53,6 +56,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [inv, setInvState] = useState<any>(() => SAMPLE_INVOICE_07321);
   const [draftState, setDraftState] = useState("Draft saved automatically");
 
@@ -104,6 +108,24 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     /* Load work orders */
     const savedWorkOrders = LS.get<any[]>("workOrders", []);
     setWorkOrders(savedWorkOrders);
+
+    /* Load payments */
+    const savedPayments = LS.get<any[]>("payments", []);
+    const initialPayments = savedPayments.length > 0 ? savedPayments : [
+      {
+        id: "pay-1001",
+        custName: "HINDUSTAN FLOAT GLASS PVT. LTD",
+        invoiceNo: "PI-07321",
+        date: "2026-03-16",
+        amount: 14500,
+        mode: "Bank Transfer",
+        refNo: "HDFC-TXN-984210",
+        notes: "Advance payment 50%",
+        createdAt: new Date().toISOString(),
+      }
+    ];
+    setPayments(initialPayments);
+    if (savedPayments.length === 0) LS.set("payments", initialPayments);
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
@@ -392,6 +414,26 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [invoices],
   );
 
+  const savePayment = useCallback((pay: any) => {
+    setPayments((prev) => {
+      const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
+      const existing = prev.findIndex((x) => x.id === rec.id);
+      const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
+      LS.set("payments", next);
+      return next;
+    });
+    toast.success("Payment recorded successfully");
+  }, []);
+
+  const deletePayment = useCallback((id: string) => {
+    setPayments((prev) => {
+      const next = prev.filter((x) => x.id !== id);
+      LS.set("payments", next);
+      return next;
+    });
+    toast.success("Payment deleted");
+  }, []);
+
   const value: Ctx = {
     hydrated,
     settings,
@@ -400,6 +442,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     invoices,
     customers,
     workOrders,
+    payments,
     inv,
     setInv,
     totals,
@@ -410,6 +453,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     deleteInvoice,
     saveCustomer,
     deleteCustomer,
+    savePayment,
+    deletePayment,
     syncOne,
     syncAll,
     /* workflow */
