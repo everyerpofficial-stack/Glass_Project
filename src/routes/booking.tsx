@@ -1047,6 +1047,15 @@ function BookingPage() {
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
+                    {inv.ch?.extraAreaFormula === "custom" && (
+                      <Input
+                        type="number"
+                        placeholder="MM"
+                        className="h-6 w-14 text-xs font-mono px-1 py-0 text-center"
+                        value={inv.ch?.extraAreaCustomMM || ""}
+                        onChange={(e) => updateInvField("ch.extraAreaCustomMM", e.target.value === "" ? "" : Number(e.target.value))}
+                      />
+                    )}
                   </div>
 
                   {/* Rate Find Formula */}
@@ -1069,8 +1078,22 @@ function BookingPage() {
                 </div>
               }
             >
-              <div className="space-y-6">
-                {layers.map((layer: any, layerIdx: number) => {
+              {(() => {
+                const extraAreaFormula = inv.ch?.extraAreaFormula || "none";
+                const extraAreaLabel =
+                  extraAreaFormula === "+25mm"
+                    ? "+25 MM"
+                    : extraAreaFormula === "+50mm"
+                    ? "+50 MM"
+                    : extraAreaFormula === "custom"
+                    ? inv.ch?.extraAreaCustomMM
+                      ? `+${inv.ch.extraAreaCustomMM} MM`
+                      : "+Custom"
+                    : null;
+
+                return (
+                  <div className="space-y-6">
+                    {layers.map((layer: any, layerIdx: number) => {
                   const layerName = layer.layerNo || `Item ${layerIdx + 1}`;
                   const prodInfo = layer.productName
                     ? `${layer.productName}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`
@@ -1325,12 +1348,16 @@ function BookingPage() {
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
                                   <div>HEIGHT</div>
                                   <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">+25 MM</div>
+                                  {extraAreaLabel && (
+                                    <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
+                                  )}
                                 </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
                                   <div>WIDTH</div>
                                   <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">+25 MM</div>
+                                  {extraAreaLabel && (
+                                    <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
+                                  )}
                                 </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
                                   PCS
@@ -1568,6 +1595,8 @@ function BookingPage() {
                   );
                 })}
               </div>
+            );
+          })()}
             </Section>
 
             {/* 6. Bottom Summary */}
