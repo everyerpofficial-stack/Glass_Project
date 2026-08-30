@@ -1345,20 +1345,20 @@ function BookingPage() {
                                 )}
 
                                 {/* Under CHARGEABLE SIZE (MM) */}
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
-                                  <div>HEIGHT</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  {extraAreaLabel && (
-                                    <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                  )}
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
-                                  <div>WIDTH</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  {extraAreaLabel && (
-                                    <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                  )}
-                                </th>
+                                {extraAreaLabel && (
+                                  <>
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                      <div>HEIGHT</div>
+                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                      <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
+                                    </th>
+                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
+                                      <div>WIDTH</div>
+                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                      <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
+                                    </th>
+                                  </>
+                                )}
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20">
                                   PCS
                                 </th>
@@ -1527,15 +1527,19 @@ function BookingPage() {
                                     </td>
 
                                     {/* Chargeable Size (MM) Sub-columns */}
-                                    {/* Height (MM) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
-                                      {line?.ok ? line.lChgMM : "—"}
-                                    </td>
+                                    {extraAreaLabel && (
+                                      <>
+                                        {/* Height (MM) */}
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
+                                          {line?.ok ? line.lChgMM : "—"}
+                                        </td>
 
-                                    {/* Width (MM) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
-                                      {line?.ok ? line.wChgMM : "—"}
-                                    </td>
+                                        {/* Width (MM) */}
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap w-[60px]">
+                                          {line?.ok ? line.wChgMM : "—"}
+                                        </td>
+                                      </>
+                                    )}
 
                                     {/* PCS */}
                                     <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground w-[40px]">
