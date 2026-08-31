@@ -432,42 +432,97 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const terms = (S.terms || "").split("\n").filter((x: string) => x.trim());
   const unitCol = S.rateUnit === "sqft" ? "Sq.Ft" : "SqMtr";
 
-  const itemRows = lines
-    .map((x: any, i: number) => {
-      const l = x.l,
-        it = x.it;
-      const layerTag = it.layerNo ? ` (${it.layerNo})` : "";
-      return (
-        '<tr><td class="c">' +
-        (i + 1) +
-        '</td><td class="c">' +
-        esc(it.l1 || "") +
-        '</td><td class="c">' +
-        esc(it.l2 || "") +
-        '</td><td class="n">' +
-        l.lMM +
-        '</td><td class="n">' +
-        l.wMM +
-        '</td><td class="c">' +
-        l.qty +
-        '</td><td class="c">' +
-        (it.holes ? it.holes : "") +
-        '</td><td class="c">' +
-        (it.cutouts ? it.cutouts : "") +
-        '</td><td class="n">' +
-        (S.rateUnit === "sqft" ? (l.chargeAreaSqft ?? l.totalSqft) : (l.chargeAreaSqm ?? l.totalSqm)) +
-        '</td><td class="n">' +
-        nf(l.rate) +
-        '</td><td class="n">' +
-        nf(l.amount) +
-        '</td><td class="c">' +
-        esc(it.shape || "DRAWING") +
-        '</td><td class="c">' +
-        esc((it.remark || (i + 1)) + layerTag) +
-        "</td></tr>"
-      );
-    })
-    .join("");
+  let itemRows = "";
+  let globalSr = 1;
+
+  if (INV.layers && INV.layers.length > 0) {
+    INV.layers.forEach((l: any, idx: number) => {
+      const layerLines = lines.filter((x: any) => x.it.layerIdx === idx);
+      if (layerLines.length > 0) {
+        const layerDesc = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
+        const layerTitle = `${l.layerNo || "Item " + (idx + 1)}${layerDesc ? ": " + layerDesc : ""}`;
+
+        itemRows += `
+          <tr style="background:#f0f4f8; font-weight:bold; font-size:8.5pt">
+            <td colspan="13" style="border:1px solid #000; padding:4px 6px; text-align:left; color:#0f172a">
+              ${esc(layerTitle)}
+            </td>
+          </tr>
+        `;
+
+        layerLines.forEach((x: any) => {
+          const lineObj = x.l;
+          const it = x.it;
+          itemRows +=
+            '<tr><td class="c">' +
+            (globalSr++) +
+            '</td><td class="c">' +
+            esc(it.l1 || "") +
+            '</td><td class="c">' +
+            esc(it.l2 || "") +
+            '</td><td class="n">' +
+            lineObj.lMM +
+            '</td><td class="n">' +
+            lineObj.wMM +
+            '</td><td class="c">' +
+            lineObj.qty +
+            '</td><td class="c">' +
+            (it.holes ? it.holes : "") +
+            '</td><td class="c">' +
+            (it.cutouts ? it.cutouts : "") +
+            '</td><td class="n">' +
+            (S.rateUnit === "sqft" ? (lineObj.chargeAreaSqft ?? lineObj.totalSqft) : (lineObj.chargeAreaSqm ?? lineObj.totalSqm)) +
+            '</td><td class="n">' +
+            nf(lineObj.rate) +
+            '</td><td class="n">' +
+            nf(lineObj.amount) +
+            '</td><td class="c">' +
+            esc(it.shape || "DRAWING") +
+            '</td><td class="c">' +
+            esc(it.remark || "") +
+            '</td></tr>';
+        });
+      }
+    });
+  }
+
+  if (!itemRows) {
+    itemRows = lines
+      .map((x: any) => {
+        const lineObj = x.l,
+          it = x.it;
+        return (
+          '<tr><td class="c">' +
+          (globalSr++) +
+          '</td><td class="c">' +
+          esc(it.l1 || "") +
+          '</td><td class="c">' +
+          esc(it.l2 || "") +
+          '</td><td class="n">' +
+          lineObj.lMM +
+          '</td><td class="n">' +
+          lineObj.wMM +
+          '</td><td class="c">' +
+          lineObj.qty +
+          '</td><td class="c">' +
+          (it.holes ? it.holes : "") +
+          '</td><td class="c">' +
+          (it.cutouts ? it.cutouts : "") +
+          '</td><td class="n">' +
+          (S.rateUnit === "sqft" ? (lineObj.chargeAreaSqft ?? lineObj.totalSqft) : (lineObj.chargeAreaSqm ?? lineObj.totalSqm)) +
+          '</td><td class="n">' +
+          nf(lineObj.rate) +
+          '</td><td class="n">' +
+          nf(lineObj.amount) +
+          '</td><td class="c">' +
+          esc(it.shape || "DRAWING") +
+          '</td><td class="c">' +
+          esc(it.remark || "") +
+          '</td></tr>'
+        );
+      })
+      .join("");
+  }
 
   let opsRows = "";
   if (t.holes > 0) {
@@ -511,9 +566,9 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   let glassDescText = "";
   if (INV.layers && INV.layers.length > 0) {
     glassDescText = INV.layers
-      .map((l: any) => {
+      .map((l: any, idx: number) => {
         const info = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
-        return `${l.layerNo || "Layer"}: ${info}`;
+        return `${l.layerNo || "Item " + (idx + 1)}: ${info}`;
       })
       .join("  |  ");
   } else {
