@@ -77,126 +77,7 @@ function Section({
   );
 }
 
-/* ─── Searchable Pre Proforma Dropdown ────────────────────────────── */
-function PreProformaSelector({
-  availableBookings,
-  selectedNo,
-  onSelect,
-  placeholder = "Select Pre Proforma Invoice...",
-  className = "",
-}: {
-  availableBookings: any[];
-  selectedNo?: string;
-  onSelect: (bookingId: string) => void;
-  placeholder?: string;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return availableBookings;
-    return availableBookings.filter((b) => {
-      const no = String(b.no || "").toLowerCase();
-      const cust = String(b.cust?.name || "").toLowerCase();
-      const po = String(b.poNo || "").toLowerCase();
-      const phone = String(b.cust?.phone || "").toLowerCase();
-      return no.includes(q) || cust.includes(q) || po.includes(q) || phone.includes(q);
-    });
-  }, [availableBookings, search]);
-
-  const selectedBooking = useMemo(
-    () => availableBookings.find((b) => b.no === selectedNo || b.id === selectedNo),
-    [availableBookings, selectedNo]
-  );
-
-  return (
-    <div className={`relative ${className}`}>
-      <div
-        className="flex items-center justify-between border border-emerald-500/50 rounded-md h-8 px-2.5 bg-background text-xs cursor-pointer hover:border-emerald-600 focus:outline-none transition-colors shadow-xs"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="truncate font-mono font-medium text-foreground flex items-center gap-1.5 min-w-0">
-          <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-          <span className="truncate">
-            {selectedBooking
-              ? `${selectedBooking.no} — ${selectedBooking.cust?.name || "No Name"}`
-              : (selectedNo || placeholder)}
-          </span>
-        </span>
-        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1" />
-      </div>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-9 z-50 bg-popover border border-border rounded-md shadow-2xl w-72 sm:w-96 max-h-80 flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95">
-            {/* Search Input Box */}
-            <div className="p-2 border-b border-border bg-muted/40 sticky top-0 z-10">
-              <div className="relative flex items-center">
-                <Search className="h-3.5 w-3.5 absolute left-2.5 text-muted-foreground" />
-                <input
-                  autoFocus
-                  className="w-full bg-background border border-border rounded px-8 py-1.5 text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-muted-foreground"
-                  placeholder={`Search ${availableBookings.length} Pre Proformas (PI No, Customer, PO)...`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-                {search && (
-                  <button
-                    className="absolute right-2 text-xs text-muted-foreground hover:text-foreground font-bold"
-                    onClick={() => setSearch("")}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* List of Pre Proforma Records */}
-            <div className="overflow-y-auto divide-y divide-border/30 max-h-64">
-              {filtered.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">
-                  No matching Pre Proforma records found
-                </div>
-              ) : (
-                filtered.map((b) => {
-                  const isSel = b.no === selectedNo || b.id === selectedNo;
-                  return (
-                    <div
-                      key={b.id}
-                      className={`p-2.5 text-xs hover:bg-emerald-500/10 cursor-pointer transition-colors ${
-                        isSel ? "bg-emerald-500/15 font-semibold" : ""
-                      }`}
-                      onClick={() => {
-                        onSelect(b.id);
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                    >
-                      <div className="flex items-center justify-between font-mono">
-                        <span className="font-bold text-emerald-700 dark:text-emerald-400">{b.no}</span>
-                        <span className="text-[10px] text-muted-foreground">{b.date}</span>
-                      </div>
-                      <div className="text-foreground truncate font-medium mt-0.5">
-                        {b.cust?.name || "Unnamed Customer"}
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1">
-                        <span>{b.items?.length || 0} items {b.poNo ? `• PO: ${b.poNo}` : ""}</span>
-                        <span className="font-mono text-emerald-600 font-semibold">₹ {nf(b.totals?.grandTotal || 0)}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 /* ─── Confirm Payment & Order Modal ────────────────────────────────────── */
 function ConfirmPaymentModal({
@@ -737,14 +618,8 @@ function OrderPage() {
                 </Button>
               </>
             ) : (
-              /* RIGHT BUTTONS: Select Pre Proforma & New Invoice */
+              /* RIGHT BUTTON: New Invoice */
               <div className="flex items-center gap-2 flex-wrap">
-                <PreProformaSelector
-                  availableBookings={availableBookings}
-                  onSelect={handleSelectBooking}
-                  placeholder="⚡ Auto-Fill from Pre Proforma..."
-                  className="w-64"
-                />
                 <Button
                   size="sm"
                   className="h-8 px-3 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
@@ -992,13 +867,8 @@ function OrderPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Select Pre Proforma (Auto-Fill)</FieldLabel>
-                  <PreProformaSelector
-                    availableBookings={availableBookings}
-                    selectedNo={inv.preProformaNo || inv.no}
-                    onSelect={handleSelectBooking}
-                    placeholder="Select Pre Proforma..."
-                  />
+                  <FieldLabel>Pre Proforma Ref</FieldLabel>
+                  <Input className="h-8 text-xs font-mono bg-muted/30" value={inv.preProformaNo || "N/A"} readOnly />
                 </div>
                 <div>
                   <FieldLabel>P.O. No.</FieldLabel>
@@ -1108,19 +978,8 @@ function OrderPage() {
               </div>
             </Section>
 
-            {/* 3. Select Pre Proforma / Items Grid */}
-            <Section
-              title="Pre Proforma Items & Details"
-              headerRight={
-                <PreProformaSelector
-                  availableBookings={availableBookings}
-                  selectedNo={inv.preProformaNo || inv.no}
-                  onSelect={handleSelectBooking}
-                  placeholder="Load Pre Proforma…"
-                  className="w-56 sm:w-64"
-                />
-              }
-            >
+            {/* 3. Pre Proforma Items & Details */}
+            <Section title="Pre Proforma Items & Details">
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
                 <table className="w-full text-[11px] border-collapse" style={{ minWidth: "850px" }}>
                   <thead>

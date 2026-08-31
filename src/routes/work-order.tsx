@@ -1,15 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import {
   Printer,
   FileText,
   Factory,
+  Tag,
   ChevronDown,
   RefreshCw,
   Download,
+  Grid,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -22,54 +23,122 @@ import { nf, dmy } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/work-order")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string | undefined; woId?: string | undefined } => ({
+    tab: typeof search["tab"] === "string" ? (search["tab"] as string) : undefined,
+    woId: typeof search["woId"] === "string" ? (search["woId"] as string) : undefined,
+  }),
   component: WorkOrderPage,
 });
 
 /* ── Pure JS Code128B barcode SVG generator ────────────────────────── */
-function generateBarcodeSVG(text: string, height = 40, barWidth = 1.5): string {
+function generateBarcodeSVG(text: string, height = 36, barWidth = 1.2): string {
   const CODE128B: Record<string, string> = {
-    " ": "11011001100", "!": "11001101100", '"': "11001100110",
-    "#": "10010011000", "$": "10010001100", "%": "10001001100",
-    "&": "10011001000", "'": "10011000100", "(": "10001100100",
-    ")": "11001001000", "*": "11001000100", "+": "11000100100",
-    ",": "10110011100", "-": "10011011100", ".": "10011001110",
-    "/": "10111001100", "0": "10011101100", "1": "10011100110",
-    "2": "11001110010", "3": "11001011100", "4": "11001001110",
-    "5": "11011100100", "6": "11001110100", "7": "11101101110",
-    "8": "11101001100", "9": "11100101100", ":": "11100100110",
-    ";": "11101100100", "<": "11100110100", "=": "11100110010",
-    ">": "11011011000", "?": "11011000110", "@": "11000110110",
-    A: "10100011000", B: "10001011000", C: "10001000110",
-    D: "10110001000", E: "10001101000", F: "10001100010",
-    G: "11010001000", H: "11000101000", I: "11000100010",
-    J: "10110111000", K: "10110001110", L: "10001101110",
-    M: "10111011000", N: "10111000110", O: "10001110110",
-    P: "11101110110", Q: "11010001110", R: "11000101110",
-    S: "11011101000", T: "11011100010", U: "11011101110",
-    V: "11101011000", W: "11101000110", X: "11100010110",
-    Y: "11101101000", Z: "11101100010", "[": "11100011010",
-    "\\": "11101111010", "]": "11001000010", "^": "11110001010",
-    _: "10100110000", "`": "10100001100", a: "10010110000",
-    b: "10010000110", c: "10000101100", d: "10000100110",
-    e: "10110010000", f: "10110000100", g: "10011010000",
-    h: "10011000010", i: "10000110100", j: "10000110010",
-    k: "11000010010", l: "11001010000", m: "11110111010",
-    n: "11000010100", o: "10001111010", p: "10100111100",
-    q: "10010111100", r: "10010011110", s: "10111100100",
-    t: "10011110100", u: "10011110010", v: "11110100100",
-    w: "11110010100", x: "11110010010", y: "11011011110",
-    z: "11011110110", "{": "11110110110", "|": "10101111000",
-    "}": "10100011110", "~": "10001011110",
+    " ": "11011001100",
+    "!": "11001101100",
+    '"': "11001100110",
+    "#": "10010011000",
+    $: "10010001100",
+    "%": "10001001100",
+    "&": "10011001000",
+    "'": "10011000100",
+    "(": "10001100100",
+    ")": "11001001000",
+    "*": "11001000100",
+    "+": "11000100100",
+    ",": "10110011100",
+    "-": "10011011100",
+    ".": "10011001110",
+    "/": "10111001100",
+    "0": "10011101100",
+    "1": "10011100110",
+    "2": "11001110010",
+    "3": "11001011100",
+    "4": "11001001110",
+    "5": "11011100100",
+    "6": "11001110100",
+    "7": "11101101110",
+    "8": "11101001100",
+    "9": "11100101100",
+    ":": "11100100110",
+    ";": "11101100100",
+    "<": "11100110100",
+    "=": "11100110010",
+    ">": "11011011000",
+    "?": "11011000110",
+    "@": "11000110110",
+    A: "10100011000",
+    B: "10001011000",
+    C: "10001000110",
+    D: "10110001000",
+    E: "10001101000",
+    F: "10001100010",
+    G: "11010001000",
+    H: "11000101000",
+    I: "11000100010",
+    J: "10110111000",
+    K: "10110001110",
+    L: "10001101110",
+    M: "10111011000",
+    N: "10111000110",
+    O: "10001110110",
+    P: "11101110110",
+    Q: "11010001110",
+    R: "11000101110",
+    S: "11011101000",
+    T: "11011100010",
+    U: "11011101110",
+    V: "11101011000",
+    W: "11101000110",
+    X: "11100010110",
+    Y: "11101101000",
+    Z: "11101100010",
+    "[": "11100011010",
+    "\\": "11101111010",
+    "]": "11001000010",
+    "^": "11110001010",
+    _: "10100110000",
+    "`": "10100001100",
+    a: "10010110000",
+    b: "10010000110",
+    c: "10000101100",
+    d: "10000100110",
+    e: "10110010000",
+    f: "10110000100",
+    g: "10011010000",
+    h: "10011000010",
+    i: "10000110100",
+    j: "10000110010",
+    k: "11000010010",
+    l: "11001010000",
+    m: "11110111010",
+    n: "11000010100",
+    o: "10001111010",
+    p: "10100111100",
+    q: "10010111100",
+    r: "10010011110",
+    s: "10111100100",
+    t: "10011110100",
+    u: "10011110010",
+    v: "11110100100",
+    w: "11110010100",
+    x: "11110010010",
+    y: "11011011110",
+    z: "11011110110",
+    "{": "11110110110",
+    "|": "10101111000",
+    "}": "10100011110",
+    "~": "10001011110",
   };
   const START_B = "11010010000";
   const STOP = "1100011101011";
 
-  let checksum = 104; // Start B value
+  let checksum = 104;
   let pattern = START_B;
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) - 32;
+  const safeText = String(text || "");
+  for (let i = 0; i < safeText.length; i++) {
+    const charCode = safeText.charCodeAt(i) - 32;
     checksum += charCode * (i + 1);
-    pattern += CODE128B[text.charAt(i)] || "10101111000";
+    pattern += CODE128B[safeText.charAt(i)] || "10101111000";
   }
   const checksumChar = String.fromCharCode((checksum % 103) + 32);
   pattern += CODE128B[checksumChar] || "10101111000";
@@ -86,23 +155,40 @@ function generateBarcodeSVG(text: string, height = 40, barWidth = 1.5): string {
   return svg;
 }
 
-/* ─── Main Work Order Page ───────────────────────────────────────────── */
+/* ─── Main Work Order & Stickers Page ─────────────────────────────────── */
 function WorkOrderPage() {
-  const {
-    invoices,
-    workOrders,
-    settings,
-    generateWorkOrder,
-    saveWorkOrder,
-    updateInvoiceStatus,
-  } = useGQ();
+  const searchParams = useSearch({ strict: false }) as { tab?: string; woId?: string };
 
+  const { invoices, workOrders, settings, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } =
+    useGQ();
+
+  const [activeTab, setActiveTab] = useState<"cutsheet" | "stickers">(
+    searchParams?.tab === "stickers" ? "stickers" : "cutsheet",
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [activeWO, setActiveWO] = useState<any>(null);
+  const [labelsPerRow, setLabelsPerRow] = useState<number>(2);
+
+  useEffect(() => {
+    if (searchParams?.tab === "stickers" || searchParams?.tab === "cutsheet") {
+      setActiveTab(searchParams.tab);
+    }
+  }, [searchParams?.tab]);
+
+  // Set default active WO if workOrders exist
+  useEffect(() => {
+    if (searchParams?.woId) {
+      const wo = workOrders.find((x) => x.id === searchParams.woId || x.woNo === searchParams.woId);
+      if (wo) setActiveWO(wo);
+    } else if (!activeWO && workOrders.length > 0) {
+      setActiveWO(workOrders[0]);
+    }
+  }, [workOrders, searchParams?.woId]);
 
   /* Get confirmed orders */
   const confirmedOrders = useMemo(
-    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated"),
+    () =>
+      invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated"),
     [invoices],
   );
 
@@ -129,32 +215,106 @@ function WorkOrderPage() {
     window.print();
   };
 
+  /* Build sticker labels data from active work order */
+  const labels = useMemo(() => {
+    if (!activeWO || !activeWO.pieces) return [];
+    return activeWO.pieces.map((piece: any, idx: number) => ({
+      customer: activeWO.customer || "Customer",
+      piNo: activeWO.piNo || activeWO.orderNo,
+      woNo: activeWO.woNo?.replace("WO-", "") || activeWO.orderNo,
+      size: `${piece.heightMM} X ${piece.widthMM}`,
+      sn: piece.sr,
+      glassType:
+        activeWO.glassDesc || `${activeWO.thickness || 5}mm ${activeWO.productName || "Glass"}`,
+      pieceOf: piece.pieceOf || `1 of ${activeWO.pieces.length}`,
+      shape: piece.shape || "BLOCK",
+      code: `${idx + 1} ${piece.shape === "BLOCK" ? "W1" : "SD1"}`,
+      partyWO: activeWO.orderNo,
+      barcode: piece.barcode || `000${idx + 1}`,
+    }));
+  }, [activeWO]);
+
   return (
     <div className="min-h-screen bg-background">
+      {/* ── UNIFIED TABS TOP BAR ───────────────────────── */}
+      <div className="bg-muted/40 border-b border-border px-3 sm:px-6 py-2 flex items-center justify-between gap-2 text-xs font-semibold flex-wrap print:hidden">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">
+            Production Section:
+          </span>
+          <button
+            onClick={() => setActiveTab("cutsheet")}
+            className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+              activeTab === "cutsheet"
+                ? "bg-amber-600 text-white font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            }`}
+          >
+            <Factory className="h-3.5 w-3.5" />
+            1. Work Order Cut Sheet
+          </button>
+          <button
+            onClick={() => setActiveTab("stickers")}
+            className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+              activeTab === "stickers"
+                ? "bg-yellow-500 text-black font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            }`}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            2. Barcode Sticker Labels
+          </button>
+        </div>
+
+        {activeWO && (
+          <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+            <span className="font-mono font-bold text-foreground bg-muted px-2 py-0.5 rounded border border-border">
+              {activeWO.woNo}
+            </span>
+            <span className="hidden sm:inline font-semibold">{activeWO.customer}</span>
+          </div>
+        )}
+      </div>
+
       {/* ── PAGE HEADER ───────────────────────────── */}
       <div className="border-b border-border bg-card px-3 sm:px-6 py-3 print:hidden">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-              <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+              <Link to="/" className="hover:text-foreground transition-colors">
+                Home
+              </Link>
               {" / "}
-              <span className="text-primary">Work Order</span>
+              <span className="text-primary">Work Order & Stickers</span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
-              <Factory className="h-5 w-5 text-amber-500" />
-              Work Order
-              {activeWO && <span className="text-amber-500 text-sm font-mono">#{activeWO.woNo}</span>}
+              {activeTab === "cutsheet" ? (
+                <>
+                  <Factory className="h-5 w-5 text-amber-500" />
+                  Work Order Cut Sheet
+                </>
+              ) : (
+                <>
+                  <Tag className="h-5 w-5 text-yellow-500" />
+                  Barcode Sticker Labels
+                </>
+              )}
+              {activeWO && (
+                <span className="text-amber-500 text-sm font-mono">#{activeWO.woNo}</span>
+              )}
             </h1>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Select order */}
+            {/* Select confirmed order */}
             <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
-              <SelectTrigger className="h-8 text-xs w-48">
+              <SelectTrigger className="h-8 text-xs w-48 sm:w-56">
                 <SelectValue placeholder="Select confirmed order…" />
               </SelectTrigger>
               <SelectContent>
                 {confirmedOrders.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">No confirmed orders yet</div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    No confirmed orders yet
+                  </div>
                 )}
                 {confirmedOrders.map((o) => (
                   <SelectItem key={o.id} value={o.id}>
@@ -163,48 +323,77 @@ function WorkOrderPage() {
                 ))}
               </SelectContent>
             </Select>
+
             <Button
               size="sm"
-              className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+              className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
               onClick={handleGenerateWO}
             >
               <Factory className="h-3.5 w-3.5" /> Generate WO
             </Button>
+
+            {/* Sticker Layout Selector (Only shown on Stickers tab) */}
+            {activeTab === "stickers" && (
+              <Select
+                value={String(labelsPerRow)}
+                onValueChange={(v) => setLabelsPerRow(Number(v))}
+              >
+                <SelectTrigger className="h-8 text-xs w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 per row</SelectItem>
+                  <SelectItem value="2">2 per row</SelectItem>
+                  <SelectItem value="3">3 per row</SelectItem>
+                  <SelectItem value="4">4 per row</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
             {activeWO && (
               <Button
-                variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5"
+                className={`h-8 text-xs gap-1.5 font-bold ${
+                  activeTab === "stickers"
+                    ? "bg-yellow-500 hover:bg-yellow-600 text-black"
+                    : "bg-slate-800 hover:bg-slate-900 text-white"
+                }`}
                 onClick={handlePrint}
               >
-                <Printer className="h-3.5 w-3.5" /> Print
+                <Printer className="h-3.5 w-3.5" />
+                {activeTab === "stickers" ? "Print Sticker Labels" : "Print Cut Sheet"}
               </Button>
             )}
           </div>
         </div>
 
-        {/* Existing work orders */}
+        {/* Existing work orders pill selector */}
         {workOrders.length > 0 && (
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Recent:</span>
-            {workOrders.slice(0, 5).map((wo) => (
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Recent WO:
+            </span>
+            {workOrders.slice(0, 6).map((wo) => (
               <button
                 key={wo.id}
                 onClick={() => handleLoadExisting(wo.id)}
-                className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 font-mono ${
                   activeWO?.id === wo.id
-                    ? "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-400"
+                    ? "bg-amber-500/15 border-amber-500/50 text-amber-700 dark:text-amber-300 font-bold shadow-xs"
                     : "border-border hover:bg-muted/50 text-muted-foreground"
                 }`}
               >
-                {wo.woNo} · {wo.customer?.split(" ")[0] || "—"}
+                <span>{wo.woNo}</span>
+                <span className="text-[10px] font-sans font-normal opacity-75">
+                  · {wo.customer?.split(" ")[0] || "—"}
+                </span>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── WORK ORDER CONTENT ──────────────────────────── */}
+      {/* ── MAIN CONTENT AREA ──────────────────────────── */}
       <div className="p-3 sm:p-4">
         {!activeWO ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -213,36 +402,61 @@ function WorkOrderPage() {
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">No Work Order Selected</h2>
             <p className="text-sm text-muted-foreground max-w-md">
-              Select a confirmed order from the dropdown above and click "Generate WO" to create a work order for the factory.
+              Select a confirmed order from the dropdown above and click "Generate WO" to create a
+              work order and barcode stickers.
             </p>
           </div>
-        ) : (
+        ) : activeTab === "cutsheet" ? (
+          /* ══════════ TAB 1: WORK ORDER CUT SHEET ══════════ */
           <div className="wo-print-area bg-white text-black rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none">
             {/* WO Header */}
             <div className="border-b-2 border-black p-4 print:p-3">
               <div className="flex justify-between items-start">
                 <div className="text-[11px] space-y-0.5">
-                  <div><span className="font-bold">Customer :</span> {activeWO.customer}</div>
-                  <div><span className="font-bold">PI No. :</span> {activeWO.piNo}</div>
-                  <div><span className="font-bold">PI Date :</span> {dmy(activeWO.piDate)}</div>
-                  <div><span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}</div>
+                  <div>
+                    <span className="font-bold">Customer :</span> {activeWO.customer}
+                  </div>
+                  <div>
+                    <span className="font-bold">PI No. :</span> {activeWO.piNo}
+                  </div>
+                  <div>
+                    <span className="font-bold">PI Date :</span> {dmy(activeWO.piDate)}
+                  </div>
+                  <div>
+                    <span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-black tracking-wide text-black">WORK ORDER</div>
                   <div className="text-[11px] mt-1 space-y-0.5">
-                    <div><span className="font-bold">Order No :</span> <span className="font-mono text-sm font-bold">{activeWO.orderNo}</span></div>
-                    <div><span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}</div>
-                    <div><span className="font-bold">Del Date :</span> —</div>
+                    <div>
+                      <span className="font-bold">Order No :</span>{" "}
+                      <span className="font-mono text-sm font-bold">{activeWO.orderNo}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}
+                    </div>
+                    <div>
+                      <span className="font-bold">Del Date :</span> —
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
-                <div><span className="font-bold">PO No. :</span> {activeWO.poNo || "—"} &nbsp;&nbsp; <span className="font-bold">Project :</span> {activeWO.project || "—"}</div>
-                <div className="mt-1 font-bold text-sm">{activeWO.glassDesc || `${activeWO.thickness}mm ${activeWO.productName}`}</div>
+                <div>
+                  <span className="font-bold">PO No. :</span> {activeWO.poNo || "—"} &nbsp;&nbsp;{" "}
+                  <span className="font-bold">Project :</span> {activeWO.project || "—"}
+                </div>
+                <div className="mt-1 font-bold text-sm">
+                  {activeWO.glassDesc || `${activeWO.thickness}mm ${activeWO.productName}`}
+                </div>
                 {activeWO.layerInfo?.length > 0 && (
                   <div className="text-[10px] text-gray-600 mt-0.5">
                     {activeWO.layerInfo.map((l: any, i: number) => (
-                      <span key={i}>{l.layerNo}: {l.productName} {l.thickness}mm{i < activeWO.layerInfo.length - 1 ? " | " : ""}</span>
+                      <span key={i}>
+                        {l.layerNo}: {l.productName} {l.thickness}mm
+                        {i < activeWO.layerInfo.length - 1 ? " | " : ""}
+                      </span>
                     ))}
                   </div>
                 )}
@@ -254,38 +468,93 @@ function WorkOrderPage() {
               <table className="w-full text-[10px] border-collapse" style={{ minWidth: "900px" }}>
                 <thead>
                   <tr className="bg-gray-100 border-b-2 border-black">
-                    {["SR\nNo", "L1-Inch", "L2-Inch", "Height\nMM", "Width\nMM", "Qty", "Act Totl", "Hole", "Big\nHole", "Cut Out", "Big\nCutout", "Shape", "Barcode", "Remark"].map((h, i) => (
-                      <th key={i} className="border border-gray-400 px-1.5 py-1.5 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center">{h}</th>
+                    {[
+                      "SR\nNo",
+                      "L1-Inch",
+                      "L2-Inch",
+                      "Height\nMM",
+                      "Width\nMM",
+                      "Qty",
+                      "Act Totl",
+                      "Hole",
+                      "Big\nHole",
+                      "Cut Out",
+                      "Big\nCutout",
+                      "Shape",
+                      "Barcode",
+                      "Remark",
+                    ].map((h, i) => (
+                      <th
+                        key={i}
+                        className="border border-gray-400 px-1.5 py-1.5 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center"
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {activeWO.pieces.map((piece: any, idx: number) => (
                     <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">{piece.sr}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">{piece.l1 || "—"}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">{piece.l2 || "—"}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">{piece.heightMM}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">{piece.widthMM}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.qty}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">{nf(piece.area, 3)}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.hole || ""}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.bigHole || ""}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.cutOut || ""}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.bigCutout || ""}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">{piece.shape}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">{piece.barcode}</td>
-                      <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">{piece.remark}</td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                        {piece.sr}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                        {piece.l1 || "—"}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                        {piece.l2 || "—"}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                        {piece.heightMM}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                        {piece.widthMM}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                        {piece.qty}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
+                        {nf(piece.area, 3)}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                        {piece.hole || ""}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                        {piece.bigHole || ""}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                        {piece.cutOut || ""}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                        {piece.bigCutout || ""}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                        {piece.shape}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
+                        {piece.barcode}
+                      </td>
+                      <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
+                        {piece.remark}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-100 border-t-2 border-black font-bold">
-                    <td colSpan={5} className="border border-gray-400 px-2 py-1.5 text-right">Total</td>
-                    <td className="border border-gray-400 px-1.5 py-1.5 text-center">{activeWO.totalPieces}</td>
-                    <td className="border border-gray-400 px-1.5 py-1.5 text-right font-mono">{nf(activeWO.totalSqm, 3)}</td>
+                    <td colSpan={5} className="border border-gray-400 px-2 py-1.5 text-right">
+                      Total
+                    </td>
+                    <td className="border border-gray-400 px-1.5 py-1.5 text-center">
+                      {activeWO.totalPieces}
+                    </td>
+                    <td className="border border-gray-400 px-1.5 py-1.5 text-right font-mono">
+                      {nf(activeWO.totalSqm, 3)}
+                    </td>
                     <td colSpan={7} className="border border-gray-400 px-2 py-1.5 text-[10px]">
-                      Weight: {activeWO.weightKg || "—"} kg &nbsp;|&nbsp; SQF: {nf(activeWO.totalSqft, 3)}
+                      Weight: {activeWO.weightKg || "—"} kg &nbsp;|&nbsp; SQF:{" "}
+                      {nf(activeWO.totalSqft, 3)}
                     </td>
                   </tr>
                 </tfoot>
@@ -299,9 +568,93 @@ function WorkOrderPage() {
                 <span className="font-bold">Total Pcs :</span> {activeWO.totalPieces} &nbsp;&nbsp;
                 <span className="font-bold">Weight :</span> {activeWO.weightKg || "—"} kg
               </div>
-              <div className="text-right text-gray-500">
-                Page 1
-              </div>
+              <div className="text-right text-gray-500">Page 1</div>
+            </div>
+          </div>
+        ) : (
+          /* ══════════ TAB 2: BARCODE STICKER LABELS ══════════ */
+          <div className="sticker-print-area">
+            {/* Info bar */}
+            <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground print:hidden">
+              <span className="font-semibold">
+                {labels.length} label(s) generated for {activeWO.customer}
+              </span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                WO: {activeWO.woNo}
+              </span>
+            </div>
+
+            {/* Labels Grid */}
+            <div
+              className="grid gap-3 print:gap-0"
+              style={{
+                gridTemplateColumns: `repeat(${labelsPerRow}, 1fr)`,
+              }}
+            >
+              {labels.map((label: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="sticker-label bg-[#FFD700] text-black rounded-lg print:rounded-none border-2 border-yellow-700/30 p-3 print:p-2 flex flex-col gap-1 break-inside-avoid shadow-xs"
+                  style={{ minHeight: "140px" }}
+                >
+                  {/* Customer name */}
+                  <div className="text-[11px] font-black uppercase leading-tight tracking-wide truncate">
+                    {label.customer}
+                  </div>
+
+                  {/* PI / WO / Size / SN row */}
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
+                    <div>
+                      <span className="font-bold">PI :</span>{" "}
+                      <span className="font-mono">{label.piNo}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">WO :</span>{" "}
+                      <span className="font-mono">{label.woNo}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">Size :</span>{" "}
+                      <span className="font-mono font-bold">{label.size}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">SN :</span>{" "}
+                      <span className="font-mono">{label.sn}</span>
+                    </div>
+                  </div>
+
+                  {/* Glass type */}
+                  <div className="text-[9px] uppercase leading-tight truncate">
+                    {label.glassType}{" "}
+                    <span className="font-bold">of {label.pieceOf?.split(" of ")[1] || "1"}</span>
+                  </div>
+
+                  {/* Shape + Code */}
+                  <div className="flex items-center justify-between text-[10px]">
+                    <div className="font-black text-sm">{label.shape}</div>
+                    <div className="text-[9px]">
+                      <span className="font-bold">Code :</span> {label.code}
+                    </div>
+                  </div>
+
+                  {/* Party WO */}
+                  <div className="text-[9px]">
+                    <span className="font-bold">Party WO :</span> {label.partyWO}
+                  </div>
+
+                  {/* Barcode */}
+                  <div className="flex flex-col items-center mt-auto pt-1">
+                    <div
+                      className="barcode-container"
+                      dangerouslySetInnerHTML={{
+                        __html: generateBarcodeSVG(label.barcode, 30, 1.0),
+                      }}
+                    />
+                    <div className="text-[9px] font-mono font-bold mt-0.5 tracking-wider">
+                      {label.barcode}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

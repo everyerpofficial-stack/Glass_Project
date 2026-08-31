@@ -19,8 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";
 import { cur, nf } from "@/lib/gq";
 
-export const Route = createFileRoute("/")(
-  {
+export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
@@ -43,14 +42,13 @@ function Dashboard() {
   const woGeneratedCount = invoices.filter((x) => x.status === "work_order_generated").length;
   const totalRevenue = invoices.reduce(
     (acc, inv) => acc + (Number(inv.totals?.grandTotal) || 0),
-    0
+    0,
   );
   const recentBookings = invoices.slice(0, 5);
   const userName = settings.salesPerson || "Admin";
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
-
       {/* ── Greeting Banner ───────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -64,7 +62,11 @@ function Dashboard() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white rounded-lg border border-border px-3 py-2 shadow-xs">
           <Calendar className="h-4 w-4" />
           <span className="font-medium">
-            {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            {new Date().toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
           </span>
         </div>
       </div>
@@ -111,10 +113,33 @@ function Dashboard() {
         <h2 className="text-sm font-semibold text-foreground mb-4">Workflow Pipeline</h2>
         <div className="flex items-center justify-between flex-wrap gap-3">
           {[
-            { step: "1", label: "Pre Proforma", count: draftCount, sublabel: `${draftCount} Pending`, color: "bg-blue-500", to: "/booking" as const, search: undefined },
-            { step: "2", label: "Proforma Invoice", count: piSentCount, sublabel: `${piSentCount} Awaiting`, color: "bg-amber-500", to: "/order" as const, search: { view: undefined } },
-            { step: "3", label: "Work Order", count: confirmedCount, sublabel: `${confirmedCount} In Progress`, color: "bg-emerald-500", to: "/work-order" as const, search: undefined },
-            { step: "4", label: "Stickers", count: woGeneratedCount, sublabel: `${woGeneratedCount} Pending`, color: "bg-purple-500", to: "/stickers" as const, search: undefined },
+            {
+              step: "1",
+              label: "Pre Proforma",
+              count: draftCount,
+              sublabel: `${draftCount} Pending`,
+              color: "bg-blue-500",
+              to: "/booking" as const,
+              search: undefined,
+            },
+            {
+              step: "2",
+              label: "Proforma Invoice",
+              count: piSentCount,
+              sublabel: `${piSentCount} Awaiting`,
+              color: "bg-amber-500",
+              to: "/order" as const,
+              search: { view: undefined },
+            },
+            {
+              step: "3",
+              label: "Work Order & Stickers",
+              count: confirmedCount + woGeneratedCount,
+              sublabel: `${workOrders.length} Work Orders`,
+              color: "bg-emerald-500",
+              to: "/work-order" as const,
+              search: undefined,
+            },
           ].map((item: any, i, arr) => (
             <div key={i} className="flex items-center gap-3 flex-1 min-w-[180px]">
               <Link
@@ -122,11 +147,15 @@ function Dashboard() {
                 search={item.search}
                 className="group flex items-center gap-3 rounded-xl border border-border bg-background/60 px-4 py-3 hover:bg-muted/40 transition-all flex-1"
               >
-                <div className={`h-9 w-9 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm`}>
+                <div
+                  className={`h-9 w-9 rounded-full ${item.color} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm`}
+                >
                   {item.step}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-foreground truncate">{item.label}</div>
+                  <div className="text-[13px] font-semibold text-foreground truncate">
+                    {item.label}
+                  </div>
                   <div className="text-[11px] text-muted-foreground">{item.sublabel}</div>
                 </div>
               </Link>
@@ -140,7 +169,6 @@ function Dashboard() {
 
       {/* ── Main Content Grid ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
-
         {/* LEFT: Recent Pre Proformas Table */}
         <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -160,9 +188,14 @@ function Dashboard() {
               </div>
               <p className="text-sm font-semibold text-foreground">No Pre Proformas yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                Create your first Pre Proforma to start tracking glass calculations and customer orders.
+                Create your first Pre Proforma to start tracking glass calculations and customer
+                orders.
               </p>
-              <Button asChild size="sm" className="mt-4 h-8 text-xs px-4 bg-blue-600 hover:bg-blue-700">
+              <Button
+                asChild
+                size="sm"
+                className="mt-4 h-8 text-xs px-4 bg-blue-600 hover:bg-blue-700"
+              >
                 <Link to="/booking">
                   <Plus className="h-3.5 w-3.5 mr-1" /> New Pre Proforma
                 </Link>
@@ -172,11 +205,21 @@ function Dashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-3 px-5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Booking #</th>
-                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Customer</th>
-                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold hidden sm:table-cell">Date</th>
-                  <th className="text-right py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Amount</th>
-                  <th className="py-3 px-4 w-20 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Status</th>
+                  <th className="text-left py-3 px-5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Booking #
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Customer
+                  </th>
+                  <th className="text-left py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold hidden sm:table-cell">
+                    Date
+                  </th>
+                  <th className="text-right py-3 px-4 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Amount
+                  </th>
+                  <th className="py-3 px-4 w-20 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +228,9 @@ function Dashboard() {
                     key={q.id}
                     className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                   >
-                    <td className="py-3.5 px-5 font-mono text-[12px] font-semibold text-foreground">{q.no || "—"}</td>
+                    <td className="py-3.5 px-5 font-mono text-[12px] font-semibold text-foreground">
+                      {q.no || "—"}
+                    </td>
                     <td className="py-3.5 px-4">
                       <p className="font-semibold text-[12px] text-foreground truncate max-w-[180px]">
                         {(q.cust?.name || "Unnamed").toUpperCase()}
@@ -194,7 +239,9 @@ function Dashboard() {
                         {q.glass?.desc || "—"}
                       </p>
                     </td>
-                    <td className="py-3.5 px-4 text-muted-foreground tabular-nums hidden sm:table-cell text-[12px]">{q.date || "—"}</td>
+                    <td className="py-3.5 px-4 text-muted-foreground tabular-nums hidden sm:table-cell text-[12px]">
+                      {q.date || "—"}
+                    </td>
                     <td className="py-3.5 px-4 text-right font-mono font-semibold text-foreground tabular-nums text-[12px]">
                       {cur(q.totals?.grandTotal || 0, settings.currency)}
                     </td>
@@ -214,7 +261,12 @@ function Dashboard() {
           <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Engine Configuration</h3>
-              <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              >
                 <Link to="/settings" aria-label="Settings">
                   <Settings className="h-4 w-4" />
                 </Link>
@@ -222,9 +274,18 @@ function Dashboard() {
             </div>
             <div className="px-4 py-3 space-y-0">
               <ConfigRow label="Preset" value={settings.preset || "anand"} />
-              <ConfigRow label="Rate Unit" value={settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"} />
-              <ConfigRow label="CGST" value={settings.cgstPercent != null ? `${settings.cgstPercent}%` : "—"} />
-              <ConfigRow label="SGST" value={settings.sgstPercent != null ? `${settings.sgstPercent}%` : "—"} />
+              <ConfigRow
+                label="Rate Unit"
+                value={settings.rateUnit === "sqft" ? "Sq.Ft" : "Sq.Mtr"}
+              />
+              <ConfigRow
+                label="CGST"
+                value={settings.cgstPercent != null ? `${settings.cgstPercent}%` : "—"}
+              />
+              <ConfigRow
+                label="SGST"
+                value={settings.sgstPercent != null ? `${settings.sgstPercent}%` : "—"}
+              />
               <ConfigRow label="Currency" value={settings.currency || "₹"} />
               <ConfigRow
                 label="Sheet URL"
@@ -239,13 +300,18 @@ function Dashboard() {
           <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground">Customers</h3>
-              <Link to="/customers" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                to="/customers"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
                 View All
               </Link>
             </div>
             <div className="px-4 py-3">
               {customers.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-3 text-center">No customers saved yet.</p>
+                <p className="text-xs text-muted-foreground py-3 text-center">
+                  No customers saved yet.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {customers.slice(0, 4).map((c) => (
@@ -258,14 +324,18 @@ function Dashboard() {
                           .join("")}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-semibold text-foreground truncate">{(c.name || "Unnamed").toUpperCase()}</p>
+                        <p className="text-[12px] font-semibold text-foreground truncate">
+                          {(c.name || "Unnamed").toUpperCase()}
+                        </p>
                         <p className="text-[10px] text-muted-foreground truncate">
                           {c.email || c.phone || "No contact"}
                         </p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-0.5">
                         {c.gstin && (
-                          <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wide">GST</span>
+                          <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wide">
+                            GST
+                          </span>
                         )}
                         <span className="inline-flex items-center gap-1 text-[9px] font-medium text-emerald-600">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -333,7 +403,9 @@ function StatusBadge({ status }: { status: string }) {
     work_order_generated: "WO Done",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${styles[status] || styles["draft"]}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${styles[status] || styles["draft"]}`}
+    >
       {labels[status] || "Draft"}
     </span>
   );
@@ -359,21 +431,23 @@ function MetricCard({
   return (
     <div className="bg-white rounded-xl border border-border px-5 py-4 shadow-xs">
       <div className="flex items-start justify-between mb-2">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">{label}</p>
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">
+          {label}
+        </p>
         {Icon && (
-          <div className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}>
+          <div
+            className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}
+          >
             <Icon className={`h-[18px] w-[18px] ${iconColor || "text-blue-600"}`} />
           </div>
         )}
       </div>
-      <p className={`text-2xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}>
+      <p
+        className={`text-2xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}
+      >
         {value}
       </p>
-      {sub && (
-        <p className="text-[11px] mt-1 text-muted-foreground">
-          {sub}
-        </p>
-      )}
+      {sub && <p className="text-[11px] mt-1 text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -390,14 +464,21 @@ function ConfigRow({
   last?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between py-2.5 ${!last ? "border-b border-border/40" : ""}`}>
+    <div
+      className={`flex items-center justify-between py-2.5 ${!last ? "border-b border-border/40" : ""}`}
+    >
       <span className="text-[12px] text-muted-foreground">{label}</span>
-      <span className={`text-[12px] font-semibold tabular-nums ${
-        accent === "green" ? "text-emerald-600" :
-        accent === "amber" ? "text-amber-600" :
-        accent === "red" ? "text-red-500" :
-        "text-foreground"
-      }`}>
+      <span
+        className={`text-[12px] font-semibold tabular-nums ${
+          accent === "green"
+            ? "text-emerald-600"
+            : accent === "amber"
+              ? "text-amber-600"
+              : accent === "red"
+                ? "text-red-500"
+                : "text-foreground"
+        }`}
+      >
         {value}
       </span>
     </div>
