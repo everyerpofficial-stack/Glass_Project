@@ -207,7 +207,7 @@ export function blankInvoice(S: any) {
       desc: "",
       thickness: 5,
       batchNo: "",
-      defaultRate: S.rateUnit === "sqft" ? 69 : 807,
+      defaultRate: 0,
     },
     // Layer system
     layers: [
@@ -298,10 +298,10 @@ export function computeTotals(S: any, INV: any) {
       return lItems.map((it: any) => {
         const itemRate =
           it.rate !== "" && it.rate != null
-            ? it.rate
+            ? Number(it.rate)
             : l.rate !== "" && l.rate != null
-            ? l.rate
-            : INV.glass?.defaultRate;
+            ? Number(l.rate)
+            : (INV.glass?.defaultRate ? Number(INV.glass.defaultRate) : 0);
         const itemDesc =
           it.desc ||
           l.glassName ||
