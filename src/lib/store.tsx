@@ -96,30 +96,33 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       },
       computeTotals(s, SAMPLE_INVOICE_07321)
     );
-    const savedInvoices = LS.get<any[]>("invoices", []);
+    const savedInvoices = LS.get<any[] | null>("invoices", null);
     /* Auto-migrate: ensure every invoice has status and docType fields */
-    const migratedInvoices = (savedInvoices.length > 0 ? savedInvoices : [samplePreProforma, sampleProforma]).map(
-      (inv: any) => ({
-        ...inv,
-        docType: inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma"),
-        status: inv.status || "draft",
-      })
-    );
+    const rawInvoices = savedInvoices !== null ? savedInvoices : [samplePreProforma, sampleProforma];
+    const migratedInvoices = rawInvoices.map((inv: any) => ({
+      ...inv,
+      docType: inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma"),
+      status: inv.status || "draft",
+    }));
     setInvoices(migratedInvoices);
-    LS.set("invoices", migratedInvoices);
+    if (savedInvoices === null) {
+      LS.set("invoices", migratedInvoices);
+    }
 
-    const savedCustomers = LS.get<any[]>("customers", []);
-    const initialCustomers = savedCustomers.length > 0 ? savedCustomers : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
+    const savedCustomers = LS.get<any[] | null>("customers", null);
+    const initialCustomers = savedCustomers !== null ? savedCustomers : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
     setCustomers(initialCustomers);
-    if (savedCustomers.length === 0) LS.set("customers", initialCustomers);
+    if (savedCustomers === null) {
+      LS.set("customers", initialCustomers);
+    }
 
     /* Load work orders */
-    const savedWorkOrders = LS.get<any[]>("workOrders", []);
-    setWorkOrders(savedWorkOrders);
+    const savedWorkOrders = LS.get<any[] | null>("workOrders", null);
+    setWorkOrders(savedWorkOrders || []);
 
     /* Load payments */
-    const savedPayments = LS.get<any[]>("payments", []);
-    const initialPayments = savedPayments.length > 0 ? savedPayments : [
+    const savedPayments = LS.get<any[] | null>("payments", null);
+    const initialPayments = savedPayments !== null ? savedPayments : [
       {
         id: "pay-1001",
         custName: "HINDUSTAN FLOAT GLASS PVT. LTD",
@@ -133,7 +136,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
     ];
     setPayments(initialPayments);
-    if (savedPayments.length === 0) LS.set("payments", initialPayments);
+    if (savedPayments === null) {
+      LS.set("payments", initialPayments);
+    }
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
