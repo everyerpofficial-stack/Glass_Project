@@ -31,7 +31,7 @@ type Ctx = {
   draftState: string;
   newInvoice: () => void;
   loadInvoice: (id: string, asCopy?: boolean) => void;
-  saveInvoice: () => void;
+  saveInvoice: () => boolean;
   deleteInvoice: (id: string) => void;
   saveCustomer: (c?: any) => void;
   deleteCustomer: (id: string) => void;
@@ -207,11 +207,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const saveInvoice = useCallback(() => {
     if (!String(inv.cust.name || "").trim()) {
       toast.error("Enter a customer name before saving");
-      return;
+      return false;
     }
     if (!totals.lines.some((l: any) => l.ok)) {
       toast.error("Add at least one valid item");
-      return;
+      return false;
     }
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
@@ -231,9 +231,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
     setInvoices(next);
     LS.set("invoices", next);
-    setInvState((prev: any) => ({ ...prev, _saved: true }));
+    setInvState(rec);
     toast.success("Booking " + rec.no + " saved");
     if (settings.sheetUrl) syncOne(rec);
+    return true;
   }, [inv, totals, invoices, settings, syncOne]);
 
   const loadInvoice = useCallback(

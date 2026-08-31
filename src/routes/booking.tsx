@@ -1249,17 +1249,26 @@ function BookingPage() {
                                   SR NO
                                 </th>
 
-                                <th colSpan={inputUnit === "mm" ? 2 : (isFreqOn ? 5 : 4)} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
+                                {inputUnit !== "mm" && (
+                                  <>
+                                    {isFreqOn && (
+                                      <th rowSpan={2} className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[55px]">
+                                        FREQ
+                                      </th>
+                                    )}
+                                    <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]">
+                                      <div>L1 IN</div>
+                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(INCH)</div>
+                                    </th>
+                                    <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]">
+                                      <div>L2 IN</div>
+                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(INCH)</div>
+                                    </th>
+                                  </>
+                                )}
+
+                                <th colSpan={4} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
                                   ACTUAL SIZE (ENTER)
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
-                                  PCS
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[65px]">
-                                  <div>AREA</div>
-                                  <div className="text-[9px] font-normal lowercase tracking-normal">(sq mtr.)</div>
                                 </th>
 
                                 <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
@@ -1284,7 +1293,7 @@ function BookingPage() {
                                   CSK
                                 </th>
 
-                                <th colSpan={extraAreaLabel ? 4 : 2} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
+                                <th colSpan={4} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
                                   CHARGEABLE SIZE (MM)
                                 </th>
 
@@ -1307,64 +1316,39 @@ function BookingPage() {
 
                               <tr className="border-b-2 border-emerald-600/40">
                                 {/* Under ACTUAL SIZE (ENTER) */}
-                                {inputUnit === "mm" ? (
-                                  <>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
-                                      <div>HEIGHT</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                    </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
-                                      <div>WIDTH</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                    </th>
-                                  </>
-                                ) : (
-                                  <>
-                                    {isFreqOn && (
-                                      <th className="py-1.5 px-1 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
-                                        FREQ
-                                      </th>
-                                    )}
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
-                                      <div>HEIGHT</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(IN)</div>
-                                    </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[80px]">
-                                      <div>WIDTH</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(IN)</div>
-                                    </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
-                                      <div>HEIGHT</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                    </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[55px]">
-                                      <div>WIDTH</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                    </th>
-                                  </>
-                                )}
-
-                                {/* Under CHARGEABLE SIZE (MM) */}
-                                {extraAreaLabel && (
-                                  <>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                      <div>HEIGHT</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                      <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                    </th>
-                                    <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                      <div>WIDTH</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                      <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                    </th>
-                                  </>
-                                )}
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
+                                  <div>HEIGHT</div>
+                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                </th>
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
+                                  <div>WIDTH</div>
+                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
                                   PCS
                                 </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                   <div>AREA</div>
-                                  <div className="text-[8px] font-normal lowercase tracking-normal">(sq mtr.)</div>
+                                  <div className="text-[8px] font-normal lowercase tracking-normal">({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})</div>
+                                </th>
+
+                                {/* Under CHARGEABLE SIZE (MM) */}
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                  <div>HEIGHT</div>
+                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel || "+25 MM"}</div>
+                                </th>
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                  <div>WIDTH</div>
+                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
+                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel || "+25 MM"}</div>
+                                </th>
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
+                                  PCS
+                                </th>
+                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                  <div>AREA</div>
+                                  <div className="text-[8px] font-normal lowercase tracking-normal">({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})</div>
                                 </th>
                               </tr>
                             </thead>
@@ -1386,7 +1370,7 @@ function BookingPage() {
                                       <span className="text-xs font-semibold">{itemIdx + 1}</span>
                                     </td>
 
-                                    {/* Actual Size Inputs */}
+                                    {/* Inch Inputs (L1 IN & L2 IN) */}
                                     {inputUnit !== "mm" && (
                                       <>
                                         {isFreqOn && (
@@ -1396,11 +1380,11 @@ function BookingPage() {
                                               onValueChange={(v) => updateLayerItem(layerIdx, itemIdx, "freq", Number(v))}
                                             >
                                               <SelectTrigger className="h-8 text-xs font-mono text-center w-full px-1 focus:ring-1">
-                                                <SelectValue />
+                                                <SelectValue>{Number(item.freq) === 16 ? "1/16" : "1/8"}</SelectValue>
                                               </SelectTrigger>
                                               <SelectContent>
-                                                <SelectItem value="8">8</SelectItem>
-                                                <SelectItem value="16">16</SelectItem>
+                                                <SelectItem value="8">1/8</SelectItem>
+                                                <SelectItem value="16">1/16</SelectItem>
                                               </SelectContent>
                                             </Select>
                                           </td>
@@ -1421,16 +1405,11 @@ function BookingPage() {
                                             placeholder={isFreqOn ? "32 2" : "13 3/8"}
                                           />
                                         </td>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[55px]">
-                                          {line?.ok ? line.lMM : "—"}
-                                        </td>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[55px]">
-                                          {line?.ok ? line.wMM : "—"}
-                                        </td>
                                       </>
                                     )}
 
-                                    {inputUnit === "mm" && (
+                                    {/* Actual Size Columns */}
+                                    {inputUnit === "mm" ? (
                                       <>
                                         <td className="py-1.5 px-1">
                                           <Input
@@ -1451,6 +1430,15 @@ function BookingPage() {
                                             placeholder="51.2"
                                             step="0.1"
                                           />
+                                        </td>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
+                                          {line?.ok ? line.lMM : "—"}
+                                        </td>
+                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
+                                          {line?.ok ? line.wMM : "—"}
                                         </td>
                                       </>
                                     )}
@@ -1526,22 +1514,17 @@ function BookingPage() {
                                       />
                                     </td>
 
-                                    {/* Chargeable Size (MM) Sub-columns */}
-                                    {extraAreaLabel && (
-                                      <>
-                                        {/* Height (MM) */}
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
-                                          {line?.ok ? line.lChgMM : "—"}
-                                        </td>
+                                    {/* Chargeable Height (MM) */}
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
+                                      {line?.ok ? line.lChgMM : "—"}
+                                    </td>
 
-                                        {/* Width (MM) */}
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
-                                          {line?.ok ? line.wChgMM : "—"}
-                                        </td>
-                                      </>
-                                    )}
+                                    {/* Chargeable Width (MM) */}
+                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
+                                      {line?.ok ? line.wChgMM : "—"}
+                                    </td>
 
-                                    {/* PCS */}
+                                    {/* Chargeable PCS */}
                                     <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[45px]">
                                       {line?.ok ? item.qty : "—"}
                                     </td>
@@ -1650,8 +1633,8 @@ function BookingPage() {
                 size="sm"
                 className="h-8 text-[11px] gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/5 font-semibold"
                 onClick={() => {
-                  saveInvoice();
-                  if (inv.id) {
+                  const ok = saveInvoice();
+                  if (ok && inv.id) {
                     toast.success(`Opening PDF view for ${inv.no}...`);
                     navigate({ to: "/invoice", search: { id: inv.id } });
                   }

@@ -455,7 +455,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
         '</td><td class="c">' +
         (it.cutouts ? it.cutouts : "") +
         '</td><td class="n">' +
-        (S.rateUnit === "sqft" ? l.totalSqft : l.totalSqm) +
+        (S.rateUnit === "sqft" ? (l.chargeAreaSqft ?? l.totalSqft) : (l.chargeAreaSqm ?? l.totalSqm)) +
         '</td><td class="n">' +
         nf(l.rate) +
         '</td><td class="n">' +

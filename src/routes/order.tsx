@@ -254,13 +254,10 @@ function ConfirmPaymentModal({
     }
   };
 
-  const handleApplyPreset = (type: "zero" | "half" | "full") => {
+  const handleApplyPreset = (type: "zero" | "full") => {
     if (type === "zero") {
       setPaidAmountStr("0");
       setPaymentType("Credit");
-    } else if (type === "half") {
-      setPaidAmountStr(String(Math.round(grandTotal / 2)));
-      if (paymentType === "Credit") setPaymentType("Bank Transfer");
     } else if (type === "full") {
       setPaidAmountStr(String(grandTotal));
       if (paymentType === "Credit") setPaymentType("Bank Transfer");
@@ -354,7 +351,7 @@ function ConfirmPaymentModal({
               <span>Quick Amount Presets</span>
               <span className="text-muted-foreground font-mono">Total: ₹ {nf(grandTotal)}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleApplyPreset("zero")}
@@ -368,17 +365,6 @@ function ConfirmPaymentModal({
               </button>
               <button
                 type="button"
-                onClick={() => handleApplyPreset("half")}
-                className={`py-1.5 px-2 rounded-md border text-[11px] font-medium transition-colors ${
-                  numericPaid === Math.round(grandTotal / 2) && numericPaid > 0
-                    ? "bg-primary text-primary-foreground border-primary font-bold shadow-xs"
-                    : "bg-background border-border hover:bg-muted text-foreground"
-                }`}
-              >
-                50% (₹{nf(Math.round(grandTotal / 2))})
-              </button>
-              <button
-                type="button"
                 onClick={() => handleApplyPreset("full")}
                 className={`py-1.5 px-2 rounded-md border text-[11px] font-medium transition-colors ${
                   numericPaid === grandTotal && grandTotal > 0
@@ -386,7 +372,7 @@ function ConfirmPaymentModal({
                     : "bg-background border-border hover:bg-muted text-foreground"
                 }`}
               >
-                100% (₹{nf(grandTotal)})
+                Full Paid (₹{nf(grandTotal)})
               </button>
             </div>
           </div>
