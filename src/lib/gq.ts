@@ -432,97 +432,122 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const terms = (S.terms || "").split("\n").filter((x: string) => x.trim());
   const unitCol = S.rateUnit === "sqft" ? "Sq.Ft" : "SqMtr";
 
-  let itemRows = "";
   let globalSr = 1;
+  const productGroups: any[] = [];
 
   if (INV.layers && INV.layers.length > 0) {
     INV.layers.forEach((l: any, idx: number) => {
-      const layerLines = lines.filter((x: any) => x.it.layerIdx === idx);
+      const layerLines = lines.filter((x: any) => x.it.layerIdx === idx || (idx === 0 && x.it.layerIdx === undefined));
       if (layerLines.length > 0) {
-        const layerDesc = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
-        const layerTitle = `${l.layerNo || "Item " + (idx + 1)}${layerDesc ? ": " + layerDesc : ""}`;
-
-        itemRows += `
-          <tr style="background:#f0f4f8; font-weight:bold; font-size:8.5pt">
-            <td colspan="13" style="border:1px solid #000; padding:4px 6px; text-align:left; color:#0f172a">
-              ${esc(layerTitle)}
-            </td>
-          </tr>
-        `;
-
-        layerLines.forEach((x: any) => {
-          const lineObj = x.l;
-          const it = x.it;
-          itemRows +=
-            '<tr><td class="c">' +
-            (globalSr++) +
-            '</td><td class="c">' +
-            esc(it.l1 || "") +
-            '</td><td class="c">' +
-            esc(it.l2 || "") +
-            '</td><td class="n">' +
-            lineObj.lMM +
-            '</td><td class="n">' +
-            lineObj.wMM +
-            '</td><td class="c">' +
-            lineObj.qty +
-            '</td><td class="c">' +
-            (it.holes ? it.holes : "") +
-            '</td><td class="c">' +
-            (it.cutouts ? it.cutouts : "") +
-            '</td><td class="n">' +
-            (S.rateUnit === "sqft" ? (lineObj.chargeAreaSqft ?? lineObj.totalSqft) : (lineObj.chargeAreaSqm ?? lineObj.totalSqm)) +
-            '</td><td class="n">' +
-            nf(lineObj.rate) +
-            '</td><td class="n">' +
-            nf(lineObj.amount) +
-            '</td><td class="c">' +
-            esc(it.shape || "DRAWING") +
-            '</td><td class="c">' +
-            esc(it.remark || "") +
-            '</td></tr>';
+        const prodDesc = l.productName || l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
+        productGroups.push({
+          index: idx + 1,
+          code: l.productCode || String(5904 + idx).padStart(5, "0"),
+          title: prodDesc,
+          lines: layerLines,
         });
       }
     });
   }
 
-  if (!itemRows) {
-    itemRows = lines
-      .map((x: any) => {
-        const lineObj = x.l,
-          it = x.it;
-        return (
-          '<tr><td class="c">' +
-          (globalSr++) +
-          '</td><td class="c">' +
-          esc(it.l1 || "") +
-          '</td><td class="c">' +
-          esc(it.l2 || "") +
-          '</td><td class="n">' +
-          lineObj.lMM +
-          '</td><td class="n">' +
-          lineObj.wMM +
-          '</td><td class="c">' +
-          lineObj.qty +
-          '</td><td class="c">' +
-          (it.holes ? it.holes : "") +
-          '</td><td class="c">' +
-          (it.cutouts ? it.cutouts : "") +
-          '</td><td class="n">' +
-          (S.rateUnit === "sqft" ? (lineObj.chargeAreaSqft ?? lineObj.totalSqft) : (lineObj.chargeAreaSqm ?? lineObj.totalSqm)) +
-          '</td><td class="n">' +
-          nf(lineObj.rate) +
-          '</td><td class="n">' +
-          nf(lineObj.amount) +
-          '</td><td class="c">' +
-          esc(it.shape || "DRAWING") +
-          '</td><td class="c">' +
-          esc(it.remark || "") +
-          '</td></tr>'
-        );
-      })
-      .join("");
+  if (productGroups.length === 0) {
+    productGroups.push({
+      index: 1,
+      code: "05904",
+      title: INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "Glass"}` : (INV.productName || "Glass")),
+      lines: lines,
+    });
   }
+
+  let productTablesHTML = "";
+
+  productGroups.forEach((grp: any) => {
+    let grpQty = 0;
+    let grpAreaSqm = 0;
+    let grpAreaSqft = 0;
+    let grpAmount = 0;
+
+    let rowsHTML = "";
+    grp.lines.forEach((x: any) => {
+      const lineObj = x.l;
+      const it = x.it;
+
+      const lineQty = Number(lineObj.qty) || 1;
+      const lineSqm = Number(lineObj.chargeAreaSqm ?? lineObj.totalSqm) || 0;
+      const lineSqft = Number(lineObj.chargeAreaSqft ?? lineObj.totalSqft) || 0;
+      const lineAmount = Number(lineObj.amount) || 0;
+
+      grpQty += lineQty;
+      grpAreaSqm += lineSqm;
+      grpAreaSqft += lineSqft;
+      grpAmount += lineAmount;
+
+      rowsHTML += `
+        <tr>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${globalSr++}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l1 || "")}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l2 || "")}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.wMM}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace font-weight:bold">${nf(lineObj.amount)}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${esc(it.shape || "BLOCK")}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
+        </tr>
+      `;
+    });
+
+    const displayArea = S.rateUnit === "sqft" ? nf(grpAreaSqft, 2) : nf(grpAreaSqm, 3);
+
+    productTablesHTML += `
+      <div style="border:1px solid #000; border-top:0">
+        <!-- Product Header Row -->
+        <table style="width:100%; border-collapse:collapse">
+          <tr style="background:#eef2f6; font-weight:bold; font-size:8pt">
+            <td style="border:1px solid #000; width:55px; text-align:center; padding:3px; background:#dbeafe; color:#1e40af">
+              <b>${grp.index}</b><br><span style="font-size:7.5pt; font-family:monospace">${esc(grp.code)}</span>
+            </td>
+            <td style="border:1px solid #000; padding:4px 8px; text-align:left; font-size:8.5pt; text-transform:uppercase">
+              <b>${esc(grp.title)}</b>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Product Size Items Table -->
+        <table class="items2" style="width:100%; border-collapse:collapse; border-top:0">
+          <thead>
+            <tr style="background:#EDEDED; font-size:7.5pt; font-weight:bold">
+              <th style="border:1px solid #000; padding:3px; text-align:center; width:35px">SR No</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L1-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L2-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Height</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Width</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Qty</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Shape</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+            <tr style="font-weight:bold; background:#f4f4f4; font-size:8pt">
+              <td colspan="5" style="border:1px solid #000; text-align:left; padding:3px 6px">Total</td>
+              <td class="c" style="border:1px solid #000; text-align:center">${grpQty}</td>
+              <td class="n" style="border:1px solid #000; text-align:right; font-family:monospace">${displayArea}</td>
+              <td style="border:1px solid #000"></td>
+              <td class="n" style="border:1px solid #000; text-align:right; font-family:monospace">${nf(grpAmount)}</td>
+              <td style="border:1px solid #000"></td>
+              <td style="border:1px solid #000"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
 
   let opsRows = "";
   if (t.holes > 0) {
@@ -563,18 +588,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const docTitle = isPre ? "PRE PROFORMA INVOICE" : (S.title || "PROFORMA INVOICE");
   const noLabel = isPre ? "Pre Proforma No" : "Proforma No";
 
-  let glassDescText = "";
-  if (INV.layers && INV.layers.length > 0) {
-    glassDescText = INV.layers
-      .map((l: any, idx: number) => {
-        const info = l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
-        return `${l.layerNo || "Item " + (idx + 1)}: ${info}`;
-      })
-      .join("  |  ");
-  } else {
-    glassDescText = INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "Glass"}` : (INV.productName || "Glass"));
-  }
-
   return `
     <div class="pdoc">
       <!-- PAGE 1 -->
@@ -603,7 +616,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
               Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(INV.orderNo || "—")}
             </td>
             <td style="border:1px solid #000; padding:4px">
-              Project Remark : ${esc(INV.projectRemark || "—")}<br>
               Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Office")}<br>
               Party PO No. &nbsp;&nbsp;&nbsp;: ${esc(INV.poNo || "—")}
             </td>
@@ -621,50 +633,12 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
               <b>GST# : ${esc(INV.cust?.gstin || "")}</b>
             </td>
           </tr>
-          <tr>
-            <td colspan="2" style="border:1px solid #000; background:#fafafa; font-weight:600; padding:4px">
-              <span style="display:inline-block; min-width:60px; font-family:monospace; font-size:10pt">${esc(INV.glass?.batchNo || "12227")}</span>
-              &nbsp;&nbsp;&nbsp;&nbsp;
-              ${esc(glassDescText)}
-            </td>
-          </tr>
         </table>
 
-        <table class="items2" style="border:1px solid #000; border-top:0">
-          <thead>
-            <tr>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">SR No</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">L1-Inch</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">L2-Inch</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Height</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Width</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Qty</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Hole</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">CutOu</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Tot Area</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Chargable Rate/${unitCol}</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Amount</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Shape</th>
-              <th style="border:1px solid #000; background:#EDEDED; padding:3px">Remark</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRows}
-            <tr style="font-weight:bold; background:#EDEDED">
-              <td colspan="5" style="border:1px solid #000">Total</td>
-              <td class="c" style="border:1px solid #000">${t.qty}</td>
-              <td class="c" style="border:1px solid #000">${t.holes || ""}</td>
-              <td class="c" style="border:1px solid #000">${t.cutouts || ""}</td>
-              <td class="n" style="border:1px solid #000">${S.rateUnit === "sqft" ? t.sqft : t.sqm}</td>
-              <td style="border:1px solid #000"></td>
-              <td class="n" style="border:1px solid #000">${nf(t.glassAmount)}</td>
-              <td style="border:1px solid #000"></td>
-              <td style="border:1px solid #000"></td>
-            </tr>
-            ${opsRows}
-          </tbody>
-        </table>
+        <!-- Product Block Tables (Product Name Banner + Size Items + Subtotal per Product) -->
+        ${productTablesHTML}
 
+        <!-- Summary Bar Below Tables -->
         <div style="border:1px solid #000; border-top:0; padding:4px 6px; font-weight:bold; font-size:8pt; background:#f9f9f9">
           Qty : ${t.qty} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
           Sq.Ft : ${t.sqft} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;

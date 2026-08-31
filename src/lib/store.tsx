@@ -466,6 +466,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       (order.items || []).forEach((item: any, idx: number) => {
         const line = orderTotals.lines?.[idx];
         if (!line?.ok) return;
+        const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
+        const layerObj = order.layers?.[layerIdx] || null;
+        const prodName = layerObj?.productName || layerObj?.glassName || item.productName || order.productName || "Glass Product";
+        const layerNo = layerObj?.layerNo || `Item ${layerIdx + 1}`;
         const qty = Number(item.qty) || 1;
         for (let p = 0; p < qty; p++) {
           globalSr++;
@@ -476,6 +480,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             String(p + 1).padStart(2, "0");
           pieces.push({
             sr: globalSr,
+            layerIdx,
+            layerNo,
+            productName: prodName,
             l1: item.l1 || "",
             l2: item.l2 || "",
             l1mm: item.l1mm || line.lMM || "",

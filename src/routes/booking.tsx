@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { blankItem, nf, uid } from "@/lib/gq";
+import { blankItem, nf, uid, dmy } from "@/lib/gq";
 
 const BASE_GLASS_PRODUCTS = [
   "04 mm Clear Glass",
@@ -773,10 +773,10 @@ function BookingPage() {
                       <th className="py-2.5 px-3">Pre Proforma No</th>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
-                      <th className="py-2.5 px-3">Phone / GSTIN</th>
+                      <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
-                      <th className="py-2.5 px-3 text-right">Amount</th>
-                      <th className="py-2.5 px-3 text-center">Order Status</th>
+                      <th className="py-2.5 px-3 text-right">Grand Total</th>
+                      <th className="py-2.5 px-3 text-center">Status</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -787,10 +787,10 @@ function BookingPage() {
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
                           <td className="py-2.5 px-3 font-mono font-semibold text-foreground">{item.no}</td>
-                          <td className="py-2.5 px-3 text-muted-foreground">{item.date}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
                           <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
-                            {item.cust?.phone || item.cust?.gstin || "—"}
+                            {item.cust?.phone || "—"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
@@ -985,10 +985,6 @@ function BookingPage() {
                 <div>
                   <FieldLabel>Email</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.cust?.email || ""} onChange={(e) => updateInvField("cust.email", e.target.value)} placeholder="hindustan@live.in" />
-                </div>
-                <div>
-                  <FieldLabel>Project Remark</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.projectRemark || ""} onChange={(e) => updateInvField("projectRemark", e.target.value)} placeholder="Jhotwara Project" />
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Billing Address</FieldLabel>

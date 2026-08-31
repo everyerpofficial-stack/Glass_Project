@@ -26,6 +26,9 @@ import {
   ArrowRight,
   Printer,
   PlusCircle,
+  Factory,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -239,24 +242,43 @@ function CustomersPage() {
     return Array.from(set);
   }, [allCustomers]);
 
+  const ALPHABET = ["ALL", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
+  const [letterFilter, setLetterFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   /* Filtered customers list */
   const filteredCustomers = useMemo(() => {
     return allCustomers.filter((c) => {
+      const nameStr = String(c.name || "").trim();
       const q = search.toLowerCase();
+
       const matchSearch =
         !search ||
-        String(c.name || "").toLowerCase().includes(q) ||
+        nameStr.toLowerCase().includes(q) ||
         String(c.phone || "").toLowerCase().includes(q) ||
         String(c.gstin || "").toLowerCase().includes(q) ||
         String(c.city || "").toLowerCase().includes(q) ||
         String(c.id || "").toLowerCase().includes(q);
 
+      const matchLetter =
+        letterFilter === "ALL" ||
+        nameStr.toUpperCase().startsWith(letterFilter);
+
       const matchCity = cityFilter === "all" || String(c.city || "").toLowerCase() === cityFilter.toLowerCase();
       const matchStatus = statusFilter === "all" || (c.status || "active") === statusFilter;
 
-      return matchSearch && matchCity && matchStatus;
+      return matchSearch && matchLetter && matchCity && matchStatus;
     });
-  }, [allCustomers, search, cityFilter, statusFilter]);
+  }, [allCustomers, search, letterFilter, cityFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / (pageSize || filteredCustomers.length || 1)));
+
+  const paginatedCustomers = useMemo(() => {
+    if (pageSize === 0) return filteredCustomers;
+    const start = (page - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, page, pageSize]);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
@@ -470,6 +492,35 @@ function CustomersPage() {
         </div>
       </div>
 
+      {/* ── A-Z Quick Jumper Bar ────────────────────────────── */}
+      <div className="bg-white border border-border rounded-xl p-2 sm:p-2.5 shadow-xs overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-[650px] text-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-2 shrink-0">
+            A–Z Jumper:
+          </span>
+          {ALPHABET.map((char) => {
+            const active = letterFilter === char;
+            return (
+              <button
+                key={char}
+                type="button"
+                onClick={() => {
+                  setLetterFilter(char);
+                  setPage(1);
+                }}
+                className={`h-7 px-2 rounded font-mono text-[11px] font-bold transition-all ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                    : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {char}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Customer Data Table ────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
         {filteredCustomers.length === 0 ? (
@@ -501,7 +552,7 @@ function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 text-xs">
-                {filteredCustomers.map((c, i) => {
+                {paginatedCustomers.map((c, i) => {
                   const customerQuotes = invoices.filter(
                     (inv) => String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase()
                   );
@@ -610,6 +661,18 @@ function CustomersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate({ to: "/work-order", search: { woId: c.name } });
+                            }}
+                            title="Generate / View Work Order & Stickers for this Customer"
+                          >
+                            <Factory className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-primary"
                             onClick={(e) => handleOpenDetails(c, e)}
                             title="View Details, Invoices & Payment History"
@@ -645,6 +708,65 @@ function CustomersPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ── Pagination Bar ────────────────────────────────────────── */}
+        {filteredCustomers.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 border-t border-border bg-muted/20 text-xs">
+            <div className="text-muted-foreground font-medium">
+              Showing <span className="font-bold text-foreground">{(page - 1) * (pageSize || filteredCustomers.length) + 1}</span> to{" "}
+              <span className="font-bold text-foreground">
+                {Math.min(page * (pageSize || filteredCustomers.length), filteredCustomers.length)}
+              </span>{" "}
+              of <span className="font-bold text-foreground">{filteredCustomers.length}</span> customers
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground text-[11px]">Per Page:</span>
+                <select
+                  className="bg-background border border-border rounded px-2 py-1 text-xs outline-none font-semibold"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={0}>All ({filteredCustomers.length})</option>
+                </select>
+              </div>
+
+              {pageSize > 0 && totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Prev
+                  </Button>
+                  <span className="px-2 font-mono text-[11px] font-bold text-muted-foreground">
+                    {page} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
