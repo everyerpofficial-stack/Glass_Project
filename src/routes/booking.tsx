@@ -282,6 +282,7 @@ function BookingPage() {
     deleteInvoice,
     saveInvoice,
     newInvoice,
+    confirmPreProforma,
     updateInvoiceStatus,
   } = useGQ();
 
@@ -808,18 +809,17 @@ function BookingPage() {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* GO TO PROFORMA INVOICE BUTTON */}
+                              {/* CONFIRM PRE PROFORMA BUTTON */}
                               <Button
                                 size="sm"
-                                className="h-7 text-xs px-2.5 gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs"
+                                className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                                 onClick={() => {
-                                  loadInvoice(item.id, false);
-                                  toast.success(`Loaded Pre Proforma ${item.no}. Navigating to Proforma Invoice...`);
-                                  navigate({ to: "/order", search: { view: "form" } });
+                                  confirmPreProforma(item.id);
+                                  navigate({ to: "/order", search: { view: "list" } });
                                 }}
-                                title="Go to Proforma Invoice"
+                                title="Confirm Pre Proforma & Send to Proforma Invoice"
                               >
-                                Go to Proforma Invoice <ArrowRight className="h-3 w-3" />
+                                <CheckCircle2 className="h-3 w-3" /> Confirm Pre Proforma
                               </Button>
                               <Button
                                 variant="outline"

@@ -485,6 +485,7 @@ function OrderPage() {
     newInvoice,
     loadInvoice,
     confirmOrder,
+    generateWorkOrder,
     updateInvoiceStatus,
     deleteInvoice,
   } = useGQ();
@@ -624,6 +625,7 @@ function OrderPage() {
   }) => {
     if (!targetConfirmInvoice) return;
     confirmOrder(targetConfirmInvoice.id, paymentDetails);
+    generateWorkOrder(targetConfirmInvoice.id);
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
     toast.success(`Order ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} confirmed & sent to workflow!`);
@@ -895,23 +897,31 @@ function OrderPage() {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* SEND TO WORKFLOW / CONFIRM ORDER BUTTON ON RIGHT */}
-                              <Button
-                                size="sm"
-                                className={`h-7 text-xs px-2.5 gap-1 font-medium shadow-xs ${
-                                  isConfirmed
-                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    : "bg-amber-600 hover:bg-amber-700 text-white"
-                                }`}
-                                onClick={() => {
-                                  confirmOrder(item.id);
-                                  toast.success(`Order ${item.no} confirmed & sent to workflow! Navigating to Work Order...`);
-                                  navigate({ to: "/work-order" });
-                                }}
-                                title="Send to Workflow"
-                              >
-                                Send to Workflow <ArrowRight className="h-3 w-3" />
-                              </Button>
+                              {/* CONFIRM ORDER / WORKFLOW BUTTON */}
+                              {isConfirmed ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs px-2.5 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
+                                  onClick={() => {
+                                    navigate({ to: "/work-order" });
+                                  }}
+                                  title="View in Work Order Workflow"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> Sent to Workflow <ArrowRight className="h-3 w-3" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
+                                  onClick={() => {
+                                    handleOpenConfirmModal(item);
+                                  }}
+                                  title="Confirm Order & Record Payment"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> Confirm Order
+                                </Button>
+                              )}
 
                               {!isConfirmed && (
                                 <Button

@@ -38,6 +38,7 @@ type Ctx = {
   syncOne: (rec: any) => Promise<boolean>;
   syncAll: () => void;
   /* ── Workflow helpers ── */
+  confirmPreProforma: (id: string) => void;
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
   confirmOrder: (
     bookingId: string,
@@ -315,6 +316,27 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
   /* ── Workflow helpers ────────────────────────────────────────────── */
 
+  const confirmPreProforma = useCallback((id: string) => {
+    setInvoices((prev) => {
+      const next = prev.map((x) => {
+        if (x.id === id) {
+          const piNo = x.no?.startsWith("PI-") ? x.no : `PI-${x.no?.replace(/^PRE-|^PI-/, "") || Date.now()}`;
+          return {
+            ...x,
+            docType: "proforma",
+            no: piNo,
+            orderNo: piNo,
+            status: "draft",
+          };
+        }
+        return x;
+      });
+      LS.set("invoices", next);
+      return next;
+    });
+    toast.success("Pre Proforma confirmed & converted to Proforma Invoice!");
+  }, []);
+
   const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
     setInvoices((prev) => {
       const next = prev.map((x) => (x.id === id ? { ...x, status } : x));
@@ -531,6 +553,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     syncOne,
     syncAll,
     /* workflow */
+    confirmPreProforma,
     updateInvoiceStatus,
     confirmOrder,
     generateWorkOrder,
