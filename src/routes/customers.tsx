@@ -200,23 +200,48 @@ function CustomersPage() {
     setShowAddPayment(false);
   };
 
+  /* Combined customers list from store + invoices */
+  const allCustomers = useMemo(() => {
+    const list = [...customers];
+    invoices.forEach((inv) => {
+      if (inv.cust && inv.cust.name && String(inv.cust.name).trim()) {
+        const nameLower = String(inv.cust.name).trim().toLowerCase();
+        const exists = list.some((c) => String(c.name || "").trim().toLowerCase() === nameLower);
+        if (!exists) {
+          list.push({
+            id: inv.cust.id || "cus-" + Math.abs(nameLower.split("").reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
+            name: inv.cust.name,
+            phone: inv.cust.phone || "",
+            email: inv.cust.email || "",
+            gstin: inv.cust.gstin || "",
+            city: inv.cust.city || inv.cust.ship || "",
+            addr: inv.cust.addr || "",
+            ship: inv.cust.ship || "",
+            status: "active",
+          });
+        }
+      }
+    });
+    return list;
+  }, [customers, invoices]);
+
   /* Metrics counts */
-  const totalCustomers = customers.length;
-  const activeCount = useMemo(() => customers.filter((c) => (c.status || "active") === "active").length, [customers]);
-  const pendingKycCount = useMemo(() => customers.filter((c) => c.status === "pending").length, [customers]);
+  const totalCustomers = allCustomers.length;
+  const activeCount = useMemo(() => allCustomers.filter((c) => (c.status || "active") === "active").length, [allCustomers]);
+  const pendingKycCount = useMemo(() => allCustomers.filter((c) => c.status === "pending").length, [allCustomers]);
 
   /* Unique cities */
   const cities = useMemo(() => {
     const set = new Set<string>();
-    customers.forEach((c) => {
+    allCustomers.forEach((c) => {
       if (c.city) set.add(c.city);
     });
     return Array.from(set);
-  }, [customers]);
+  }, [allCustomers]);
 
   /* Filtered customers list */
   const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
+    return allCustomers.filter((c) => {
       const q = search.toLowerCase();
       const matchSearch =
         !search ||
@@ -231,7 +256,7 @@ function CustomersPage() {
 
       return matchSearch && matchCity && matchStatus;
     });
-  }, [customers, search, cityFilter, statusFilter]);
+  }, [allCustomers, search, cityFilter, statusFilter]);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-5 px-4 sm:px-6 lg:px-8 pt-6 pb-12">

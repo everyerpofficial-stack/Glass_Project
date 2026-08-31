@@ -167,7 +167,7 @@ function WorkOrderPage() {
   );
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [activeWO, setActiveWO] = useState<any>(null);
-  const [labelsPerRow, setLabelsPerRow] = useState<number>(2);
+  const [labelsPerRow, setLabelsPerRow] = useState<number>(4);
 
   useEffect(() => {
     if (searchParams?.tab === "stickers" || searchParams?.tab === "cutsheet") {

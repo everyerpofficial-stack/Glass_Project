@@ -111,11 +111,31 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
 
     const savedCustomers = LS.get<any[] | null>("customers", null);
-    const initialCustomers = savedCustomers !== null ? savedCustomers : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
+    const initialCustomers = savedCustomers !== null ? [...savedCustomers] : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
+    
+    /* Auto-harvest customers from invoices */
+    migratedInvoices.forEach((invoice: any) => {
+      if (invoice.cust && invoice.cust.name && String(invoice.cust.name).trim()) {
+        const nameLower = String(invoice.cust.name).trim().toLowerCase();
+        const exists = initialCustomers.some((c: any) => String(c.name || "").trim().toLowerCase() === nameLower);
+        if (!exists) {
+          initialCustomers.push({
+            id: uid("cus"),
+            name: invoice.cust.name,
+            phone: invoice.cust.phone || "",
+            email: invoice.cust.email || "",
+            gstin: invoice.cust.gstin || "",
+            city: invoice.cust.city || invoice.cust.ship || "",
+            addr: invoice.cust.addr || "",
+            ship: invoice.cust.ship || "",
+            status: "active",
+          });
+        }
+      }
+    });
+
     setCustomers(initialCustomers);
-    if (savedCustomers === null) {
-      LS.set("customers", initialCustomers);
-    }
+    LS.set("customers", initialCustomers);
 
     /* Load work orders */
     const savedWorkOrders = LS.get<any[] | null>("workOrders", null);
@@ -210,6 +230,28 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [settings.sheetUrl],
   );
 
+  const saveCustomer = useCallback(
+    (c?: any) => {
+      const cust = c || inv.cust;
+      if (!String(cust.name || "").trim()) {
+        toast.error("Enter a customer name first");
+        return;
+      }
+      setCustomers((prev) => {
+        const ex = prev.find(
+          (x) => String(x.name).toLowerCase() === String(cust.name).toLowerCase(),
+        );
+        const next = ex
+          ? prev.map((x) => (x === ex ? Object.assign({}, x, cust) : x))
+          : prev.concat([Object.assign({ id: uid("cus") }, cust)]);
+        LS.set("customers", next);
+        return next;
+      });
+      toast.success("Customer saved successfully");
+    },
+    [inv],
+  );
+
   const saveInvoice = useCallback(() => {
     if (!String(inv.cust.name || "").trim()) {
       toast.error("Enter a customer name before saving");
@@ -238,10 +280,16 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setInvoices(next);
     LS.set("invoices", next);
     setInvState(rec);
+
+    /* Auto-save customer profile */
+    if (rec.cust && rec.cust.name && String(rec.cust.name).trim()) {
+      saveCustomer(rec.cust);
+    }
+
     toast.success("Booking " + rec.no + " saved");
     if (settings.sheetUrl) syncOne(rec);
     return true;
-  }, [inv, totals, invoices, settings, syncOne]);
+  }, [inv, totals, invoices, settings, syncOne, saveCustomer]);
 
   const loadInvoice = useCallback(
     (id: string, asCopy?: boolean) => {
@@ -271,27 +319,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     toast.success("Booking deleted");
   }, []);
 
-  const saveCustomer = useCallback(
-    (c?: any) => {
-      const cust = c || inv.cust;
-      if (!String(cust.name || "").trim()) {
-        toast.error("Enter a customer name first");
-        return;
-      }
-      setCustomers((prev) => {
-        const ex = prev.find(
-          (x) => String(x.name).toLowerCase() === String(cust.name).toLowerCase(),
-        );
-        const next = ex
-          ? prev.map((x) => (x === ex ? Object.assign({}, x, cust) : x))
-          : prev.concat([Object.assign({ id: uid("cus") }, cust)]);
-        LS.set("customers", next);
-        return next;
-      });
-      toast.success("Customer saved successfully");
-    },
-    [inv],
-  );
+
 
   const deleteCustomer = useCallback((id: string) => {
     setCustomers((prev) => {
