@@ -1297,9 +1297,6 @@ function BookingPage() {
                                   CHARGEABLE SIZE (MM)
                                 </th>
 
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[70px]">
-                                  RATE
-                                </th>
 
                                 <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-right border-r border-emerald-600/20 align-middle min-w-[75px]">
                                   AMOUNT
@@ -1532,17 +1529,6 @@ function BookingPage() {
                                     {/* Chargeable Area (SQ MTR.) */}
                                     <td className="py-1.5 px-2 font-mono text-[11px] text-center text-emerald-700 dark:text-emerald-400 font-medium min-w-[65px]">
                                       {chargeAreaText}
-                                    </td>
-
-                                    {/* Rate */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.rate ?? ""}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "rate", e.target.value === "" ? "" : Number(e.target.value))}
-                                        placeholder={String(layer.rate || inv.glass?.defaultRate || "")}
-                                      />
                                     </td>
 
                                     {/* Amount */}
