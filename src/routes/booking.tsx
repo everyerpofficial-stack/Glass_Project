@@ -648,7 +648,13 @@ function BookingPage() {
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  onClick={saveInvoice}
+                  onClick={() => {
+                    const ok = saveInvoice();
+                    if (ok) {
+                      setShowForm(false);
+                      toast.success("Pre Proforma saved successfully!");
+                    }
+                  }}
                 >
                   <Save className="h-3.5 w-3.5" /> Save Pre Proforma
                 </Button>

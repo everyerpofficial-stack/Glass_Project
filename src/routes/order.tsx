@@ -915,11 +915,13 @@ function OrderPage() {
                                   size="sm"
                                   className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                                   onClick={() => {
-                                    handleOpenConfirmModal(item);
+                                    loadInvoice(item.id, false);
+                                    setShowForm(true);
+                                    toast.success(`Loaded Proforma Invoice ${item.no}. Fill details & click Confirm.`);
                                   }}
-                                  title="Confirm Order & Record Payment"
+                                  title="Confirm & Fill Details for Proforma Invoice"
                                 >
-                                  <CheckCircle2 className="h-3 w-3" /> Confirm Order
+                                  <CheckCircle2 className="h-3 w-3" /> Confirm & Fill Details
                                 </Button>
                               )}
 
@@ -1367,6 +1369,15 @@ function OrderPage() {
                 <div className="flex justify-between py-2 text-sm mt-1 border-t-2 border-border">
                   <span className="text-red-500 font-bold">Grand Total</span>
                   <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">{nf(totals.grandTotal ?? 0)}</span>
+                </div>
+
+                <div className="pt-3 border-t border-border/30 mt-3">
+                  <Button
+                    className="w-full h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                    onClick={handleConfirmOrder}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Confirm & Send to Workflow
+                  </Button>
                 </div>
               </div>
             </div>
