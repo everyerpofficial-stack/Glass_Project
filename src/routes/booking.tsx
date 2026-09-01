@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { blankItem, nf, uid, dmy } from "@/lib/gq";
+import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct } from "@/lib/gq";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
 const BASE_GLASS_PRODUCTS = [
@@ -859,18 +859,7 @@ function BookingPage() {
                               >
                                 <CheckCircle2 className="h-3 w-3" /> Confirm Order Booking
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs px-2 gap-1 text-blue-600 border-blue-500/30 hover:bg-blue-500/5"
-                                onClick={() => {
-                                  setDetailInvoice(item);
-                                  setDetailOpen(true);
-                                }}
-                                title="View Full Details"
-                              >
-                                <FileText className="h-3 w-3" /> View
-                              </Button>
+
 
                               <Button
                                 variant="outline"
@@ -1158,14 +1147,15 @@ function BookingPage() {
                     <div key={layer.id || layerIdx} className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40">
                       {/* Product Header Row for this layer */}
                       <div className="rounded-md border border-border/80 overflow-hidden bg-card shadow-xs">
-                        <div className="grid grid-cols-[100px_1fr_75px_95px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                           <div className="text-center">ITEM</div>
+                          <div>GLASS TYPE</div>
                           <div>PRODUCT NAME</div>
                           <div className="text-center">THK</div>
                           <div className="text-center">RATE</div>
                           <div></div>
                         </div>
-                        <div className="grid grid-cols-[100px_1fr_75px_95px_36px] gap-2 items-center px-3 py-2">
+                        <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2">
                           <div>
                             <Input
                               className="h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
@@ -1173,6 +1163,38 @@ function BookingPage() {
                               onChange={(e) => updateLayer(layerIdx, "layerNo", e.target.value)}
                             />
                           </div>
+
+                          {/* 1. GLASS TYPE Dropdown */}
+                          <div>
+                            <Select
+                              value={layer.glassType || detectGlassTypeFromProduct(layer.productName || layer.glassName || "")}
+                              onValueChange={(val) => {
+                                updateLayer(layerIdx, "glassType", val);
+                                const rawProds = PRODUCTS_BY_TYPE[val] || [];
+                                const firstItem = rawProds[0];
+                                if (firstItem) {
+                                  const firstProd = formatProductNameForUnit(firstItem, inputUnit);
+                                  updateLayer(layerIdx, "productName", firstProd);
+                                  updateLayer(layerIdx, "glassName", firstProd);
+                                  const thk = extractThicknessFromProductName(firstProd);
+                                  if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs w-full bg-background border-border font-medium">
+                                <SelectValue placeholder="Select Glass Type" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                {GLASS_TYPES.map((gType, gIdx) => (
+                                  <SelectItem key={gIdx} value={gType}>
+                                    {gType}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* 2. PRODUCT NAME Dropdown */}
                           <div>
                             {isCustomMode ? (
                               <div className="flex items-center gap-1">
@@ -1211,6 +1233,8 @@ function BookingPage() {
                                   } else {
                                     updateLayer(layerIdx, "productName", val);
                                     updateLayer(layerIdx, "glassName", val);
+                                    const autoType = detectGlassTypeFromProduct(val);
+                                    updateLayer(layerIdx, "glassType", autoType);
                                     const thk = extractThicknessFromProductName(val);
                                     if (thk !== null) {
                                       updateLayer(layerIdx, "thickness", thk);
@@ -1219,17 +1243,21 @@ function BookingPage() {
                                 }}
                               >
                                 <SelectTrigger className="h-7 text-xs w-full bg-background border-border">
-                                  <SelectValue placeholder="Select Product / Glass Name" />
+                                  <SelectValue placeholder="Select Product Name" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-64">
-                                  {BASE_GLASS_PRODUCTS.map((baseName, pIdx) => {
-                                    const formattedName = formatProductNameForUnit(baseName, inputUnit);
-                                    return (
-                                      <SelectItem key={pIdx} value={formattedName}>
-                                        {formattedName}
-                                      </SelectItem>
-                                    );
-                                  })}
+                                  {(() => {
+                                    const currentType = layer.glassType || detectGlassTypeFromProduct(layer.productName || layer.glassName || "");
+                                    const rawProds = PRODUCTS_BY_TYPE[currentType] || BASE_GLASS_PRODUCTS;
+                                    return rawProds.map((baseName, pIdx) => {
+                                      const formattedName = formatProductNameForUnit(baseName, inputUnit);
+                                      return (
+                                        <SelectItem key={pIdx} value={formattedName}>
+                                          {formattedName}
+                                        </SelectItem>
+                                      );
+                                    });
+                                  })()}
                                   <SelectItem value="__custom__" className="font-semibold text-primary">
                                     + Type Custom Product Name...
                                   </SelectItem>

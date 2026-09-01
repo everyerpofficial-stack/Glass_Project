@@ -49,6 +49,101 @@ export const BASE_SETTINGS: any = {
   sheetUrl: "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
 
+export const GLASS_TYPES = [
+  "Clear Glass",
+  "Clear - T.G.",
+  "Toughened Glass",
+  "Frosted Glass",
+  "Frosted - T.G.",
+  "Tinted - T.G.",
+  "Reflective Glass",
+  "Reflective - T.G.",
+  "Laminated Glass",
+  "Mirror Glass",
+];
+
+export const PRODUCTS_BY_TYPE: Record<string, string[]> = {
+  "Clear Glass": [
+    "04 MM Clear Glass",
+    "05 MM Clear Glass",
+    "06 MM Clear Glass",
+    "08 MM Clear Glass",
+    "10 MM Clear Glass",
+    "12 MM Clear Glass",
+    "15 MM Clear Glass",
+    "19 MM Clear Glass",
+  ],
+  "Clear - T.G.": [
+    "06 MM Clear - T.G.",
+    "08 MM Clear - T.G.",
+    "10 MM Clear - T.G.",
+    "12 MM Clear - T.G.",
+    "15 MM Clear - T.G.",
+    "19 MM Clear - T.G.",
+  ],
+  "Toughened Glass": [
+    "05 MM Toughened Glass",
+    "06 MM Toughened Glass",
+    "08 MM Toughened Glass",
+    "10 MM Toughened Glass",
+    "12 MM Toughened Glass",
+    "15 MM Toughened Glass",
+    "19 MM Toughened Glass",
+  ],
+  "Frosted Glass": [
+    "05 MM Frosted Glass",
+    "06 MM Frosted Glass",
+    "08 MM Frosted Glass",
+    "10 MM Frosted Glass",
+    "12 MM Frosted Glass",
+  ],
+  "Frosted - T.G.": [
+    "06 MM Frosted - T.G.",
+    "08 MM Frosted - T.G.",
+    "10 MM Frosted - T.G.",
+    "12 MM Frosted - T.G.",
+  ],
+  "Tinted - T.G.": [
+    "06 MM Tinted - T.G.",
+    "08 MM Tinted - T.G.",
+    "10 MM Tinted - T.G.",
+    "12 MM Tinted - T.G.",
+  ],
+  "Reflective Glass": [
+    "06 MM Reflective Glass",
+    "08 MM Reflective Glass",
+    "10 MM Reflective Glass",
+    "12 MM Reflective Glass",
+  ],
+  "Reflective - T.G.": [
+    "06 MM Reflective - T.G.",
+    "08 MM Reflective - T.G.",
+    "10 MM Reflective - T.G.",
+    "12 MM Reflective - T.G.",
+  ],
+  "Laminated Glass": [
+    "06 MM Laminated Glass",
+    "08 MM Laminated Glass",
+    "10 MM Laminated Glass",
+    "12 MM Laminated Glass",
+  ],
+  "Mirror Glass": [
+    "04 MM Mirror Glass",
+    "05 MM Mirror Glass",
+    "06 MM Mirror Glass",
+  ],
+};
+
+export function detectGlassTypeFromProduct(prodName: string): string {
+  if (!prodName) return "Clear Glass";
+  for (const [gType, prods] of Object.entries(PRODUCTS_BY_TYPE)) {
+    if (prods.includes(prodName) || prodName.toLowerCase().includes(gType.toLowerCase())) {
+      return gType;
+    }
+  }
+  return "Clear Glass";
+}
+
 export const SAMPLE_INVOICE_07321: any = {
   id: "inv-07321",
   no: "07321",
@@ -164,6 +259,71 @@ export function dmy(iso: string) {
   return p[2] + "-" + p[1] + "-" + p[0];
 }
 
+export function getPaymentDueDateInfo(inv: any) {
+  if (!inv) return { dueDate: "", daysLeft: 0, status: "pending", label: "", badgeClass: "" };
+  const invDateStr = inv.date || today();
+  let dueDateStr = inv.dueDate;
+  if (!dueDateStr) {
+    const d = new Date(invDateStr);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + 7);
+      dueDateStr = d.toISOString().slice(0, 10);
+    } else {
+      dueDateStr = invDateStr;
+    }
+  }
+
+  const grandTotal = Number(inv.totals?.grandTotal || 0);
+  const paidAmount = Number(inv.paidAmount || 0);
+  const pendingAmount = Math.max(0, grandTotal - paidAmount);
+  const isPaid = pendingAmount <= 0 && grandTotal > 0;
+
+  if (isPaid) {
+    return {
+      dueDate: dueDateStr,
+      daysLeft: 0,
+      status: "paid",
+      label: "Paid",
+      badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold",
+    };
+  }
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const targetDueDate = new Date(dueDateStr);
+  targetDueDate.setHours(0, 0, 0, 0);
+
+  const diffTime = targetDueDate.getTime() - todayDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    const overdueDays = Math.abs(diffDays);
+    return {
+      dueDate: dueDateStr,
+      daysLeft: diffDays,
+      status: "overdue",
+      label: `${overdueDays} ${overdueDays === 1 ? "day" : "days"} overdue`,
+      badgeClass: "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-semibold",
+    };
+  } else if (diffDays === 0) {
+    return {
+      dueDate: dueDateStr,
+      daysLeft: 0,
+      status: "due_today",
+      label: "Due today",
+      badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold",
+    };
+  } else {
+    return {
+      dueDate: dueDateStr,
+      daysLeft: diffDays,
+      status: "pending",
+      label: `${diffDays} ${diffDays === 1 ? "day" : "days"} left`,
+      badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold",
+    };
+  }
+}
+
 /* ---------- invoice model (verbatim from app.js) ---------- */
 export function blankItem() {
   return {
@@ -188,10 +348,16 @@ export function blankItem() {
 }
 
 export function blankInvoice(S: any) {
+  const tDay = today();
+  const dObj = new Date();
+  dObj.setDate(dObj.getDate() + 7);
+  const defaultDue = dObj.toISOString().slice(0, 10);
+
   return {
     id: uid("inv"),
     no: S.prefix + S.nextNo,
-    date: today(),
+    date: tDay,
+    dueDate: defaultDue,
     poNo: "",
     salesPerson: "Office",
     orderNo: "",

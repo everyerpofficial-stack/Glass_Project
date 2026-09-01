@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { nf, dmy } from "@/lib/gq";
+import { nf, dmy, getPaymentDueDateInfo } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -723,19 +723,19 @@ function OrderPage() {
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">Invoice / PI No</th>
-                      <th className="py-2.5 px-3">Date</th>
+                      <th className="py-2.5 px-3">Date & Payment Due</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
-                      <th className="py-2.5 px-3 text-center">Order Status</th>
+                      <th className="py-2.5 px-3 text-center w-12" title="Order Status">Status</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40 text-xs">
                     {filteredSavedInvoices.map((item: any) => {
                       const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
-                      const payType = item.delivery?.paymentType || item.delivery?.paymentTerm || "Credit";
+                      const dueInfo = getPaymentDueDateInfo(item);
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
@@ -751,7 +751,14 @@ function OrderPage() {
                               {item.no}
                             </button>
                           </td>
-                          <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] leading-tight">
+                            <div>{dmy(item.date)}</div>
+                            <div className="mt-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ${dueInfo.badgeClass}`}>
+                                {dueInfo.label}
+                              </span>
+                            </div>
+                          </td>
                           <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
                             {item.cust?.phone || "—"}
@@ -761,21 +768,15 @@ function OrderPage() {
                             ₹ {nf(item.totals?.grandTotal || 0)}
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
-                              isConfirmed
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                            }`}>
-                              {isConfirmed ? (
-                                <>
-                                  <CheckCircle2 className="h-3 w-3" /> Order Confirmed
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="h-3 w-3" /> Pending Confirmation
-                                </>
-                              )}
-                            </span>
+                            {isConfirmed ? (
+                              <span title="Order Confirmed & Sent to Workflow" className="inline-flex p-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                <CheckCircle2 className="h-4 w-4" />
+                              </span>
+                            ) : (
+                              <span title="Pending Confirmation" className="inline-flex p-1.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                <Clock className="h-4 w-4" />
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
@@ -830,19 +831,6 @@ function OrderPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 text-xs px-2 gap-1 text-blue-600 border-blue-500/30 hover:bg-blue-500/5"
-                                onClick={() => {
-                                  setDetailInvoice(item);
-                                  setDetailOpen(true);
-                                }}
-                                title="View Full Invoice Details"
-                              >
-                                <FileText className="h-3 w-3" /> View
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                size="sm"
                                 className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
@@ -882,7 +870,7 @@ function OrderPage() {
 
             {/* 1. Order Header */}
             <Section title="Proforma Invoice Details" accent="bg-emerald-500/5">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
                   <FieldLabel>Order / Invoice No</FieldLabel>
                   <Input className="h-8 text-xs font-mono bg-emerald-500/5" value={inv.orderNo || inv.no || ""} onChange={(e) => updateInvField("orderNo", e.target.value)} />
@@ -890,6 +878,10 @@ function OrderPage() {
                 <div>
                   <FieldLabel>Invoice Date</FieldLabel>
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Payment Due Date</FieldLabel>
+                  <Input type="date" className="h-8 text-xs font-mono" value={inv.dueDate || ""} onChange={(e) => updateInvField("dueDate", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Order Booking Ref</FieldLabel>

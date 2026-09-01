@@ -4,7 +4,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { dmy, nf } from "@/lib/gq";
+import { dmy, nf, getPaymentDueDateInfo } from "@/lib/gq";
 import {
   FileText,
   User,
@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -42,6 +43,7 @@ export function InvoiceDetailModal({
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
   const docTypeLabel = isPre ? "Order Booking" : "Proforma Invoice";
+  const dueInfo = getPaymentDueDateInfo(invoice);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,6 +66,10 @@ export function InvoiceDetailModal({
               </h2>
             </div>
             <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1 ${dueInfo.badgeClass}`}>
+                <Calendar className="h-3.5 w-3.5" />
+                {dueInfo.label}
+              </span>
               {isPre ? (
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" /> Order Booking
@@ -87,7 +93,7 @@ export function InvoiceDetailModal({
 
         <div className="p-5 space-y-5">
           {/* Key Amount Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="bg-muted/30 border border-border rounded-lg p-3">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Total Amount
@@ -127,6 +133,18 @@ export function InvoiceDetailModal({
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
                 {pendingAmount > 0 ? "Amount remaining to pay" : "No balance due"}
+              </div>
+            </div>
+
+            <div className="bg-muted/30 border border-border rounded-lg p-3">
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Payment Due Date
+              </div>
+              <div className="text-base font-bold text-foreground font-mono mt-0.5">
+                {dmy(dueInfo.dueDate)}
+              </div>
+              <div className="text-[10px] font-semibold mt-0.5 text-primary">
+                {dueInfo.label}
               </div>
             </div>
           </div>
