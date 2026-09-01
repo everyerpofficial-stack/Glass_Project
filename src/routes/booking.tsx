@@ -779,28 +779,14 @@ function BookingPage() {
                           <td className="py-2.5 px-3 text-center">
                             <button
                               onClick={() => {
-                                const nextSent = !item.whatsappSent;
                                 toggleWhatsAppSent(item.id);
-                                if (nextSent && item.cust?.phone) {
-                                  const cleanPhone = String(item.cust.phone).replace(/\D/g, "");
-                                  if (cleanPhone) {
-                                    const msg = encodeURIComponent(
-                                      `Hello ${item.cust?.name || "Customer"},\nHere are your Order Booking details:\nBooking No: ${item.no}\nDate: ${dmy(item.date)}\nTotal Amount: ₹${nf(item.totals?.grandTotal || 0)}\n\nThank you!`
-                                    );
-                                    window.open(`https://wa.me/91${cleanPhone}?text=${msg}`, "_blank");
-                                  }
-                                }
                               }}
                               className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
                                 item.whatsappSent
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
                                   : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
                               }`}
-                              title={
-                                item.whatsappSent
-                                  ? "WhatsApp Sent (Click to toggle)"
-                                  : "Not sent via WhatsApp (Click to send & mark as Sent)"
-                              }
+                              title={item.whatsappSent ? "Status: Sent (Click to toggle)" : "Status: Not Sent (Click to toggle)"}
                             >
                               {item.whatsappSent ? (
                                 <>
