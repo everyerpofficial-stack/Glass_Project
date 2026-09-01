@@ -200,6 +200,17 @@ export const SAMPLE_INVOICE_07321: any = {
 };
 
 /* ---------- localStorage (same 'gq.' keys as the original app) ---------- */
+/* localStorage is this app's only offline copy, so a silent write failure means
+   silent data loss. Storage can refuse a write for reasons the user can act on
+   (private-mode quota, a full origin), so failures are surfaced once per session
+   through this hook rather than being swallowed at 25 call sites. */
+let storageFailureReported = false;
+let onStorageFailure: ((key: string) => void) | null = null;
+
+export function setStorageFailureHandler(fn: ((key: string) => void) | null) {
+  onStorageFailure = fn;
+}
+
 export const LS = {
   get<T>(k: string, d: T): T {
     try {
@@ -214,10 +225,37 @@ export const LS = {
       localStorage.setItem("gq." + k, JSON.stringify(v));
       return true;
     } catch {
+      if (!storageFailureReported) {
+        storageFailureReported = true;
+        try {
+          onStorageFailure?.(k);
+        } catch {
+          /* never let reporting a failure become a second failure */
+        }
+      }
       return false;
     }
   },
 };
+
+/* Next sequence number for a document prefix.
+   Derived from the highest number already in use, never from the record count:
+   counting means deleting OB-1002 makes the next booking OB-1002 as well, and
+   two live documents sharing a number is not something an invoicing system can
+   recover from. Scans the whole set so numbers survive deletions and rows
+   created on another device. */
+export function nextSeqForPrefix(records: any[], prefix: string, start = 1001): number {
+  let max = start - 1;
+  (records || []).forEach((r: any) => {
+    const no = String((r && (r.no || r.orderNo)) || "");
+    if (!no.toUpperCase().startsWith(prefix.toUpperCase())) return;
+    const digits = no.slice(prefix.length).replace(/\D/g, "");
+    if (!digits) return;
+    const n = parseInt(digits, 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  });
+  return max + 1;
+}
 
 export function loadSettings(): any {
   return Object.assign({}, BASE_SETTINGS, G.DEFAULTS, G.PRESETS.anand, LS.get("settings", {}));
@@ -549,32 +587,46 @@ export function buildRecord(INV: any, TOT: any) {
   return rec;
 }
 
-/* ---------- Apps Script sync (identical request payload) ---------- */
-export function postInvoice(sheetUrl: string, rec: any) {
-  return fetch(sheetUrl, {
-    method: "POST",
-    redirect: "follow",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "saveInvoice", invoice: rec }),
-  })
-    .then((r) => r.json())
-    .then((j) => {
-      if (j && j.success) return true;
-      throw new Error((j && j.message) || "Sheet refused the record");
-    });
+/* ---------- Apps Script transport (timeout + graceful failure) ----------
+   Apps Script web apps have no hard response-time ceiling: a cold start plus
+   a slow sheet read can hang a fetch() for a minute. Every request therefore
+   runs under an AbortController so a stalled network can never freeze the UI
+   or leave `sheetSyncing` stuck on. Reads use a short budget (the UI already
+   has cached data to fall back on); writes get a longer one because aborting
+   a write only loses the acknowledgement, not the row. */
+export const SHEET_READ_TIMEOUT_MS = 8000;
+export const SHEET_WRITE_TIMEOUT_MS = 15000;
+
+export class SheetTimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Google Sheets did not respond within ${Math.round(ms / 1000)}s`);
+    this.name = "SheetTimeoutError";
+  }
 }
 
-export function pingSheet(sheetUrl: string) {
-  return fetch(sheetUrl + (sheetUrl.indexOf("?") > -1 ? "&" : "?") + "action=ping").then((r) =>
-    r.json(),
-  );
+function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  /* AbortSignal.timeout() is not in every WebView this app is opened from, so
+     drive the controller manually. */
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal })
+    .catch((err: any) => {
+      if (err && err.name === "AbortError") throw new SheetTimeoutError(timeoutMs);
+      /* A cross-origin failure surfaces as an opaque "Failed to fetch"; name it
+         so the toast is actionable instead of cryptic. */
+      throw new Error(
+        "Could not reach Google Apps Script. Check the deployment URL in Settings and that the web app is shared with \u201cAnyone\u201d.",
+      );
+    })
+    .finally(() => clearTimeout(timer));
 }
 
-/* ---------- Data fetch functions (read from Google Sheets) ---------- */
-function sheetGet(sheetUrl: string, action: string) {
-  return fetch(sheetUrl + (sheetUrl.indexOf("?") > -1 ? "&" : "?") + "action=" + action, {
-    redirect: "follow",
-  })
+function withAction(sheetUrl: string, action: string) {
+  return sheetUrl + (sheetUrl.indexOf("?") > -1 ? "&" : "?") + "action=" + action;
+}
+
+function sheetGet(sheetUrl: string, action: string): Promise<any> {
+  return fetchWithTimeout(withAction(sheetUrl, action), { redirect: "follow" }, SHEET_READ_TIMEOUT_MS)
     .then((r) => r.json())
     .then((j) => {
       if (j && j.success) return j;
@@ -582,13 +634,19 @@ function sheetGet(sheetUrl: string, action: string) {
     });
 }
 
-function sheetPost(sheetUrl: string, payload: any) {
-  return fetch(sheetUrl, {
-    method: "POST",
-    redirect: "follow",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-  })
+function sheetPost(sheetUrl: string, payload: any): Promise<any> {
+  return fetchWithTimeout(
+    sheetUrl,
+    {
+      method: "POST",
+      redirect: "follow",
+      /* text/plain keeps this a CORS "simple request" — an application/json
+         body would trigger a preflight that Apps Script cannot answer. */
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    },
+    SHEET_WRITE_TIMEOUT_MS,
+  )
     .then((r) => r.json())
     .then((j) => {
       if (j && j.success) return j;
@@ -596,6 +654,15 @@ function sheetPost(sheetUrl: string, payload: any) {
     });
 }
 
+export function postInvoice(sheetUrl: string, rec: any) {
+  return sheetPost(sheetUrl, { action: "saveInvoice", invoice: rec }).then(() => true);
+}
+
+export function pingSheet(sheetUrl: string) {
+  return sheetGet(sheetUrl, "ping");
+}
+
+/* ---------- Data fetch functions (read from Google Sheets) ---------- */
 export function fetchInvoices(sheetUrl: string): Promise<any[]> {
   return sheetGet(sheetUrl, "getInvoices").then((j) => j.invoices || []);
 }
@@ -610,6 +677,68 @@ export function fetchWorkOrders(sheetUrl: string): Promise<any[]> {
 
 export function fetchPayments(sheetUrl: string): Promise<any[]> {
   return sheetGet(sheetUrl, "getPayments").then((j) => j.payments || []);
+}
+
+/* ---------- Whole-database read ----------
+   Each Apps Script invocation pays a cold start and Apps Script serialises
+   concurrent executions for the same user, so four "parallel" tab reads
+   actually queue up back-to-back. `action=getAll` (code.gs) returns all four
+   collections from one execution. Older deployments do not know that action,
+   so fall back to the four reads — issued through Promise.allSettled so one
+   failing tab can never reject the whole load or blank out the others. */
+export type SheetTabResult<T> = { ok: true; data: T[] } | { ok: false; error: Error };
+
+export type SheetSnapshot = {
+  invoices: SheetTabResult<any>;
+  customers: SheetTabResult<any>;
+  workOrders: SheetTabResult<any>;
+  payments: SheetTabResult<any>;
+};
+
+function settledToResult(r: PromiseSettledResult<any[]>): SheetTabResult<any> {
+  return r.status === "fulfilled"
+    ? { ok: true, data: r.value || [] }
+    : { ok: false, error: r.reason instanceof Error ? r.reason : new Error(String(r.reason)) };
+}
+
+function fetchAllTabsIndividually(sheetUrl: string): Promise<SheetSnapshot> {
+  return Promise.allSettled([
+    fetchInvoices(sheetUrl),
+    fetchCustomers(sheetUrl),
+    fetchWorkOrders(sheetUrl),
+    fetchPayments(sheetUrl),
+  ]).then(([invoices, customers, workOrders, payments]) => ({
+    invoices: settledToResult(invoices),
+    customers: settledToResult(customers),
+    workOrders: settledToResult(workOrders),
+    payments: settledToResult(payments),
+  }));
+}
+
+export function fetchSheetSnapshot(sheetUrl: string): Promise<SheetSnapshot> {
+  return sheetGet(sheetUrl, "getAll")
+    .then((j) => ({
+      invoices: { ok: true as const, data: j.invoices || [] },
+      customers: { ok: true as const, data: j.customers || [] },
+      workOrders: { ok: true as const, data: j.workOrders || [] },
+      payments: { ok: true as const, data: j.payments || [] },
+    }))
+    .catch((err: Error) => {
+      /* Only an Apps Script deployment that predates `getAll` is worth retrying
+         tab-by-tab. A timeout or a transport failure means the backend is slow
+         or unreachable, and firing four more requests at it would just multiply
+         the wait — report the failure and let the caller keep its cache. */
+      if (/Unknown GET action/i.test(err.message || "")) {
+        return fetchAllTabsIndividually(sheetUrl);
+      }
+      const failed = { ok: false as const, error: err };
+      return {
+        invoices: failed,
+        customers: failed,
+        workOrders: failed,
+        payments: failed,
+      };
+    });
 }
 
 /* ---------- Data post functions (write to Google Sheets) ---------- */

@@ -39,7 +39,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
-import { blankInvoice, nf, today } from "@/lib/gq";
+import { TableSkeleton } from "@/components/app/DataSkeleton";
+import { ConfirmDelete } from "@/components/app/ConfirmDelete";
+import { blankInvoice, dmy, nf, today } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customers")({
@@ -67,7 +69,7 @@ const AVATAR_COLORS = [
 
 function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, invoices, payments, saveCustomer, deleteCustomer, savePayment, deletePayment, setInv, settings } = useGQ();
+  const { customers, invoices, payments, saveCustomer, deleteCustomer, savePayment, deletePayment, setInv, settings, hydrated } = useGQ();
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -138,6 +140,32 @@ function CustomersPage() {
     saveCustomer(rec);
     setOpenModal(false);
     toast.success(editCust ? "Customer updated" : "New customer added");
+  };
+
+  /* /work-order matches woId against work-order and invoice identifiers, never
+     against a customer name — passing c.name here left the page silently blank.
+     Resolve the customer's newest work-order-eligible invoice instead. */
+  const openWorkOrderForCust = (c: any) => {
+    const name = String(c?.name || "").trim().toLowerCase();
+    const candidates = invoices.filter(
+      (x) =>
+        String(x.cust?.name || "").trim().toLowerCase() === name &&
+        (x.status === "order_confirmed" ||
+          x.status === "work_order_generated" ||
+          x.docType === "proforma"),
+    );
+    if (!candidates.length) {
+      toast.error(
+        `${c?.name || "This customer"} has no confirmed Proforma Invoice yet — confirm one first.`,
+      );
+      return;
+    }
+    const stamp = (x: any) => Date.parse(x?.updatedAt || x?.createdAt || x?.date || "") || 0;
+    const latest = candidates.reduce(
+      (best, x) => (stamp(x) > stamp(best) ? x : best),
+      candidates[0],
+    );
+    navigate({ to: "/work-order", search: { woId: latest.id } });
   };
 
   const createQuoteForCust = (c: any) => {
@@ -523,7 +551,9 @@ function CustomersPage() {
 
       {/* ── Customer Data Table ────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
-        {filteredCustomers.length === 0 ? (
+        {!hydrated ? (
+          <TableSkeleton rows={6} cols={6} />
+        ) : filteredCustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
               <Users className="h-5 w-5 text-muted-foreground/60" />
@@ -664,7 +694,7 @@ function CustomersPage() {
                             className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate({ to: "/work-order", search: { woId: c.name } });
+                              openWorkOrderForCust(c);
                             }}
                             title="Generate / View Work Order & Stickers for this Customer"
                           >
@@ -688,19 +718,20 @@ function CustomersPage() {
                           >
                             <Edit3 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteCustomer(c.id);
-                              toast.success("Customer deleted");
-                            }}
-                            title="Delete Customer"
+                          <ConfirmDelete
+                            title={`Delete ${c.name || "this customer"}?`}
+                            description="This permanently removes the customer profile from this device and from your Google Sheet. Their invoices and payments are kept, but will no longer be linked to a saved profile."
+                            onConfirm={() => deleteCustomer(c.id)}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                              title="Delete Customer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </ConfirmDelete>
                         </div>
                       </td>
                     </tr>
@@ -1087,15 +1118,20 @@ function CustomersPage() {
                               <td className="p-2.5 text-right font-mono font-bold text-emerald-600">₹ {nf(pay.amount)}</td>
                               <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">{pay.notes || "—"}</td>
                               <td className="p-2.5 text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-red-500"
-                                  onClick={() => deletePayment(pay.id)}
-                                  title="Delete Payment Record"
+                                <ConfirmDelete
+                                  title="Delete this payment record?"
+                                  description={`This permanently removes the ${settings.currency || "₹"} ${nf(pay.amount || 0)} payment dated ${dmy(pay.date)} from this device and from your Google Sheet. The customer’s outstanding balance will go back up by that amount.`}
+                                  onConfirm={() => deletePayment(pay.id)}
                                 >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                                    title="Delete Payment Record"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </ConfirmDelete>
                               </td>
                             </tr>
                           ))}

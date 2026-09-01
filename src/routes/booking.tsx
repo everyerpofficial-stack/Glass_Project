@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Plus,
   Trash2,
@@ -27,7 +27,7 @@ import {
   Users,
   UserCheck,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
+import { TableSkeleton } from "@/components/app/DataSkeleton";
+import { ConfirmDelete } from "@/components/app/ConfirmDelete";
 import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct } from "@/lib/gq";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -100,6 +102,12 @@ function extractThicknessFromProductName(name: string): number | null {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/booking")({
+  /* /order already accepted ?view=; /booking did not, so Edit and Duplicate
+     links from the invoice preview and the global search landed on the list
+     instead of the form they asked for. */
+  validateSearch: (search: Record<string, unknown>): { view?: string | undefined } => ({
+    view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
+  }),
   component: BookingPage,
 });
 
@@ -282,13 +290,21 @@ function BookingPage() {
     confirmPreProforma,
     updateInvoiceStatus,
     toggleWhatsAppSent,
+    hydrated,
   } = useGQ();
+
+  const searchParams = useSearch({ strict: false }) as { view?: string };
 
   const [bulkOpenLayerIdx, setBulkOpenLayerIdx] = useState<number | null>(null);
   const [savedSearch, setSavedSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(searchParams?.view === "form");
   const [detailInvoice, setDetailInvoice] = useState<any | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  useEffect(() => {
+    if (searchParams?.view === "form") setShowForm(true);
+    else if (searchParams?.view === "list") setShowForm(false);
+  }, [searchParams?.view]);
+
   const inputUnit = inv.inputUnit || "inch";
   const isFreqOn = inputUnit !== "mm" && Boolean(inv.frequencyEnabled);
 
@@ -558,21 +574,22 @@ function BookingPage() {
     toast.success(`Loaded customer: ${c.name}`);
   };
 
+  /* saveInvoice() returns false and toasts its own error when the customer name
+     or the line items fail validation. Both of these used to ignore that, mark
+     the booking "pi_sent" against a record that was never saved, and report
+     success on top of the error the user had just been shown. */
   const handleSendPI = () => {
-    saveInvoice();
-    if (inv.id) {
-      updateInvoiceStatus(inv.id, "pi_sent");
-    }
+    if (!saveInvoice()) return;
+    if (inv.id) updateInvoiceStatus(inv.id, "pi_sent");
     toast.success("Order Booking saved & sent to customer for confirmation");
   };
 
   const handleAcceptAndMove = () => {
-    saveInvoice();
-    if (inv.id) {
-      updateInvoiceStatus(inv.id, "pi_sent");
-      toast.success("Order Booking generated & sent to customer! Moving to Proforma Invoice.");
-      navigate({ to: "/order", search: { view: undefined } });
-    }
+    if (!saveInvoice()) return;
+    if (!inv.id) return;
+    updateInvoiceStatus(inv.id, "pi_sent");
+    toast.success("Order Booking generated & sent to customer! Moving to Proforma Invoice.");
+    navigate({ to: "/order", search: { view: undefined } });
   };
 
   return (
@@ -720,7 +737,9 @@ function BookingPage() {
               </div>
             }
           >
-            {filteredSavedInvoices.length === 0 ? (
+            {!hydrated ? (
+              <TableSkeleton rows={6} cols={6} />
+            ) : filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
                 <p>{savedSearch ? "No matching Order Bookings found." : "No saved Order Bookings found."}</p>
                 <Button
@@ -842,15 +861,20 @@ function BookingPage() {
                               >
                                 <Edit3 className="h-3 w-3" /> Edit
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                                onClick={() => deleteInvoice(item.id)}
-                                title="Delete"
+                              <ConfirmDelete
+                                title={`Delete Order Booking ${item.no}?`}
+                                description={`This permanently removes ${item.no} (${item.cust?.name || "no customer"}) from this device and from your Google Sheet, along with any work order generated from it. This cannot be undone.`}
+                                onConfirm={() => deleteInvoice(item.id)}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </ConfirmDelete>
                             </div>
                           </td>
                         </tr>

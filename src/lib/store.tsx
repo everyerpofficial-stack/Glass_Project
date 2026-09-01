@@ -1,6 +1,6 @@
 /* Client-side state container. It owns storage + sync only — every number
    comes from GlassCalc via computeTotals(). No formulas here. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
@@ -18,16 +18,73 @@ import {
   deleteCustomerFromSheet,
   deleteWorkOrderFromSheet,
   deletePaymentFromSheet,
-  fetchInvoices,
-  fetchCustomers,
-  fetchWorkOrders,
-  fetchPayments,
+  fetchSheetSnapshot,
+  nextSeqForPrefix,
+  setStorageFailureHandler,
   syncAllToSheet,
   uid,
 } from "./gq";
+import type { SheetTabResult } from "./gq";
 
 /* ── Workflow status types ────────────────────────────────────────────── */
 export type WorkflowStatus = "draft" | "pi_sent" | "order_confirmed" | "work_order_generated";
+
+/* How often the background poll looks for edits made on another device, and the
+   floor between any two syncs (focus/visibility/interval all share it). */
+const SYNC_POLL_MS = 30000;
+const SYNC_MIN_INTERVAL_MS = 10000;
+
+/* Merge one sheet tab into local state.
+   Rows the sheet returned win — it is the shared source of truth. Rows that
+   exist only locally survive *only* while they are still unsynced (`local` or
+   `pending`): those are drafts and failed writes that no other device has seen
+   yet, so dropping them would lose real work. Anything previously marked
+   `synced` and now absent from the sheet was deleted elsewhere, so it is
+   purged. Sorting is newest-first because Apps Script returns rows in append
+   order, which would otherwise make every "Recent" list show the oldest rows. */
+function mergeSheetCollection(prev: any[], fromSheet: any[]) {
+  const byId = new Map<string, any>();
+  (fromSheet || []).forEach((row: any) => {
+    if (!row || row.id == null || row.id === "") return;
+    byId.set(String(row.id), { ...row, sync: "synced" });
+  });
+  (prev || []).forEach((row: any) => {
+    if (!row || row.id == null || row.id === "") return;
+    const key = String(row.id);
+    if (!byId.has(key) && (row.sync === "local" || row.sync === "pending")) {
+      byId.set(key, row);
+    }
+  });
+  const stamp = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || "") || 0;
+  return Array.from(byId.values()).sort((a, b) => stamp(b) - stamp(a));
+}
+
+/* Flip one row’s sync flag after a write to the sheet resolves. Kept out of the
+   component so every collection uses the same rule and the same storage key. */
+function setRowSync(
+  setter: (fn: (prev: any[]) => any[]) => void,
+  lsKey: string,
+  id: string,
+  sync: "synced" | "pending",
+) {
+  setter((prev) => {
+    const next = prev.map((x: any) => (x.id === id ? { ...x, sync } : x));
+    LS.set(lsKey, next);
+    return next;
+  });
+}
+
+const markSynced = (
+  setter: (fn: (prev: any[]) => any[]) => void,
+  lsKey: string,
+  id: string,
+) => setRowSync(setter, lsKey, id, "synced");
+
+const markPending = (
+  setter: (fn: (prev: any[]) => any[]) => void,
+  lsKey: string,
+  id: string,
+) => setRowSync(setter, lsKey, id, "pending");
 
 type Ctx = {
   hydrated: boolean;
@@ -52,6 +109,10 @@ type Ctx = {
   loadFromSheet: (opts?: { quiet?: boolean }) => Promise<void>;
   pushAllToSheet: () => Promise<void>;
   sheetSyncing: boolean;
+  /* Last background-sync failure, or null when the sheet is reachable. Routes
+     surface this inline instead of the app crashing or hanging. */
+  sheetError: string | null;
+  lastSyncedAt: number | null;
   /* ── Workflow helpers ── */
   toggleWhatsAppSent: (id: string) => void;
   confirmPreProforma: (id: string) => void;
@@ -85,6 +146,22 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [inv, setInvState] = useState<any>(() => SAMPLE_INVOICE_07321);
   const [draftState, setDraftState] = useState("Draft saved automatically");
   const [sheetSyncing, setSheetSyncing] = useState(false);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const syncInFlight = useRef(false);
+  const lastSyncAttempt = useRef(0);
+
+  /* A refused localStorage write used to fail silently, so work could vanish on
+     the next reload with nothing having warned the user. */
+  useEffect(() => {
+    setStorageFailureHandler(() =>
+      toast.error(
+        "This browser is refusing to save data locally (storage full or private mode). Push to Google Sheets to avoid losing work.",
+        { duration: 12000 },
+      ),
+    );
+    return () => setStorageFailureHandler(null);
+  }, []);
 
   /* hydrate from localStorage after mount (SSR-safe) */
   useEffect(() => {
@@ -173,100 +250,112 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  /* ── Two-way Google Sheets sync ─────────────────────────────────── */
-  const loadFromSheet = useCallback(async (opts?: { quiet?: boolean }) => {
-    if (!settings.sheetUrl) {
-      if (!opts?.quiet) toast.error("Add your Apps Script URL in Settings first");
-      return;
-    }
-    setSheetSyncing(true);
-    try {
-      const [sheetInvoices, sheetCustomers, sheetWorkOrders, sheetPayments] = await Promise.all([
-        fetchInvoices(settings.sheetUrl).catch(() => [] as any[]),
-        fetchCustomers(settings.sheetUrl).catch(() => [] as any[]),
-        fetchWorkOrders(settings.sheetUrl).catch(() => [] as any[]),
-        fetchPayments(settings.sheetUrl).catch(() => [] as any[]),
-      ]);
+  /* ── Two-way Google Sheets sync ───────────────────────────────────
+     Contract: the sheet is the source of truth for rows it *returns*.
+     It is never treated as authoritative for a tab whose read failed —
+     a timeout, a CORS error or a redeployed URL must leave the cached
+     rows on screen, never blank them out. */
+  const loadFromSheet = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      if (!settings.sheetUrl) {
+        if (!opts?.quiet) toast.error("Add your Apps Script URL in Settings first");
+        return;
+      }
+      /* Focus + interval + manual clicks can overlap; a second pass while one is
+         in flight only doubles Apps Script load and can apply stale rows last. */
+      if (syncInFlight.current) return;
+      syncInFlight.current = true;
+      setSheetSyncing(true);
+      try {
+        const snap = await fetchSheetSnapshot(settings.sheetUrl);
 
-      /* Replacement & Merge strategy:
-         Google Sheets is the single Source of Truth across all devices.
-         1. Any item in Google Sheets is set as synced.
-         2. Any previously synced local item (or sample item) NOT in Google Sheets was deleted -> purge it.
-         3. Preserve unsaved local drafts (sync === 'local' or sync === 'pending').
-      */
+        const applied: string[] = [];
+        const failed: Error[] = [];
 
-      // Invoices
-      setInvoices((prev) => {
-        const pendingLocal = prev.filter((x: any) => x.sync === "local" || x.sync === "pending");
-        const syncedFromSheet = (sheetInvoices || []).map((si: any) => ({ ...si, sync: "synced" }));
-        
-        const finalMap = new Map<string, any>();
-        syncedFromSheet.forEach((item: any) => finalMap.set(item.id, item));
-        pendingLocal.forEach((item: any) => {
-          if (!finalMap.has(item.id)) {
-            finalMap.set(item.id, item);
+        const apply = (
+          tab: SheetTabResult<any>,
+          setter: (fn: (prev: any[]) => any[]) => void,
+          lsKey: string,
+          label: string,
+        ) => {
+          if (!tab.ok) {
+            failed.push(tab.error);
+            return 0;
           }
-        });
+          setter((prev) => {
+            const next = mergeSheetCollection(prev, tab.data);
+            LS.set(lsKey, next);
+            return next;
+          });
+          applied.push(label);
+          return tab.data.length;
+        };
 
-        const nextInvoices = Array.from(finalMap.values());
-        LS.set("invoices", nextInvoices);
-        return nextInvoices;
-      });
+        const counts =
+          apply(snap.invoices, setInvoices, "invoices", "invoices") +
+          apply(snap.customers, setCustomers, "customers", "customers") +
+          apply(snap.workOrders, setWorkOrders, "workOrders", "work orders") +
+          apply(snap.payments, setPayments, "payments", "payments");
 
-      // Customers
-      setCustomers((_) => {
-        const nextCustomers = sheetCustomers || [];
-        LS.set("customers", nextCustomers);
-        return nextCustomers;
-      });
+        if (failed.length === 4) {
+          const msg = failed[0]?.message || "Google Sheets is unreachable";
+          setSheetError(msg);
+          if (!opts?.quiet) toast.error("Could not refresh from Google Sheets: " + msg);
+          return;
+        }
 
-      // Work Orders
-      setWorkOrders((_) => {
-        const nextWorkOrders = sheetWorkOrders || [];
-        LS.set("workOrders", nextWorkOrders);
-        return nextWorkOrders;
-      });
-
-      // Payments
-      setPayments((_) => {
-        const nextPayments = sheetPayments || [];
-        LS.set("payments", nextPayments);
-        return nextPayments;
-      });
-
-      const total = sheetInvoices.length + sheetCustomers.length + sheetWorkOrders.length + sheetPayments.length;
-      if (!opts?.quiet) {
-        toast.success(`Loaded ${total} records from Google Sheets`);
+        setSheetError(failed.length ? failed[0]!.message : null);
+        setLastSyncedAt(Date.now());
+        if (!opts?.quiet) {
+          if (failed.length) {
+            toast.warning(
+              `Refreshed ${applied.join(", ")} (${counts} records). ${failed.length} tab(s) failed — cached copies kept.`,
+            );
+          } else {
+            toast.success(`Loaded ${counts} records from Google Sheets`);
+          }
+        }
+      } catch (err: any) {
+        /* fetchSheetSnapshot already swallows per-tab failures, so reaching here
+           means something structural went wrong — still never clear state. */
+        setSheetError(err?.message || String(err));
+        if (!opts?.quiet) toast.error("Failed to load from sheet: " + (err?.message || err));
+      } finally {
+        syncInFlight.current = false;
+        setSheetSyncing(false);
       }
-    } catch (err: any) {
-      if (!opts?.quiet) {
-        toast.error("Failed to load from sheet: " + err.message);
-      }
-    } finally {
-      setSheetSyncing(false);
-    }
-  }, [settings.sheetUrl]);
+    },
+    [settings.sheetUrl],
+  );
 
-  /* ── Auto-sync from Google Sheets across all devices (mount, tab focus, 30s interval) ── */
+  /* ── Background re-sync: on mount, on tab focus, and on a poll ──────
+     All three are quiet by design — cached data stays on screen and only the
+     `sheetSyncing` badge moves, so a refresh never blanks the app. */
   useEffect(() => {
     if (!hydrated || !settings.sheetUrl) return;
 
-    // Load from sheet immediately on mount (quiet mode)
-    loadFromSheet({ quiet: true });
-
-    // Auto-fetch when user switches back to this browser tab
-    const handleFocus = () => {
-      loadFromSheet({ quiet: true });
+    let cancelled = false;
+    const refresh = () => {
+      if (cancelled) return;
+      /* Don't spend an Apps Script execution on a tab nobody is looking at. */
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      /* Focus fires on every alt-tab; throttle so a busy user cannot stampede
+         the backend (Apps Script serialises executions per account). */
+      if (Date.now() - lastSyncAttempt.current < SYNC_MIN_INTERVAL_MS) return;
+      lastSyncAttempt.current = Date.now();
+      void loadFromSheet({ quiet: true });
     };
-    window.addEventListener("focus", handleFocus);
 
-    // Auto-poll every 30 seconds for live updates from other devices
-    const interval = setInterval(() => {
-      loadFromSheet({ quiet: true });
-    }, 30000);
+    refresh();
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const interval = setInterval(refresh, SYNC_POLL_MS);
 
     return () => {
-      window.removeEventListener("focus", handleFocus);
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
       clearInterval(interval);
     };
   }, [hydrated, settings.sheetUrl, loadFromSheet]);
@@ -299,8 +388,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const newInvoice = useCallback((docType: string = "pre_proforma") => {
-    const existing = invoices.filter((x: any) => (x.docType || "pre_proforma") === docType);
-    const nextNum = 1001 + existing.length;
+    /* blankInvoice stamps `<prefix><nextNo>`, so the sequence has to come from
+       the numbers already issued for that prefix — see nextSeqForPrefix. */
+    const prefix = docType === "proforma" ? "PI-" : "OB-";
+    const nextNum = nextSeqForPrefix(invoices, prefix);
     const customSettings = { ...settings, nextNo: nextNum };
     const blank = blankInvoice(customSettings, docType);
     setInvState(blank);
@@ -343,21 +434,36 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         toast.error("Enter a customer name first");
         return;
       }
-      const custWithId = cust.id ? cust : Object.assign({ id: uid("cus") }, cust);
+      /* `sync: "local"` is what stops the next background merge from treating
+         this row as "deleted on another device" and purging it. */
+      const custWithId = Object.assign(
+        { id: cust.id || uid("cus") },
+        cust,
+        { id: cust.id || uid("cus"), sync: "local", updatedAt: new Date().toISOString() },
+      );
       setCustomers((prev) => {
-        const ex = prev.find(
-          (x) => String(x.name).toLowerCase() === String(cust.name).toLowerCase(),
-        );
+        /* Match on id first. Matching on name alone meant renaming a customer
+           found no existing row and appended a second one carrying the same id. */
+        const ex =
+          prev.find((x) => x.id && custWithId.id && x.id === custWithId.id) ||
+          prev.find(
+            (x) => String(x.name || "").toLowerCase() === String(cust.name || "").toLowerCase(),
+          );
         const next = ex
           ? prev.map((x) => (x === ex ? Object.assign({}, x, custWithId) : x))
-          : prev.concat([custWithId]);
+          : [custWithId].concat(prev);
         LS.set("customers", next);
         return next;
       });
       toast.success("Customer saved successfully");
       /* Auto-sync customer to Google Sheet */
       if (settings.sheetUrl) {
-        postCustomer(settings.sheetUrl, custWithId).catch(() => {});
+        postCustomer(settings.sheetUrl, custWithId)
+          .then(() => markSynced(setCustomers, "customers", custWithId.id))
+          .catch((err: Error) => {
+            markPending(setCustomers, "customers", custWithId.id);
+            toast.error("Customer saved on this device. Sheet sync failed: " + err.message);
+          });
       }
     },
     [inv, settings.sheetUrl],
@@ -375,6 +481,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
     rec.docType = inv.docType || "pre_proforma";
+    /* Until syncOne confirms the write, this edit exists only here. Marking it
+       `local` keeps a concurrent background merge from purging it. */
+    rec.sync = "local";
     const existing = invoices.find((x) => x.id === inv.id);
 
     let next: any[];
@@ -490,11 +599,21 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
   const confirmPreProforma = useCallback((id: string) => {
     let newProforma: any = null;
+    let duplicateOf: string | null = null;
     setInvoices((prev) => {
       const sourceBooking = prev.find((x) => x.id === id);
       if (!sourceBooking) return prev;
-      const proformas = prev.filter((x) => x.docType === "proforma");
-      const nextSeq = proformas.length + 1001;
+      /* Confirming twice (a double-click, or a second visit to the list) used to
+         mint a second Proforma Invoice from the same booking. */
+      const bookingNo = String(sourceBooking.no || sourceBooking.orderNo || "");
+      const already = prev.find(
+        (x) => x.docType === "proforma" && bookingNo && String(x.preProformaNo || "") === bookingNo,
+      );
+      if (already) {
+        duplicateOf = already.no || "";
+        return prev;
+      }
+      const nextSeq = nextSeqForPrefix(prev, "PI-");
       const piNo = `PI-${nextSeq}`;
       newProforma = {
         ...JSON.parse(JSON.stringify(sourceBooking)),
@@ -504,6 +623,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         orderNo: piNo,
         preProformaNo: sourceBooking.no || sourceBooking.orderNo || "",
         status: "draft",
+        /* Copied from a synced booking, so it would inherit sync:"synced" and be
+           purged by the next merge if the post below has not landed yet. */
+        sync: "local",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -511,8 +633,16 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       LS.set("invoices", next);
       return next;
     });
-    toast.success(`Generated new Proforma Invoice ${newProforma?.no || ""}!`);
-    if (settings.sheetUrl && newProforma) {
+    if (duplicateOf) {
+      toast.warning(`Proforma Invoice ${duplicateOf} already exists for this booking.`);
+      return;
+    }
+    if (!newProforma) {
+      toast.error("Order Booking not found");
+      return;
+    }
+    toast.success(`Generated new Proforma Invoice ${newProforma.no}!`);
+    if (settings.sheetUrl) {
       postInvoice(settings.sheetUrl, newProforma).catch(() => {});
     }
   }, [settings.sheetUrl]);
@@ -536,7 +666,13 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   }, [settings.sheetUrl]);
 
   const savePayment = useCallback((pay: any) => {
-    const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
+    const rec = {
+      ...pay,
+      id: pay.id || uid("pay"),
+      createdAt: pay.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sync: "local",
+    };
     setPayments((prev) => {
       const existing = prev.findIndex((x) => x.id === rec.id);
       const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
@@ -546,7 +682,12 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     toast.success("Payment recorded successfully");
     /* Auto-sync payment to Google Sheet */
     if (settings.sheetUrl) {
-      postPayment(settings.sheetUrl, rec).catch(() => {});
+      postPayment(settings.sheetUrl, rec)
+        .then(() => markSynced(setPayments, "payments", rec.id))
+        .catch((err: Error) => {
+          markPending(setPayments, "payments", rec.id);
+          toast.error("Payment saved on this device. Sheet sync failed: " + err.message);
+        });
     }
   }, [settings.sheetUrl]);
 
@@ -705,18 +846,24 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   );
 
   const saveWorkOrder = useCallback((wo: any) => {
+    const rec = { ...wo, sync: "local", updatedAt: new Date().toISOString() };
     setWorkOrders((prev) => {
-      const existing = prev.findIndex((x) => x.id === wo.id);
+      const existing = prev.findIndex((x) => x.id === rec.id);
       const next = existing >= 0
-        ? prev.map((x, i) => (i === existing ? wo : x))
-        : [wo, ...prev];
+        ? prev.map((x, i) => (i === existing ? rec : x))
+        : [rec, ...prev];
       LS.set("workOrders", next);
       return next;
     });
-    toast.success("Work Order " + wo.woNo + " saved");
+    toast.success("Work Order " + rec.woNo + " saved");
     /* Auto-sync work order to Google Sheet */
     if (settings.sheetUrl) {
-      postWorkOrder(settings.sheetUrl, wo).catch(() => {});
+      postWorkOrder(settings.sheetUrl, rec)
+        .then(() => markSynced(setWorkOrders, "workOrders", rec.id))
+        .catch((err: Error) => {
+          markPending(setWorkOrders, "workOrders", rec.id);
+          toast.error("Work order saved on this device. Sheet sync failed: " + err.message);
+        });
     }
   }, [settings.sheetUrl]);
 
@@ -756,12 +903,21 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         workOrders,
         payments,
       });
-      /* Mark all invoices as synced */
-      setInvoices((prev) => {
-        const next = prev.map((x) => ({ ...x, sync: "synced" }));
-        LS.set("invoices", next);
-        return next;
-      });
+      /* Everything in the payload is now on the sheet — clear the local flags so
+         the next merge does not re-upload them. */
+      const markAll = (
+        setter: (fn: (prev: any[]) => any[]) => void,
+        lsKey: string,
+      ) =>
+        setter((prev) => {
+          const next = prev.map((x) => ({ ...x, sync: "synced" }));
+          LS.set(lsKey, next);
+          return next;
+        });
+      markAll(setInvoices, "invoices");
+      markAll(setCustomers, "customers");
+      markAll(setWorkOrders, "workOrders");
+      markAll(setPayments, "payments");
       const r = result.results || {};
       toast.success(`Pushed to sheet: ${r.invoices || 0} invoices, ${r.customers || 0} customers, ${r.workOrders || 0} work orders, ${r.payments || 0} payments`);
     } catch (err: any) {
@@ -797,6 +953,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     loadFromSheet,
     pushAllToSheet,
     sheetSyncing,
+    sheetError,
+    lastSyncedAt,
     /* workflow */
     toggleWhatsAppSent,
     confirmPreProforma,

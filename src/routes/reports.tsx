@@ -62,18 +62,32 @@ function ReportsAnalyticsPage() {
     { name: "Local / Pending Sync", count: pendingCount, fill: "#f59e0b" },
   ], [syncedCount, pendingCount]);
 
-  // Monthly trend data
+  /* Monthly trend for the current year.
+     This previously ran `... .length || (idx + 1) * 2` and
+     `... .reduce(...) || (idx + 1) * 15000`, so any month with no bookings was
+     backfilled with invented counts and invented rupee amounts — a finance
+     report showing revenue that did not exist. It also covered only Jan–Aug and
+     ignored the year, merging every January on record into one bar. */
+  const reportYear = new Date().getFullYear();
+
   const monthlyTrendData = useMemo(() => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
-    return months.map((m, idx) => {
-      const count = invoices.filter((q) => new Date(q.date).getMonth() === idx).length || (idx + 1) * 2;
-      const val = invoices.reduce((acc, q) => {
-        if (new Date(q.date).getMonth() === idx) return acc + (Number(q.totals?.grandTotal) || 0);
-        return acc;
-      }, 0) || (idx + 1) * 15000;
-      return { month: m, quotes: count, revenue: val };
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    const buckets = months.map((month) => ({ month, quotes: 0, revenue: 0 }));
+
+    invoices.forEach((q) => {
+      const d = new Date(q?.date);
+      if (isNaN(d.getTime()) || d.getFullYear() !== reportYear) return;
+      const bucket = buckets[d.getMonth()];
+      if (!bucket) return;
+      bucket.quotes += 1;
+      bucket.revenue += Number(q?.totals?.grandTotal) || 0;
     });
-  }, [invoices]);
+
+    return buckets;
+  }, [invoices, reportYear]);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
@@ -136,7 +150,7 @@ function ReportsAnalyticsPage() {
               </p>
             </div>
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-1.5 font-medium">
-              This Year ▾
+              {reportYear}
             </div>
           </div>
           <div className="px-4 py-4 h-[280px]">

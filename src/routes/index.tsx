@@ -17,6 +17,7 @@ import {
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";
+import { ListSkeleton, TableSkeleton, ValueSkeleton } from "@/components/app/DataSkeleton";
 import { cur, nf } from "@/lib/gq";
 
 export const Route = createFileRoute("/")({
@@ -32,7 +33,7 @@ function getGreeting() {
 }
 
 function Dashboard() {
-  const { invoices, customers, workOrders, settings } = useGQ();
+  const { invoices, customers, workOrders, settings, hydrated } = useGQ();
 
   const totalBookings = invoices.length;
   const totalCustomers = customers.length;
@@ -76,6 +77,7 @@ function Dashboard() {
         <MetricCard
           label="Draft Order Bookings"
           value={String(draftCount)}
+          loading={!hydrated}
           sub={draftCount === 0 ? "All clear" : "Pending invoice"}
           icon={ClipboardList}
           iconBg="bg-blue-50"
@@ -84,6 +86,7 @@ function Dashboard() {
         <MetricCard
           label="Order Bookings Sent"
           value={String(piSentCount)}
+          loading={!hydrated}
           sub={piSentCount === 0 ? "None pending" : "Awaiting confirmation"}
           icon={FileText}
           iconBg="bg-amber-50"
@@ -92,6 +95,7 @@ function Dashboard() {
         <MetricCard
           label="Proforma Invoices Confirmed"
           value={String(confirmedCount + woGeneratedCount)}
+          loading={!hydrated}
           sub={`${workOrders.length} work orders`}
           icon={CheckCircle2}
           iconBg="bg-emerald-50"
@@ -100,6 +104,7 @@ function Dashboard() {
         <MetricCard
           label="Total Revenue"
           value={totalRevenue > 0 ? cur(totalRevenue, settings.currency) : "₹ 0.00"}
+          loading={!hydrated}
           sub={`${totalBookings} records`}
           icon={TrendingUp}
           iconBg="bg-purple-50"
@@ -181,7 +186,9 @@ function Dashboard() {
             </Link>
           </div>
 
-          {recentBookings.length === 0 ? (
+          {!hydrated ? (
+            <TableSkeleton rows={5} cols={5} />
+          ) : recentBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-6">
               <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
                 <FileText className="h-5 w-5 text-blue-400" />
@@ -308,7 +315,9 @@ function Dashboard() {
               </Link>
             </div>
             <div className="px-4 py-3">
-              {customers.length === 0 ? (
+              {!hydrated ? (
+                <ListSkeleton rows={4} />
+              ) : customers.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-3 text-center">
                   No customers saved yet.
                 </p>
@@ -416,6 +425,7 @@ function MetricCard({
   value,
   sub,
   mono = false,
+  loading = false,
   icon: Icon,
   iconBg,
   iconColor,
@@ -424,6 +434,7 @@ function MetricCard({
   value: string;
   sub?: string;
   mono?: boolean;
+  loading?: boolean;
   icon?: any;
   iconBg?: string;
   iconColor?: string;
@@ -442,12 +453,16 @@ function MetricCard({
           </div>
         )}
       </div>
-      <p
-        className={`text-2xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}
-      >
-        {value}
-      </p>
-      {sub && <p className="text-[11px] mt-1 text-muted-foreground">{sub}</p>}
+      {loading ? (
+        <ValueSkeleton className="h-8 w-24" />
+      ) : (
+        <p
+          className={`text-2xl font-bold text-foreground tracking-tight ${mono ? "font-mono tabular-nums" : ""}`}
+        >
+          {value}
+        </p>
+      )}
+      {sub && !loading && <p className="text-[11px] mt-1 text-muted-foreground">{sub}</p>}
     </div>
   );
 }

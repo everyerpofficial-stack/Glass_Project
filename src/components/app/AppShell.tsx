@@ -112,8 +112,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { settings, loadFromSheet, sheetSyncing } = useGQ();
+  const { settings, loadFromSheet, sheetSyncing, sheetError, lastSyncedAt } = useGQ();
   const title = TITLES[pathname] ?? "Glass Quote";
+
+  const syncTitle = !settings.sheetUrl
+    ? "Configure Sheet URL in Settings"
+    : sheetError
+      ? `Showing the last data saved on this device. ${sheetError} — click to retry.`
+      : lastSyncedAt
+        ? `Live synced across all devices. Last update ${new Date(lastSyncedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. Click to refresh.`
+        : "Live synced across all devices. Click to refresh.";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -420,16 +428,33 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Search className="h-4 w-4" />
                 </Button>
 
-                {/* Live Sync Status & Manual Refresh Button */}
+                {/* Live Sync Status & Manual Refresh Button.
+                    This is the only thing on screen that reacts to a background
+                    sync — the data underneath it is never cleared or hidden
+                    while a refresh is in flight, so a slow or failing Apps
+                    Script degrades to a red badge instead of a blank page. */}
                 <button
                   onClick={() => loadFromSheet()}
                   disabled={sheetSyncing || !settings.sheetUrl}
-                  title={settings.sheetUrl ? "Live synced across all devices. Click to refresh." : "Configure Sheet URL in Settings"}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                  title={syncTitle}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50",
+                    sheetError
+                      ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/20"
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20",
+                  )}
                 >
-                  <span className={cn("h-2 w-2 rounded-full bg-emerald-500", sheetSyncing && "animate-ping")} />
-                  <span className="hidden md:inline">{sheetSyncing ? "Syncing..." : "Live Sync"}</span>
-                  <RefreshCw className={cn("h-3 w-3 text-emerald-600 dark:text-emerald-400", sheetSyncing && "animate-spin")} />
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      sheetError ? "bg-red-500" : "bg-emerald-500",
+                      sheetSyncing && "animate-ping",
+                    )}
+                  />
+                  <span className="hidden md:inline">
+                    {sheetSyncing ? "Syncing..." : sheetError ? "Offline" : "Live Sync"}
+                  </span>
+                  <RefreshCw className={cn("h-3 w-3", sheetSyncing && "animate-spin")} />
                 </button>
 
                 {/* Notification bell */}

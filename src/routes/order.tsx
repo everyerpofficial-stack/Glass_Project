@@ -33,7 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
-import { nf, dmy, getPaymentDueDateInfo } from "@/lib/gq";
+import { TableSkeleton } from "@/components/app/DataSkeleton";
+import { ConfirmDelete } from "@/components/app/ConfirmDelete";
+import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, uid } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -80,7 +82,20 @@ function Section({
 
 
 
-/* ─── Confirm Payment & Order Modal ────────────────────────────────────── */
+/* ─── Confirm Payment & Order Modal ──────────────────────────────────────
+   Split in two on purpose. The visibility check lives in this hook-free outer
+   shell; every useState sits in the body below. Doing the early return above
+   the hooks (as this component used to) changed the hook count between the
+   closed and open renders, which React rejects with "Rendered more hooks than
+   during the previous render" — it crashed the page on Confirm Order. The
+   split also gives the body fresh state on each open, since it unmounts. */
+type ConfirmPaymentDetails = {
+  paidAmount: number;
+  paymentType: string;
+  refNo: string;
+  notes: string;
+};
+
 function ConfirmPaymentModal({
   open,
   invoice,
@@ -90,15 +105,21 @@ function ConfirmPaymentModal({
   open: boolean;
   invoice: any;
   onClose: () => void;
-  onConfirm: (paymentDetails: {
-    paidAmount: number;
-    paymentType: string;
-    refNo: string;
-    notes: string;
-  }) => void;
+  onConfirm: (paymentDetails: ConfirmPaymentDetails) => void;
 }) {
   if (!open || !invoice) return null;
+  return <ConfirmPaymentModalBody invoice={invoice} onClose={onClose} onConfirm={onConfirm} />;
+}
 
+function ConfirmPaymentModalBody({
+  invoice,
+  onClose,
+  onConfirm,
+}: {
+  invoice: any;
+  onClose: () => void;
+  onConfirm: (paymentDetails: ConfirmPaymentDetails) => void;
+}) {
   const grandTotal = Number(invoice.totals?.grandTotal) || 0;
   const [paidAmountStr, setPaidAmountStr] = useState<string>(
     invoice.paidAmount !== undefined && invoice.paidAmount !== null
@@ -362,6 +383,7 @@ function OrderPage() {
     settings,
     invoices,
     customers,
+    workOrders,
     saveInvoice,
     saveCustomer,
     newInvoice,
@@ -371,6 +393,7 @@ function OrderPage() {
     saveWorkOrder,
     updateInvoiceStatus,
     deleteInvoice,
+    hydrated,
   } = useGQ();
 
   const [custSearch, setCustSearch] = useState("");
@@ -470,11 +493,15 @@ function OrderPage() {
     const booking = invoices.find((x: any) => x.id === bookingId);
     if (!booking) return;
     const copy = JSON.parse(JSON.stringify(booking));
-    copy.id = "pi-" + Date.now().toString(36);
+    copy.id = uid("inv-pi");
     copy.docType = "proforma";
     copy.preProformaNo = booking.no;
-    copy.orderNo = booking.no ? (booking.no.startsWith("PI-") ? booking.no : "PI-" + booking.no) : "PI-" + Date.now().toString().slice(-4);
+    /* Was `"PI-" + booking.no`, which turned booking OB-1001 into "PI-OB-1001"
+       while the Confirm button on the booking list produced "PI-1004" for the
+       same operation. Both now draw from the same sequence. */
+    copy.orderNo = "PI-" + nextSeqForPrefix(invoices, "PI-");
     copy.no = copy.orderNo;
+    copy.sync = "local";
     copy.date = new Date().toISOString().slice(0, 10);
     copy.status = "draft";
     copy._saved = false;
@@ -502,16 +529,23 @@ function OrderPage() {
     setConfirmModalOpen(true);
   };
 
-  const handleConfirmPaymentAndMove = (paymentDetails: {
-    paidAmount: number;
-    paymentType: string;
-    refNo: string;
-    notes: string;
-  }) => {
+  const handleConfirmPaymentAndMove = (paymentDetails: ConfirmPaymentDetails) => {
     if (!targetConfirmInvoice) return;
+    /* confirmOrder is what persists paidAmount / remainingBalance /
+       paymentStatus, writes the Payments row and flips the record to
+       order_confirmed. Without it the modal collected the payment and threw it
+       away: the invoice stayed a draft and no payment was ever recorded. */
+    confirmOrder(targetConfirmInvoice.id, {
+      paidAmount: paymentDetails.paidAmount,
+      paymentType: paymentDetails.paymentType,
+      refNo: paymentDetails.refNo,
+      notes: paymentDetails.notes,
+    });
+
     const wo = generateWorkOrder(targetConfirmInvoice.id);
     if (wo) {
       saveWorkOrder(wo);
+      updateInvoiceStatus(targetConfirmInvoice.id, "work_order_generated");
     }
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
@@ -695,7 +729,9 @@ function OrderPage() {
               </div>
             }
           >
-            {filteredSavedInvoices.length === 0 ? (
+            {!hydrated ? (
+              <TableSkeleton rows={6} cols={6} />
+            ) : filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
                 <p>{savedSearch ? "No matching Proforma Invoices found." : "No Proforma Invoices found."}</p>
                 <Button
@@ -779,10 +815,21 @@ function OrderPage() {
                                   variant="outline"
                                   className="h-7 text-xs px-2.5 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
                                   onClick={() => {
-                                    const wo = generateWorkOrder(item.id);
-                                    if (wo) {
-                                      saveWorkOrder(wo);
-                                      updateInvoiceStatus(item.id, "work_order_generated");
+                                    /* This button only views an existing work
+                                       order. It used to regenerate one on every
+                                       click, and generateWorkOrder mints a fresh
+                                       uid each time, so saveWorkOrder appended a
+                                       new row instead of updating — a duplicate
+                                       work order per click. */
+                                    const existing = workOrders.find(
+                                      (w: any) => w.orderId === item.id || w.orderNo === item.id,
+                                    );
+                                    if (!existing) {
+                                      const wo = generateWorkOrder(item.id);
+                                      if (wo) {
+                                        saveWorkOrder(wo);
+                                        updateInvoiceStatus(item.id, "work_order_generated");
+                                      }
                                     }
                                     navigate({ to: "/work-order", search: { woId: item.id } });
                                   }}
@@ -832,15 +879,20 @@ function OrderPage() {
                                 <Printer className="h-3 w-3" /> Print
                               </Button>
 
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                                onClick={() => deleteInvoice(item.id)}
-                                title="Delete"
+                              <ConfirmDelete
+                                title={`Delete Proforma Invoice ${item.no}?`}
+                                description={`This permanently removes ${item.no} (${item.cust?.name || "no customer"}) from this device and from your Google Sheet, along with any work order generated from it. This cannot be undone.`}
+                                onConfirm={() => deleteInvoice(item.id)}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </ConfirmDelete>
                             </div>
                           </td>
                         </tr>

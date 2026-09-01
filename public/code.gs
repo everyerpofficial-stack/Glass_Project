@@ -85,6 +85,13 @@ function doGet(e) {
       case 'getPayments':
         result = handleGetPayments_();
         break;
+      case 'getAll':
+        result = handleGetAll_();
+        break;
+      case 'format':
+        formatAllSheets_();
+        result = { success: true, action: 'format' };
+        break;
       default:
         result = { success: false, message: 'Unknown GET action: ' + action };
     }
@@ -150,7 +157,9 @@ function doPost(e) {
 
 /* ---------- Ping ---------- */
 function handlePing_() {
-  formatAllSheets_();
+  /* Deliberately does no formatting: the client calls this as a health check and
+     a reformat pass costs ~50 Spreadsheet writes per sheet. Use action=format
+     when the columns actually need re-styling. */
   return {
     success: true,
     status: 'OK',
@@ -594,6 +603,35 @@ function handleGetPayments_() {
   return { success: true, payments: payments };
 }
 
+/* ---------- Get Everything In One Execution ----------
+   The client used to issue four GETs. Apps Script serialises concurrent
+   executions for the same user, so those queued behind each other and each one
+   paid its own cold start. One action returns all four collections; a tab that
+   throws degrades to an empty array plus an entry in `errors` rather than
+   failing the whole payload. */
+function handleGetAll_() {
+  var out = { success: true, errors: [] };
+
+  var tabs = [
+    { key: 'invoices',   fn: handleGetInvoices_ },
+    { key: 'customers',  fn: handleGetCustomers_ },
+    { key: 'workOrders', fn: handleGetWorkOrders_ },
+    { key: 'payments',   fn: handleGetPayments_ }
+  ];
+
+  for (var i = 0; i < tabs.length; i++) {
+    try {
+      var res = tabs[i].fn();
+      out[tabs[i].key] = res[tabs[i].key] || [];
+    } catch (err) {
+      out[tabs[i].key] = [];
+      out.errors.push(tabs[i].key + ': ' + (err.message || String(err)));
+    }
+  }
+
+  return out;
+}
+
 /* ---------- Sync All (bulk upload) ---------- */
 function handleSyncAll_(body) {
   var results = { invoices: 0, customers: 0, workOrders: 0, payments: 0 };
@@ -635,20 +673,30 @@ function handleSyncAll_(body) {
    ===================================================================== */
 
 /* Get or create a spreadsheet */
+var CACHED_SS_ = null;
+
 function getSpreadsheet_() {
+  /* getAll opens four tabs; resolving the spreadsheet once per execution saves
+     three redundant openById/getActiveSpreadsheet round trips. */
+  if (CACHED_SS_) return CACHED_SS_;
+
   if (SPREADSHEET_ID) {
-    return SpreadsheetApp.openById(SPREADSHEET_ID);
+    CACHED_SS_ = SpreadsheetApp.openById(SPREADSHEET_ID);
+    return CACHED_SS_;
   }
 
   // If bound to a spreadsheet, use it
   try {
-    return SpreadsheetApp.getActiveSpreadsheet();
+    CACHED_SS_ = SpreadsheetApp.getActiveSpreadsheet();
   } catch (e) {
-    // Not bound — create a new one
-    var ss = SpreadsheetApp.create('Glass Quote Pro — Database');
-    Logger.log('Created new spreadsheet: ' + ss.getUrl());
-    return ss;
+    CACHED_SS_ = null;
   }
+  if (!CACHED_SS_) {
+    // Not bound — create a new one
+    CACHED_SS_ = SpreadsheetApp.create('Glass Quote Pro — Database');
+    Logger.log('Created new spreadsheet: ' + CACHED_SS_.getUrl());
+  }
+  return CACHED_SS_;
 }
 
 /* Format sheet columns with optimal width and styling */
@@ -720,12 +768,15 @@ function getOrCreateSheet_(name, headers) {
   var ss = getSpreadsheet_();
   var sheet = ss.getSheetByName(name);
 
+  /* Format only when the sheet is first created. Doing it on every call meant
+     every read issued ~50 Spreadsheet write ops per tab (header styling plus a
+     setColumnWidth per column) before a single row was returned — the dominant
+     cost in the multi-second refresh. Call action=format to restyle on demand. */
   if (!sheet) {
     sheet = ss.insertSheet(name);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    formatSheetColumns_(sheet, headers);
   }
-
-  formatSheetColumns_(sheet, headers);
 
   return sheet;
 }
