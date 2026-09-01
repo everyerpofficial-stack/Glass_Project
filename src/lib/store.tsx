@@ -121,7 +121,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     const rawInvoices = savedInvoices !== null ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321") : [];
     const migratedInvoices = rawInvoices.map((inv: any) => ({
       ...inv,
-      docType: inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma"),
+      docType: inv.docType === "proforma" && (!inv.status || inv.status === "draft" || inv.status === "pi_sent") ? "pre_proforma" : (inv.docType || "pre_proforma"),
       status: inv.status || "draft",
     }));
     setInvoices(migratedInvoices);
@@ -369,7 +369,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
-    rec.docType = inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma");
+    rec.docType = inv.docType || "pre_proforma";
     const existing = invoices.find((x) => x.id === inv.id);
 
     let next: any[];

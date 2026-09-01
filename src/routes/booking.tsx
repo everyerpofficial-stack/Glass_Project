@@ -703,7 +703,7 @@ function BookingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
-              <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
+              <div className="text-xl font-bold text-foreground mt-0.5">{preProformaInvoices.length}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">SGU Booking records</div>
             </div>
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
