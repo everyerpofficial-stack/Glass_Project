@@ -464,17 +464,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   /* ── Workflow helpers ────────────────────────────────────────────── */
 
   const confirmPreProforma = useCallback((id: string) => {
+    let updatedRecord: any = null;
     setInvoices((prev) => {
       const next = prev.map((x) => {
         if (x.id === id) {
           const piNo = x.no?.startsWith("PI-") ? x.no : `PI-${x.no?.replace(/^PRE-|^PI-/, "") || Date.now()}`;
-          return {
+          updatedRecord = {
             ...x,
             docType: "proforma",
             no: piNo,
             orderNo: piNo,
             status: "draft",
           };
+          return updatedRecord;
         }
         return x;
       });
@@ -482,15 +484,28 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     toast.success("SGU Booking confirmed & converted to Proforma Invoice!");
-  }, []);
+    if (settings.sheetUrl && updatedRecord) {
+      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
   const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
+    let updatedRecord: any = null;
     setInvoices((prev) => {
-      const next = prev.map((x) => (x.id === id ? { ...x, status } : x));
+      const next = prev.map((x) => {
+        if (x.id === id) {
+          updatedRecord = { ...x, status };
+          return updatedRecord;
+        }
+        return x;
+      });
       LS.set("invoices", next);
       return next;
     });
-  }, []);
+    if (settings.sheetUrl && updatedRecord) {
+      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
   const savePayment = useCallback((pay: any) => {
     const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
@@ -541,6 +556,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
             const updated = {
               ...x,
+              docType: "proforma",
               status: "order_confirmed" as WorkflowStatus,
               delivery: updatedDelivery,
               paidAmount,
@@ -571,8 +587,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
 
       toast.success("Order confirmed & payment details saved!");
+      if (settings.sheetUrl && targetRecord) {
+        postInvoice(settings.sheetUrl, targetRecord).catch(() => {});
+      }
     },
-    [savePayment]
+    [savePayment, settings.sheetUrl]
   );
 
   const generateWorkOrder = useCallback(

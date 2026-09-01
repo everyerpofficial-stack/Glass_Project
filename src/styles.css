@@ -342,3 +342,55 @@ textarea::placeholder {
     padding-right: 0.5rem;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Print Media Styles — Hide App Shell Navigation, Sidebars & Admin Bar
+───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Hide navigation, sidebars, headers, action buttons, and non-printable chrome */
+  header,
+  aside,
+  nav,
+  button,
+  .print\:hidden,
+  .no-print,
+  [role="dialog"],
+  .app-shell > aside,
+  .app-shell > div > header {
+    display: none !important;
+  }
+
+  /* Reset page margins to hide browser header/footer text (e.g. Admin, URL, date) */
+  @page {
+    margin: 6mm;
+    size: auto;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Make printable document expand to full page without card borders or shadows */
+  .doc-preview, .wo-print-area, .sticker-print-area, .card {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

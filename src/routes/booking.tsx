@@ -1037,9 +1037,9 @@ function BookingPage() {
                     </Select>
                   </div>
 
-                  {/* Extra Area Formula */}
+                  {/* Area Formula */}
                   <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Extra Area:</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Area Formula:</span>
                     <Select value={inv.ch?.extraAreaFormula || "none"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
                       <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[80px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1091,7 +1091,7 @@ function BookingPage() {
                     ? inv.ch?.extraAreaCustomMM
                       ? `+${inv.ch.extraAreaCustomMM} MM`
                       : "+Custom"
-                    : null;
+                    : "(Exact)";
 
                 return (
                   <div className="space-y-6">
@@ -1335,12 +1335,12 @@ function BookingPage() {
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                   <div>HEIGHT</div>
                                   <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel || "+25 MM"}</div>
+                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
                                 </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
                                   <div>WIDTH</div>
                                   <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel || "+25 MM"}</div>
+                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
                                 </th>
                                 <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
                                   PCS
