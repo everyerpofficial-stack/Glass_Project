@@ -84,13 +84,9 @@ const BASE_GLASS_PRODUCTS = [
   "Mirror Glass",
 ];
 
-function formatProductNameForUnit(name: string, targetUnit: string): string {
+function formatProductNameForUnit(name: string, _targetUnit?: string): string {
   if (!name) return name;
-  if (targetUnit === "inch") {
-    return name.replace(/\b(\d+)\s*mm\b/gi, "$1 Inch");
-  } else {
-    return name.replace(/\b(\d+)\s*inch\b/gi, "$1 mm");
-  }
+  return name.replace(/\b(\d+)\s*inch\b/gi, "$1 MM").replace(/\b(\d+)\s*mm\b/gi, "$1 MM");
 }
 
 function extractThicknessFromProductName(name: string): number | null {
@@ -645,10 +641,6 @@ function BookingPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
                 </Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Start Fresh</span>
-                </Button>
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
@@ -660,28 +652,7 @@ function BookingPage() {
                     }
                   }}
                 >
-                  <Save className="h-3.5 w-3.5" /> Save Order Booking
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs gap-1.5 border-emerald-600/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-semibold"
-                  onClick={() => {
-                    saveInvoice();
-                    if (inv.id) {
-                      toast.success(`Order Booking ${inv.no} saved. Opening PDF invoice...`);
-                      navigate({ to: "/invoice", search: { id: inv.id } });
-                    }
-                  }}
-                >
-                  <Printer className="h-3.5 w-3.5" /> Print / PDF
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                  onClick={handleAcceptAndMove}
-                >
-                  <Send className="h-3.5 w-3.5" /> Generate & Send to Customer
+                  <Save className="h-3.5 w-3.5" /> Save
                 </Button>
               </>
             ) : (
@@ -690,8 +661,7 @@ function BookingPage() {
                 size="sm"
                 className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
                 onClick={() => {
-                  newInvoice();
-                  setInv((prev: any) => ({ ...prev, docType: "pre_proforma" }));
+                  newInvoice("pre_proforma");
                   setShowForm(true);
                 }}
               >
@@ -1802,6 +1772,22 @@ function BookingPage() {
 
                 <div className="pt-2 text-[11px] text-muted-foreground leading-normal border-t border-border/30 mt-3 font-medium">
                   <span className="font-semibold text-foreground">Amount in words:</span> {totals.amountInWords}
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-border">
+                  <Button
+                    size="lg"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
+                    onClick={() => {
+                      const ok = saveInvoice();
+                      if (ok) {
+                        setShowForm(false);
+                        toast.success("Order Booking saved successfully!");
+                      }
+                    }}
+                  >
+                    <Save className="h-4 w-4" /> Save Order Booking
+                  </Button>
                 </div>
               </div>
             </div>

@@ -347,20 +347,23 @@ export function blankItem() {
   } as any;
 }
 
-export function blankInvoice(S: any) {
+export function blankInvoice(S: any, docType: string = "pre_proforma") {
   const tDay = today();
   const dObj = new Date();
   dObj.setDate(dObj.getDate() + 7);
   const defaultDue = dObj.toISOString().slice(0, 10);
+  const prefix = docType === "proforma" ? "PI-" : "OB-";
+  const initialNo = prefix + (S.nextNo || 1001);
 
   return {
-    id: uid("inv"),
-    no: S.prefix + S.nextNo,
+    id: uid(docType === "proforma" ? "inv-pi" : "inv-ob"),
+    docType,
+    no: initialNo,
+    orderNo: initialNo,
     date: tDay,
     dueDate: defaultDue,
     poNo: "",
     salesPerson: "Office",
-    orderNo: "",
     projectRemark: "",
     inputUnit: S.inputUnit || "inch",  // 'inch' | 'mm'
     frequencyEnabled: false,

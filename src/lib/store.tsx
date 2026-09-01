@@ -298,10 +298,14 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     else toast.success("Settings saved");
   }, []);
 
-  const newInvoice = useCallback(() => {
-    setInvState(blankInvoice(settings));
-    toast("Started a new blank booking");
-  }, [settings]);
+  const newInvoice = useCallback((docType: string = "pre_proforma") => {
+    const existing = invoices.filter((x: any) => (x.docType || "pre_proforma") === docType);
+    const nextNum = 1001 + existing.length;
+    const customSettings = { ...settings, nextNo: nextNum };
+    const blank = blankInvoice(customSettings, docType);
+    setInvState(blank);
+    toast(`Started new ${docType === "proforma" ? "Proforma Invoice" : "Order Booking"} (${blank.no})`);
+  }, [invoices, settings]);
 
   const syncOne = useCallback(
     (rec: any) => {

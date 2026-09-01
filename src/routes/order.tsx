@@ -630,15 +630,7 @@ function OrderPage() {
                   size="sm"
                   className="h-8 px-3 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
                   onClick={() => {
-                    newInvoice();
-                    const newNo = "PI-" + Date.now().toString().slice(-4);
-                    setInv((prev: any) => ({
-                      ...prev,
-                      docType: "proforma",
-                      no: newNo,
-                      orderNo: newNo,
-                      delivery: { ...(prev.delivery || {}), paymentType: "Credit" },
-                    }));
+                    newInvoice("proforma");
                     setShowForm(true);
                   }}
                 >
