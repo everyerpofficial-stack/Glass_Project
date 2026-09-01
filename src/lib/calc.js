@@ -334,8 +334,12 @@
     t.sqft = round(t.sqft, s.areaDecimals);
     t.chargeSqm = round(t.chargeSqm, s.areaDecimals);
     t.chargeSqft = round(t.chargeSqft, s.areaDecimals);
-    t.glassAmount = money(t.glassAmount);
-    t.weightKg = round(t.sqm * (parseFloat(s.thicknessMM) || 0) * s.glassDensity, 3);
+    var totalWeightKg = 0;
+    valid.forEach(function (l) {
+      var thk = parseFloat(l.thickness) || parseFloat(s.thicknessMM) || 5;
+      totalWeightKg += l.totalSqm * thk * s.glassDensity;
+    });
+    t.weightKg = round(totalWeightKg, 3);
 
     // wastage
     t.wastageArea = 0;

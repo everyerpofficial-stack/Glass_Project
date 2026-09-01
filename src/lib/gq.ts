@@ -312,6 +312,7 @@ export function computeTotals(S: any, INV: any) {
           rate: itemRate,
           desc: itemDesc,
           layerNo: l.layerNo || `Layer - ${idx + 1}`,
+          layerIdx: idx,
           productName: l.productName || "",
           thickness: l.thickness,
           glassName: l.glassName,
@@ -324,6 +325,7 @@ export function computeTotals(S: any, INV: any) {
       Object.assign({}, it, {
         rate: it.rate === "" || it.rate == null ? INV.glass?.defaultRate : it.rate,
         desc: it.desc || INV.glass?.desc,
+        layerIdx: 0,
       }),
     );
   }
@@ -336,7 +338,7 @@ export function buildRecord(INV: any, TOT: any) {
   if (rec.layers && rec.layers.length > 0) {
     rec.items = rec.layers.flatMap((l: any, idx: number) => {
       const lItems = l.items && l.items.length > 0 ? l.items : (idx === 0 && INV.items ? INV.items : []);
-      return lItems;
+      return lItems.map((it: any) => Object.assign({}, it, { layerIdx: idx }));
     });
   }
   rec.totals = {
@@ -413,6 +415,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       }
       return lItems.map((it: any) => ({
         ...it,
+        layerIdx: idx,
         layerNo: l.layerNo || `Layer - ${idx + 1}`,
         productName: l.productName || "",
         thickness: l.thickness,
@@ -421,7 +424,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     });
   }
   if (!allItems.length) {
-    allItems = INV.items || [];
+    allItems = (INV.items || []).map((it: any) => ({ ...it, layerIdx: 0 }));
   }
 
   const lines = TOT.lines.map((l: any, i: number) => ({ l, it: allItems[i] || {} })).filter(
@@ -437,9 +440,22 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
   if (INV.layers && INV.layers.length > 0) {
     INV.layers.forEach((l: any, idx: number) => {
-      const layerLines = lines.filter((x: any) => x.it.layerIdx === idx || (idx === 0 && x.it.layerIdx === undefined));
+      const layerLines = lines.filter(
+        (x: any) => x.it.layerIdx === idx || (idx === 0 && x.it.layerIdx === undefined)
+      );
       if (layerLines.length > 0) {
-        const prodDesc = l.productName || l.glassName || (l.thickness ? `${l.thickness} mm ${l.productName || "Glass"}` : (l.productName || "Glass"));
+        let prodDesc = l.productName || l.glassName;
+        if (l.productName && l.thickness) {
+          const thkUpper = String(l.thickness).toUpperCase() + "MM";
+          const thkSpaceUpper = String(l.thickness).toUpperCase() + " MM";
+          const pUpper = String(l.productName).toUpperCase();
+          if (!pUpper.includes(thkUpper) && !pUpper.includes(thkSpaceUpper)) {
+            prodDesc = `${l.productName} (${l.thickness}MM)`;
+          }
+        }
+        if (!prodDesc) {
+          prodDesc = l.thickness ? `${l.thickness} mm Glass` : "Glass";
+        }
         productGroups.push({
           index: idx + 1,
           code: l.productCode || String(5904 + idx).padStart(5, "0"),
@@ -492,7 +508,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
           <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
           <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace font-weight:bold">${nf(lineObj.amount)}</td>
+          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${esc(it.shape || "BLOCK")}</td>
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
         </tr>
