@@ -118,19 +118,17 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     );
     const savedInvoices = LS.get<any[] | null>("invoices", null);
     /* Auto-migrate: ensure every invoice has status and docType fields */
-    const rawInvoices = savedInvoices !== null ? savedInvoices : [samplePreProforma, sampleProforma];
+    const rawInvoices = savedInvoices !== null ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321") : [];
     const migratedInvoices = rawInvoices.map((inv: any) => ({
       ...inv,
       docType: inv.docType || (inv.no?.startsWith("PI-") ? "proforma" : "pre_proforma"),
       status: inv.status || "draft",
     }));
     setInvoices(migratedInvoices);
-    if (savedInvoices === null) {
-      LS.set("invoices", migratedInvoices);
-    }
+    LS.set("invoices", migratedInvoices);
 
     const savedCustomers = LS.get<any[] | null>("customers", null);
-    const initialCustomers = savedCustomers !== null ? [...savedCustomers] : [Object.assign({ id: "cus-hindustan" }, SAMPLE_INVOICE_07321.cust)];
+    const initialCustomers = savedCustomers !== null ? savedCustomers.filter((c: any) => c.id !== "cus-hindustan") : [];
     
     /* Auto-harvest customers from invoices */
     migratedInvoices.forEach((invoice: any) => {
@@ -162,23 +160,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     /* Load payments */
     const savedPayments = LS.get<any[] | null>("payments", null);
-    const initialPayments = savedPayments !== null ? savedPayments : [
-      {
-        id: "pay-1001",
-        custName: "HINDUSTAN FLOAT GLASS PVT. LTD",
-        invoiceNo: "PI-07321",
-        date: "2026-03-16",
-        amount: 14500,
-        mode: "Bank Transfer",
-        refNo: "HDFC-TXN-984210",
-        notes: "Advance payment 50%",
-        createdAt: new Date().toISOString(),
-      }
-    ];
+    const initialPayments = savedPayments !== null ? savedPayments.filter((p: any) => p.id !== "pay-1001") : [];
     setPayments(initialPayments);
-    if (savedPayments === null) {
-      LS.set("payments", initialPayments);
-    }
+    LS.set("payments", initialPayments);
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
