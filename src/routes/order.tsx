@@ -604,7 +604,7 @@ function OrderPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
                 </Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={newInvoice}>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => newInvoice("proforma")}>
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Start Fresh</span>
                 </Button>

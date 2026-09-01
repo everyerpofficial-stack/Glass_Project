@@ -41,7 +41,7 @@ type Ctx = {
   setInv: (updater: (prev: any) => any) => void;
   totals: any;
   draftState: string;
-  newInvoice: () => void;
+  newInvoice: (docType?: string) => void;
   loadInvoice: (id: string, asCopy?: boolean) => void;
   saveInvoice: () => boolean;
   deleteInvoice: (id: string) => void;
