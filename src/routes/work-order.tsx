@@ -482,26 +482,7 @@ function WorkOrderPage() {
           </div>
         </div>
 
-        {/* Existing work orders pill selector */}
-        {workOrders.length > 0 && (
-          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Recent WO:</span>
-            {workOrders.slice(0, 6).map((wo) => (
-              <button
-                key={wo.id}
-                onClick={() => handleLoadExisting(wo.id)}
-                className={`text-xs px-2.5 py-1 rounded-md border transition-colors flex items-center gap-1 font-mono ${
-                  activeWO?.id === wo.id
-                    ? "bg-amber-500/15 border-amber-500/50 text-amber-700 dark:text-amber-300 font-bold shadow-xs"
-                    : "border-border hover:bg-muted/50 text-muted-foreground"
-                }`}
-              >
-                <span>{wo.woNo}</span>
-                <span className="text-[10px] font-sans font-normal opacity-75">· {wo.customer?.split(" ")[0] || "—"}</span>
-              </button>
-            ))}
-          </div>
-        )}
+
       </div>
 
       {/* ── MAIN CONTENT AREA ──────────────────────────── */}

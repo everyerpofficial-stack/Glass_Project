@@ -112,15 +112,6 @@ function doPost(e) {
       case 'deleteInvoice':
         result = handleDeleteInvoice_(body.id);
         break;
-      case 'deleteCustomer':
-        result = handleDeleteCustomer_(body.id);
-        break;
-      case 'deleteWorkOrder':
-        result = handleDeleteWorkOrder_(body.id);
-        break;
-      case 'deletePayment':
-        result = handleDeletePayment_(body.id);
-        break;
       case 'saveCustomer':
         result = handleSaveCustomer_(body.customer);
         break;
@@ -338,42 +329,6 @@ function handleDeleteInvoice_(id) {
   }
 
   return { success: false, message: 'Invoice not found: ' + id };
-}
-
-/* ---------- Delete Customer ---------- */
-function handleDeleteCustomer_(id) {
-  if (!id) return { success: false, message: 'Customer id is required' };
-  var sheet = getOrCreateSheet_(SHEET_CUSTOMERS, CUSTOMER_HEADERS);
-  var rowNum = findRowById_(sheet, id);
-  if (rowNum > 0) {
-    sheet.deleteRow(rowNum);
-    return { success: true, id: id, action: 'deleted' };
-  }
-  return { success: false, message: 'Customer not found: ' + id };
-}
-
-/* ---------- Delete Work Order ---------- */
-function handleDeleteWorkOrder_(id) {
-  if (!id) return { success: false, message: 'Work order id is required' };
-  var sheet = getOrCreateSheet_(SHEET_WORKORDERS, WORKORDER_HEADERS);
-  var rowNum = findRowById_(sheet, id);
-  if (rowNum > 0) {
-    sheet.deleteRow(rowNum);
-    return { success: true, id: id, action: 'deleted' };
-  }
-  return { success: false, message: 'Work order not found: ' + id };
-}
-
-/* ---------- Delete Payment ---------- */
-function handleDeletePayment_(id) {
-  if (!id) return { success: false, message: 'Payment id is required' };
-  var sheet = getOrCreateSheet_(SHEET_PAYMENTS, PAYMENT_HEADERS);
-  var rowNum = findRowById_(sheet, id);
-  if (rowNum > 0) {
-    sheet.deleteRow(rowNum);
-    return { success: true, id: id, action: 'deleted' };
-  }
-  return { success: false, message: 'Payment not found: ' + id };
 }
 
 /* ---------- Save Customer ---------- */
