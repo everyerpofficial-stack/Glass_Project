@@ -28,7 +28,7 @@ import { GlobalSearch } from "./GlobalSearch";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/booking", label: "SGU Booking", icon: ClipboardList },
+  { to: "/booking", label: "Order Booking", icon: ClipboardList },
   { to: "/order", label: "Proforma Invoice", icon: ShoppingCart },
   { to: "/work-order", label: "Work Order & Stickers", icon: Factory },
   { to: "/customers", label: "Customers", icon: Users },
@@ -38,7 +38,7 @@ const NAV = [
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/booking": "SGU Booking",
+  "/booking": "Order Booking",
   "/order": "Proforma Invoice",
   "/work-order": "Work Order & Stickers",
   "/stickers": "Work Order & Stickers",

@@ -145,7 +145,7 @@ function CustomersPage() {
       ...blankInvoice(settings),
       cust: { ...c },
     }));
-    toast.success(`Started SGU Booking for ${c.name}`);
+    toast.success(`Started Order Booking for ${c.name}`);
     navigate({ to: "/booking" });
   };
 
@@ -878,7 +878,7 @@ function CustomersPage() {
                       <Edit3 className="h-3.5 w-3.5 mr-1" /> Edit Customer Info
                     </Button>
                     <Button size="sm" onClick={() => createQuoteForCust(viewCust)}>
-                      <PlusCircle className="h-3.5 w-3.5 mr-1" /> Create SGU Booking
+                      <PlusCircle className="h-3.5 w-3.5 mr-1" /> Create Order Booking
                     </Button>
                   </div>
                 </TabsContent>
@@ -910,7 +910,7 @@ function CustomersPage() {
                               <td className="p-2.5 text-muted-foreground font-sans">{inv.date}</td>
                               <td className="p-2.5 font-sans">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
-                                  {inv.docType === "proforma" ? "Proforma Invoice" : "SGU Booking"}
+                                  {inv.docType === "proforma" ? "Proforma Invoice" : "Order Booking"}
                                 </span>
                               </td>
                               <td className="p-2.5 text-center font-sans">{inv.items?.length || 0}</td>

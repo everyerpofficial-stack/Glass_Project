@@ -35,6 +35,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { nf, dmy } from "@/lib/gq";
 import { toast } from "sonner";
+import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
 export const Route = createFileRoute("/order")({
   validateSearch: (search: Record<string, unknown>): { view?: string | undefined } => ({
@@ -367,6 +368,7 @@ function OrderPage() {
     loadInvoice,
     confirmOrder,
     generateWorkOrder,
+    saveWorkOrder,
     updateInvoiceStatus,
     deleteInvoice,
   } = useGQ();
@@ -378,6 +380,8 @@ function OrderPage() {
   const [showForm, setShowForm] = useState(searchParams?.view === "form");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [targetConfirmInvoice, setTargetConfirmInvoice] = useState<any>(null);
+  const [detailInvoice, setDetailInvoice] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams?.view === "form") {
@@ -420,7 +424,7 @@ function OrderPage() {
     [proformaInvoices, savedSearch]
   );
 
-  /* Get SGU Bookings available for loading into Proforma Invoice */
+  /* Get Order Bookings available for loading into Proforma Invoice */
   const availableBookings = useMemo(
     () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
     [invoices],
@@ -461,7 +465,7 @@ function OrderPage() {
     toast.success(`Loaded ${c.name}`);
   };
 
-  /* select a SGU booking to load into proforma invoice */
+  /* select an Order Booking to load into proforma invoice */
   const handleSelectBooking = (bookingId: string) => {
     const booking = invoices.find((x: any) => x.id === bookingId);
     if (!booking) return;
@@ -478,7 +482,7 @@ function OrderPage() {
     copy.delivery.paymentType = copy.delivery.paymentType || "Credit";
     setInv(copy);
     setShowForm(true);
-    toast.success(`✨ Auto-filled data from SGU Booking ${booking.no} into Proforma Invoice`);
+    toast.success(`✨ Auto-filled data from Order Booking ${booking.no} into Proforma Invoice`);
   };
 
   const handleOpenConfirmModal = (targetRecord?: any) => {
@@ -505,12 +509,14 @@ function OrderPage() {
     notes: string;
   }) => {
     if (!targetConfirmInvoice) return;
-    confirmOrder(targetConfirmInvoice.id, paymentDetails);
-    generateWorkOrder(targetConfirmInvoice.id);
+    const wo = generateWorkOrder(targetConfirmInvoice.id);
+    if (wo) {
+      saveWorkOrder(wo);
+    }
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
     toast.success(`Order ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} confirmed & sent to workflow!`);
-    navigate({ to: "/work-order" });
+    navigate({ to: "/work-order", search: { woId: targetConfirmInvoice.id } });
   };
 
   const handleConfirmOrder = () => {
@@ -528,7 +534,7 @@ function OrderPage() {
           to="/booking"
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
         >
-          1. SGU Booking
+          1. Order Booking
         </Link>
         <Link
           to="/order"
@@ -722,7 +728,6 @@ function OrderPage() {
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
-                      <th className="py-2.5 px-3 text-center">Payment Type</th>
                       <th className="py-2.5 px-3 text-center">Order Status</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
@@ -734,7 +739,18 @@ function OrderPage() {
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
-                          <td className="py-2.5 px-3 font-mono font-semibold text-foreground">{item.no}</td>
+                          <td className="py-2.5 px-3 font-mono font-semibold text-primary">
+                            <button
+                              onClick={() => {
+                                setDetailInvoice(item);
+                                setDetailOpen(true);
+                              }}
+                              className="hover:underline text-left cursor-pointer font-bold"
+                              title="Click to view total details & pending balance"
+                            >
+                              {item.no}
+                            </button>
+                          </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
                           <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
@@ -743,15 +759,6 @@ function OrderPage() {
                           <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
                             ₹ {nf(item.totals?.grandTotal || 0)}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
-                              payType === "Paid"
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                            }`}>
-                              {payType}
-                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
@@ -779,7 +786,12 @@ function OrderPage() {
                                   variant="outline"
                                   className="h-7 text-xs px-2.5 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
                                   onClick={() => {
-                                    navigate({ to: "/work-order" });
+                                    const wo = generateWorkOrder(item.id);
+                                    if (wo) {
+                                      saveWorkOrder(wo);
+                                      updateInvoiceStatus(item.id, "work_order_generated");
+                                    }
+                                    navigate({ to: "/work-order", search: { woId: item.id } });
                                   }}
                                   title="View in Work Order Workflow"
                                 >
@@ -814,6 +826,19 @@ function OrderPage() {
                                   <Edit3 className="h-3 w-3" /> Edit
                                 </Button>
                               )}
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs px-2 gap-1 text-blue-600 border-blue-500/30 hover:bg-blue-500/5"
+                                onClick={() => {
+                                  setDetailInvoice(item);
+                                  setDetailOpen(true);
+                                }}
+                                title="View Full Invoice Details"
+                              >
+                                <FileText className="h-3 w-3" /> View
+                              </Button>
 
                               <Button
                                 variant="outline"
@@ -867,7 +892,7 @@ function OrderPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>SGU Booking Ref</FieldLabel>
+                  <FieldLabel>Order Booking Ref</FieldLabel>
                   <Input className="h-8 text-xs font-mono bg-muted/30" value={inv.preProformaNo || "N/A"} readOnly />
                 </div>
                 <div>
@@ -957,34 +982,15 @@ function OrderPage() {
                   <Input className="h-8 text-xs" value={inv.cust?.ship || ""} onChange={(e) => updateInvField("cust.ship", e.target.value)} />
                 </div>
               </div>
-
-              {/* Action buttons row */}
-              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/40">
-                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
-                  <CalendarDays className="h-3 w-3" /> Change Delivery
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
-                  <FileText className="h-3 w-3" /> Document
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 text-red-600 border-red-500/30 hover:bg-red-500/5">
-                  <XCircle className="h-3 w-3" /> Order Cancel
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
-                  <Barcode className="h-3 w-3" /> Bar Code
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5">
-                  <Unlock className="h-3 w-3" /> UnLock Me
-                </Button>
-              </div>
             </Section>
 
-            {/* 3. SGU Booking Items & Details */}
-            <Section title="SGU Booking Items & Details">
+            {/* 3. Order Booking Items & Details */}
+            <Section title="Order Booking Items & Details">
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
                 <table className="w-full text-[11px] border-collapse" style={{ minWidth: "850px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {["Sr.", "SGU Booking No", "Date", "Product", "Thick", "Qty", "Area", "Amount", "Glass Name", "Weight", "Job Type", "Act Area"].map((h, i) => (
+                      {["Sr.", "Order Booking No", "Date", "Product", "Thick", "Qty", "Area", "Amount", "Glass Name", "Weight", "Job Type", "Act Area"].map((h, i) => (
                         <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
                       ))}
                     </tr>
@@ -1246,6 +1252,16 @@ function OrderPage() {
         invoice={targetConfirmInvoice}
         onClose={() => setConfirmModalOpen(false)}
         onConfirm={handleConfirmPaymentAndMove}
+      />
+      {/* ── INVOICE DETAIL POPUP MODAL ───────────────────── */}
+      <InvoiceDetailModal
+        invoice={detailInvoice}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={(item) => {
+          loadInvoice(item.id, false);
+          setShowForm(true);
+        }}
       />
     </div>
   );

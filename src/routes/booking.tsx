@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
 import { blankItem, nf, uid, dmy } from "@/lib/gq";
+import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
 const BASE_GLASS_PRODUCTS = [
   "04 mm Clear Glass",
@@ -284,11 +285,14 @@ function BookingPage() {
     newInvoice,
     confirmPreProforma,
     updateInvoiceStatus,
+    toggleWhatsAppSent,
   } = useGQ();
 
   const [bulkOpenLayerIdx, setBulkOpenLayerIdx] = useState<number | null>(null);
   const [savedSearch, setSavedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [detailInvoice, setDetailInvoice] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const inputUnit = inv.inputUnit || "inch";
   const isFreqOn = inputUnit !== "mm" && Boolean(inv.frequencyEnabled);
 
@@ -318,12 +322,12 @@ function BookingPage() {
     [invoices]
   );
 
-  const pendingCount = useMemo(
-    () => preProformaInvoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
+  const pendingWhatsAppCount = useMemo(
+    () => preProformaInvoices.filter((x) => !x.whatsappSent).length,
     [preProformaInvoices]
   );
-  const confirmedCount = useMemo(
-    () => preProformaInvoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
+  const sentWhatsAppCount = useMemo(
+    () => preProformaInvoices.filter((x) => !!x.whatsappSent).length,
     [preProformaInvoices]
   );
   const totalSavedValue = useMemo(
@@ -563,14 +567,14 @@ function BookingPage() {
     if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
     }
-    toast.success("SGU Booking saved & sent to customer for confirmation");
+    toast.success("Order Booking saved & sent to customer for confirmation");
   };
 
   const handleAcceptAndMove = () => {
     saveInvoice();
     if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
-      toast.success("SGU Booking generated & sent to customer! Moving to Proforma Invoice.");
+      toast.success("Order Booking generated & sent to customer! Moving to Proforma Invoice.");
       navigate({ to: "/order", search: { view: undefined } });
     }
   };
@@ -585,7 +589,7 @@ function BookingPage() {
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          1. SGU Booking
+          1. Order Booking
         </Link>
         <Link
           to="/order"
@@ -605,23 +609,23 @@ function BookingPage() {
               {" / "}
               {showForm ? (
                 <button onClick={() => setShowForm(false)} className="hover:text-foreground transition-colors">
-                  SGU Booking
+                  Order Booking
                 </button>
               ) : (
-                <span className="text-primary font-semibold">SGU Booking</span>
+                <span className="text-primary font-semibold">Order Booking</span>
               )}
               {showForm && (
                 <>
                   {" / "}
                   <span className="text-primary font-semibold">
-                    {inv._saved ? `Edit (${inv.no})` : "New SGU Booking"}
+                    {inv._saved ? `Edit (${inv.no})` : "New Order Booking"}
                   </span>
                 </>
               )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              {showForm ? (inv._saved ? "Edit SGU Booking" : "New SGU Booking") : "SGU Booking Management"}
+              {showForm ? (inv._saved ? "Edit Order Booking" : "New Order Booking") : "Order Booking Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -652,11 +656,11 @@ function BookingPage() {
                     const ok = saveInvoice();
                     if (ok) {
                       setShowForm(false);
-                      toast.success("SGU Booking saved successfully!");
+                      toast.success("Order Booking saved successfully!");
                     }
                   }}
                 >
-                  <Save className="h-3.5 w-3.5" /> Save SGU Booking
+                  <Save className="h-3.5 w-3.5" /> Save Order Booking
                 </Button>
                 <Button
                   size="sm"
@@ -665,7 +669,7 @@ function BookingPage() {
                   onClick={() => {
                     saveInvoice();
                     if (inv.id) {
-                      toast.success(`SGU Booking ${inv.no} saved. Opening PDF invoice...`);
+                      toast.success(`Order Booking ${inv.no} saved. Opening PDF invoice...`);
                       navigate({ to: "/invoice", search: { id: inv.id } });
                     }
                   }}
@@ -681,7 +685,7 @@ function BookingPage() {
                 </Button>
               </>
             ) : (
-              /* RIGHT BUTTON: New SGU Booking */
+              /* RIGHT BUTTON: New Order Booking */
               <Button
                 size="sm"
                 className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
@@ -692,7 +696,7 @@ function BookingPage() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                New SGU Booking
+                New Order Booking
               </Button>
             )}
           </div>
@@ -700,25 +704,20 @@ function BookingPage() {
 
         {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
         {!showForm && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
-              <div className="text-xl font-bold text-foreground mt-0.5">{preProformaInvoices.length}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">SGU Booking records</div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
-                <Clock className="h-3 w-3" /> Pending Order
+                <Clock className="h-3 w-3" /> Pending WhatsApp
               </div>
-              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting workflow</div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingWhatsAppCount}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting WhatsApp send</div>
             </div>
             <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
               <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
-                <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+                <CheckCircle2 className="h-3 w-3" /> WhatsApp Sent
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{confirmedCount}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Sent to workflow</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{sentWhatsAppCount}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Sent to customer</div>
             </div>
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
@@ -730,17 +729,17 @@ function BookingPage() {
       </div>
 
       {!showForm ? (
-        /* ── ALL SAVED SGU BOOKINGS TABLE (TOP DEFAULT VIEW) ────────── */
+        /* ── ALL SAVED ORDER BOOKINGS TABLE (TOP DEFAULT VIEW) ────────── */
         <div className="p-3 sm:p-4 bg-muted/20 border-b border-border">
           <Section
-            title="All Saved SGU Bookings"
+            title="All Saved Order Bookings"
             headerRight={
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
                   <Input
                     className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
-                    placeholder="Search saved SGU booking..."
+                    placeholder="Search saved order booking..."
                     value={savedSearch}
                     onChange={(e) => setSavedSearch(e.target.value)}
                   />
@@ -753,7 +752,7 @@ function BookingPage() {
           >
             {filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
-                <p>{savedSearch ? "No matching SGU Bookings found." : "No saved SGU Bookings found."}</p>
+                <p>{savedSearch ? "No matching Order Bookings found." : "No saved Order Bookings found."}</p>
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
@@ -762,7 +761,7 @@ function BookingPage() {
                     setShowForm(true);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5" /> New SGU Booking
+                  <Plus className="h-3.5 w-3.5" /> New Order Booking
                 </Button>
               </div>
             ) : (
@@ -770,13 +769,13 @@ function BookingPage() {
                 <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "820px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">SGU Booking No</th>
+                      <th className="py-2.5 px-3">Order Booking No</th>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
+                      <th className="py-2.5 px-3 text-center">Send WhatsApp</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -786,7 +785,18 @@ function BookingPage() {
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
-                          <td className="py-2.5 px-3 font-mono font-semibold text-foreground">{item.no}</td>
+                          <td className="py-2.5 px-3 font-mono font-semibold text-primary">
+                            <button
+                              onClick={() => {
+                                setDetailInvoice(item);
+                                setDetailOpen(true);
+                              }}
+                              className="hover:underline text-left cursor-pointer font-bold"
+                              title="Click to view total details & pending balance"
+                            >
+                              {item.no}
+                            </button>
+                          </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
                           <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
@@ -797,25 +807,47 @@ function BookingPage() {
                             ₹ {nf(item.totals?.grandTotal || 0)}
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 uppercase tracking-wider ${
-                              isConfirmed
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                            }`}>
-                              {isConfirmed ? (
+                            <button
+                              onClick={() => {
+                                const nextSent = !item.whatsappSent;
+                                toggleWhatsAppSent(item.id);
+                                if (nextSent && item.cust?.phone) {
+                                  const cleanPhone = String(item.cust.phone).replace(/\D/g, "");
+                                  if (cleanPhone) {
+                                    const msg = encodeURIComponent(
+                                      `Hello ${item.cust?.name || "Customer"},\nHere are your Order Booking details:\nBooking No: ${item.no}\nDate: ${dmy(item.date)}\nTotal Amount: ₹${nf(item.totals?.grandTotal || 0)}\n\nThank you!`
+                                    );
+                                    window.open(`https://wa.me/91${cleanPhone}?text=${msg}`, "_blank");
+                                  }
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+                                item.whatsappSent
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                  : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
+                              }`}
+                              title={
+                                item.whatsappSent
+                                  ? "WhatsApp Sent (Click to toggle)"
+                                  : "Not sent via WhatsApp (Click to send & mark as Sent)"
+                              }
+                            >
+                              {item.whatsappSent ? (
                                 <>
-                                  <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  <span>Sent</span>
                                 </>
                               ) : (
                                 <>
-                                  <Clock className="h-3 w-3" /> Pending Confirmation
+                                  <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                  <span>Not Sent</span>
                                 </>
                               )}
-                            </span>
+                            </button>
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* CONFIRM SGU BOOKING BUTTON */}
+                              {/* CONFIRM ORDER BOOKING BUTTON */}
                               <Button
                                 size="sm"
                                 className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
@@ -823,17 +855,30 @@ function BookingPage() {
                                   confirmPreProforma(item.id);
                                   navigate({ to: "/order", search: { view: "list" } });
                                 }}
-                                title="Confirm SGU Booking & Send to Proforma Invoice"
+                                title="Confirm Order Booking & Send to Proforma Invoice"
                               >
-                                <CheckCircle2 className="h-3 w-3" /> Confirm SGU Booking
+                                <CheckCircle2 className="h-3 w-3" /> Confirm Order Booking
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs px-2 gap-1 text-blue-600 border-blue-500/30 hover:bg-blue-500/5"
+                                onClick={() => {
+                                  setDetailInvoice(item);
+                                  setDetailOpen(true);
+                                }}
+                                title="View Full Details"
+                              >
+                                <FileText className="h-3 w-3" /> View
+                              </Button>
+
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
-                                  toast.success(`Generating PDF for SGU Booking ${item.no}...`);
+                                  toast.success(`Generating PDF for Order Booking ${item.no}...`);
                                   navigate({ to: "/invoice", search: { id: item.id } });
                                 }}
                                 title="Print / Generate PDF"
@@ -847,7 +892,7 @@ function BookingPage() {
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   setShowForm(true);
-                                  toast.success(`Loaded SGU Booking ${item.no} for editing`);
+                                  toast.success(`Loaded Order Booking ${item.no} for editing`);
                                 }}
                               >
                                 <Edit3 className="h-3 w-3" /> Edit
@@ -873,15 +918,15 @@ function BookingPage() {
           </Section>
         </div>
       ) : (
-        /* ── SGU BOOKING CREATION / EDITING FORM SECTION ─────────────── */
-        <div id="sgu-booking-form" className="p-3 sm:p-4 w-full">
+        /* ── ORDER BOOKING CREATION / EDITING FORM SECTION ─────────────── */
+        <div id="order-booking-form" className="p-3 sm:p-4 w-full">
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
 
           {/* ════ LEFT COLUMN ════ */}
           <div className="space-y-4 min-w-0">
-            {/* 1. Customer & SGU Booking Details */}
+            {/* 1. Customer & Order Booking Details */}
             <Section
-              title="Customer & SGU Booking Details"
+              title="Customer & Order Booking Details"
               headerRight={
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                   <div className="relative">
@@ -921,7 +966,7 @@ function BookingPage() {
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <FieldLabel>SGU Booking No</FieldLabel>
+                  <FieldLabel>Order Booking No</FieldLabel>
                   <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
                 </div>
                 <div>
@@ -1747,6 +1792,17 @@ function BookingPage() {
           }
         }}
         inputUnit={inputUnit}
+      />
+
+      {/* Invoice Detail Popup Modal */}
+      <InvoiceDetailModal
+        invoice={detailInvoice}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={(item) => {
+          loadInvoice(item.id, false);
+          setShowForm(true);
+        }}
       />
     </div>
   );

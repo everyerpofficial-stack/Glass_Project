@@ -74,7 +74,7 @@ function Dashboard() {
       {/* ── KPI Metric Cards ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Draft SGU Bookings"
+          label="Draft Order Bookings"
           value={String(draftCount)}
           sub={draftCount === 0 ? "All clear" : "Pending invoice"}
           icon={ClipboardList}
@@ -82,7 +82,7 @@ function Dashboard() {
           iconColor="text-blue-600"
         />
         <MetricCard
-          label="SGU Bookings Sent"
+          label="Order Bookings Sent"
           value={String(piSentCount)}
           sub={piSentCount === 0 ? "None pending" : "Awaiting confirmation"}
           icon={FileText}
@@ -115,7 +115,7 @@ function Dashboard() {
           {[
             {
               step: "1",
-              label: "SGU Booking",
+              label: "Order Booking",
               count: draftCount,
               sublabel: `${draftCount} Pending`,
               color: "bg-blue-500",
@@ -169,10 +169,10 @@ function Dashboard() {
 
       {/* ── Main Content Grid ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
-        {/* LEFT: Recent SGU Bookings Table */}
+        {/* LEFT: Recent Order Bookings Table */}
         <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="text-sm font-semibold text-foreground">Recent SGU Bookings</h2>
+            <h2 className="text-sm font-semibold text-foreground">Recent Order Bookings</h2>
             <Link
               to="/booking"
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-muted/50 rounded-md px-3 py-1.5 hover:bg-muted"
@@ -186,9 +186,9 @@ function Dashboard() {
               <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
                 <FileText className="h-5 w-5 text-blue-400" />
               </div>
-              <p className="text-sm font-semibold text-foreground">No SGU Bookings yet</p>
+              <p className="text-sm font-semibold text-foreground">No Order Bookings yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                Create your first SGU Booking to start tracking glass calculations and customer
+                Create your first Order Booking to start tracking glass calculations and customer
                 orders.
               </p>
               <Button
@@ -197,7 +197,7 @@ function Dashboard() {
                 className="mt-4 h-8 text-xs px-4 bg-blue-600 hover:bg-blue-700"
               >
                 <Link to="/booking">
-                  <Plus className="h-3.5 w-3.5 mr-1" /> New SGU Booking
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Order Booking
                 </Link>
               </Button>
             </div>

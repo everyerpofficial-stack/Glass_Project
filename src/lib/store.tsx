@@ -53,6 +53,7 @@ type Ctx = {
   pushAllToSheet: () => Promise<void>;
   sheetSyncing: boolean;
   /* ── Workflow helpers ── */
+  toggleWhatsAppSent: (id: string) => void;
   confirmPreProforma: (id: string) => void;
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
   confirmOrder: (
@@ -121,7 +122,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     const rawInvoices = savedInvoices !== null ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321") : [];
     const migratedInvoices = rawInvoices.map((inv: any) => ({
       ...inv,
-      docType: inv.docType === "proforma" && (!inv.status || inv.status === "draft" || inv.status === "pi_sent") ? "pre_proforma" : (inv.docType || "pre_proforma"),
+      docType: inv.docType || "pre_proforma",
       status: inv.status || "draft",
     }));
     setInvoices(migratedInvoices);
@@ -463,29 +464,52 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
   /* ── Workflow helpers ────────────────────────────────────────────── */
 
-  const confirmPreProforma = useCallback((id: string) => {
-    let updatedRecord: any = null;
+  const toggleWhatsAppSent = useCallback((id: string) => {
+    let nextState = false;
     setInvoices((prev) => {
       const next = prev.map((x) => {
         if (x.id === id) {
-          const piNo = x.no?.startsWith("PI-") ? x.no : `PI-${x.no?.replace(/^PRE-|^PI-/, "") || Date.now()}`;
-          updatedRecord = {
-            ...x,
-            docType: "proforma",
-            no: piNo,
-            orderNo: piNo,
-            status: "draft",
-          };
-          return updatedRecord;
+          nextState = !x.whatsappSent;
+          return { ...x, whatsappSent: nextState };
         }
         return x;
       });
       LS.set("invoices", next);
       return next;
     });
-    toast.success("SGU Booking confirmed & converted to Proforma Invoice!");
-    if (settings.sheetUrl && updatedRecord) {
-      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+    if (nextState) {
+      toast.success("Marked as sent on WhatsApp ✓");
+    } else {
+      toast.info("Marked as not sent on WhatsApp");
+    }
+  }, []);
+
+  const confirmPreProforma = useCallback((id: string) => {
+    let newProforma: any = null;
+    setInvoices((prev) => {
+      const sourceBooking = prev.find((x) => x.id === id);
+      if (!sourceBooking) return prev;
+      const proformas = prev.filter((x) => x.docType === "proforma");
+      const nextSeq = proformas.length + 1001;
+      const piNo = `PI-${nextSeq}`;
+      newProforma = {
+        ...JSON.parse(JSON.stringify(sourceBooking)),
+        id: uid("inv-pi"),
+        docType: "proforma",
+        no: piNo,
+        orderNo: piNo,
+        preProformaNo: sourceBooking.no || sourceBooking.orderNo || "",
+        status: "draft",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const next = [newProforma, ...prev];
+      LS.set("invoices", next);
+      return next;
+    });
+    toast.success(`Generated new Proforma Invoice ${newProforma?.no || ""}!`);
+    if (settings.sheetUrl && newProforma) {
+      postInvoice(settings.sheetUrl, newProforma).catch(() => {});
     }
   }, [settings.sheetUrl]);
 
@@ -770,6 +794,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     pushAllToSheet,
     sheetSyncing,
     /* workflow */
+    toggleWhatsAppSent,
     confirmPreProforma,
     updateInvoiceStatus,
     confirmOrder,

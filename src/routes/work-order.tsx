@@ -280,16 +280,49 @@ function WorkOrderPage() {
     }
   }, [searchParams?.tab]);
 
-  // Set active WO only if searchParams contains woId
+  /* Get confirmed or proforma orders available for work order workflow */
+  const confirmedOrders = useMemo(
+    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated" || x.docType === "proforma"),
+    [invoices],
+  );
+
+  const targetWoId = searchParams?.woId;
+
+  // Auto-set and generate active WO from searchParams or available orders
   useEffect(() => {
-    if (searchParams?.woId) {
-      const wo = workOrders.find((x) => x.id === searchParams.woId || x.woNo === searchParams.woId || x.orderId === searchParams.woId);
+    if (targetWoId) {
+      const wo = workOrders.find((x) => x.id === targetWoId || x.woNo === targetWoId || x.orderId === targetWoId || x.orderNo === targetWoId || x.piNo === targetWoId);
       if (wo) {
         setActiveWO(wo);
         if (wo.orderId) setSelectedOrderId(wo.orderId);
+      } else {
+        const invMatch = invoices.find((x) => x.id === targetWoId || x.no === targetWoId || x.orderNo === targetWoId);
+        if (invMatch) {
+          setSelectedOrderId(invMatch.id);
+          const generated = generateWorkOrder(invMatch.id);
+          if (generated) {
+            saveWorkOrder(generated);
+            updateInvoiceStatus(invMatch.id, "work_order_generated");
+            setActiveWO(generated);
+          }
+        }
+      }
+    } else if (!activeWO) {
+      if (workOrders.length > 0) {
+        setActiveWO(workOrders[0]);
+        if (workOrders[0].orderId) setSelectedOrderId(workOrders[0].orderId);
+      } else if (confirmedOrders.length > 0) {
+        const firstOrder = confirmedOrders[0];
+        setSelectedOrderId(firstOrder.id);
+        const generated = generateWorkOrder(firstOrder.id);
+        if (generated) {
+          saveWorkOrder(generated);
+          updateInvoiceStatus(firstOrder.id, "work_order_generated");
+          setActiveWO(generated);
+        }
       }
     }
-  }, [workOrders, searchParams?.woId]);
+  }, [workOrders, invoices, confirmedOrders, targetWoId]);
 
   // Reset activeWO if the selected order was deleted from invoices
   useEffect(() => {
@@ -301,12 +334,6 @@ function WorkOrderPage() {
       }
     }
   }, [invoices, activeWO]);
-
-  /* Get confirmed orders */
-  const confirmedOrders = useMemo(
-    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated"),
-    [invoices],
-  );
 
   const handleSelectOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
