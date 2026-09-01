@@ -11,6 +11,15 @@ import {
   computeTotals,
   loadSettings,
   postInvoice,
+  postCustomer,
+  postWorkOrder,
+  postPayment,
+  deleteInvoiceFromSheet,
+  fetchInvoices,
+  fetchCustomers,
+  fetchWorkOrders,
+  fetchPayments,
+  syncAllToSheet,
   uid,
 } from "./gq";
 
@@ -37,6 +46,9 @@ type Ctx = {
   deleteCustomer: (id: string) => void;
   syncOne: (rec: any) => Promise<boolean>;
   syncAll: () => void;
+  loadFromSheet: () => Promise<void>;
+  pushAllToSheet: () => Promise<void>;
+  sheetSyncing: boolean;
   /* ── Workflow helpers ── */
   confirmPreProforma: (id: string) => void;
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
@@ -68,6 +80,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [inv, setInvState] = useState<any>(() => SAMPLE_INVOICE_07321);
   const [draftState, setDraftState] = useState("Draft saved automatically");
+  const [sheetSyncing, setSheetSyncing] = useState(false);
 
   /* hydrate from localStorage after mount (SSR-safe) */
   useEffect(() => {
@@ -79,6 +92,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       pan: "U26109RJ2010PTC031953",
       logo: "/logo.png",
     });
+    if (!s.sheetUrl) {
+      s.sheetUrl = "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec";
+    }
     setSettings(s);
     LS.set("settings", s);
 
@@ -237,19 +253,24 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         toast.error("Enter a customer name first");
         return;
       }
+      const custWithId = cust.id ? cust : Object.assign({ id: uid("cus") }, cust);
       setCustomers((prev) => {
         const ex = prev.find(
           (x) => String(x.name).toLowerCase() === String(cust.name).toLowerCase(),
         );
         const next = ex
-          ? prev.map((x) => (x === ex ? Object.assign({}, x, cust) : x))
-          : prev.concat([Object.assign({ id: uid("cus") }, cust)]);
+          ? prev.map((x) => (x === ex ? Object.assign({}, x, custWithId) : x))
+          : prev.concat([custWithId]);
         LS.set("customers", next);
         return next;
       });
       toast.success("Customer saved successfully");
+      /* Auto-sync customer to Google Sheet */
+      if (settings.sheetUrl) {
+        postCustomer(settings.sheetUrl, custWithId).catch(() => {});
+      }
     },
-    [inv],
+    [inv, settings.sheetUrl],
   );
 
   const saveInvoice = useCallback(() => {
@@ -317,7 +338,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     toast.success("Booking deleted");
-  }, []);
+    /* Also delete from Google Sheet if configured */
+    if (settings.sheetUrl) {
+      deleteInvoiceFromSheet(settings.sheetUrl, id).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
 
 
@@ -374,15 +399,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const savePayment = useCallback((pay: any) => {
+    const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
     setPayments((prev) => {
-      const rec = pay.id ? pay : { ...pay, id: uid("pay"), createdAt: new Date().toISOString() };
       const existing = prev.findIndex((x) => x.id === rec.id);
       const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
       LS.set("payments", next);
       return next;
     });
     toast.success("Payment recorded successfully");
-  }, []);
+    /* Auto-sync payment to Google Sheet */
+    if (settings.sheetUrl) {
+      postPayment(settings.sheetUrl, rec).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
   const confirmOrder = useCallback(
     (
@@ -544,7 +573,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     toast.success("Work Order " + wo.woNo + " saved");
-  }, []);
+    /* Auto-sync work order to Google Sheet */
+    if (settings.sheetUrl) {
+      postWorkOrder(settings.sheetUrl, wo).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
   const getBookingsByStatus = useCallback(
     (status: WorkflowStatus) => {
@@ -563,6 +596,112 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     });
     toast.success("Payment deleted");
   }, []);
+
+  /* ── Two-way Google Sheets sync ─────────────────────────────────── */
+  const loadFromSheet = useCallback(async () => {
+    if (!settings.sheetUrl) {
+      toast.error("Add your Apps Script URL in Settings first");
+      return;
+    }
+    setSheetSyncing(true);
+    try {
+      const [sheetInvoices, sheetCustomers, sheetWorkOrders, sheetPayments] = await Promise.all([
+        fetchInvoices(settings.sheetUrl).catch(() => [] as any[]),
+        fetchCustomers(settings.sheetUrl).catch(() => [] as any[]),
+        fetchWorkOrders(settings.sheetUrl).catch(() => [] as any[]),
+        fetchPayments(settings.sheetUrl).catch(() => [] as any[]),
+      ]);
+
+      /* Merge strategy: combine by id, sheet version wins if updatedAt is newer */
+      if (sheetInvoices.length) {
+        setInvoices((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const si of sheetInvoices) {
+            const existing = map.get(si.id);
+            if (!existing || (si.updatedAt && (!existing.updatedAt || si.updatedAt > existing.updatedAt))) {
+              si.sync = "synced";
+              map.set(si.id, si);
+            }
+          }
+          const merged = Array.from(map.values());
+          LS.set("invoices", merged);
+          return merged;
+        });
+      }
+
+      if (sheetCustomers.length) {
+        setCustomers((prev) => {
+          const map = new Map(prev.map((x) => [x.id || x.name, x]));
+          for (const sc of sheetCustomers) {
+            const key = sc.id || sc.name;
+            if (key) map.set(key, sc);
+          }
+          const merged = Array.from(map.values());
+          LS.set("customers", merged);
+          return merged;
+        });
+      }
+
+      if (sheetWorkOrders.length) {
+        setWorkOrders((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const sw of sheetWorkOrders) {
+            if (sw.id) map.set(sw.id, sw);
+          }
+          const merged = Array.from(map.values());
+          LS.set("workOrders", merged);
+          return merged;
+        });
+      }
+
+      if (sheetPayments.length) {
+        setPayments((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const sp of sheetPayments) {
+            if (sp.id) map.set(sp.id, sp);
+          }
+          const merged = Array.from(map.values());
+          LS.set("payments", merged);
+          return merged;
+        });
+      }
+
+      const total = sheetInvoices.length + sheetCustomers.length + sheetWorkOrders.length + sheetPayments.length;
+      toast.success(`Loaded ${total} records from Google Sheets`);
+    } catch (err: any) {
+      toast.error("Failed to load from sheet: " + err.message);
+    } finally {
+      setSheetSyncing(false);
+    }
+  }, [settings.sheetUrl]);
+
+  const pushAllToSheet = useCallback(async () => {
+    if (!settings.sheetUrl) {
+      toast.error("Add your Apps Script URL in Settings first");
+      return;
+    }
+    setSheetSyncing(true);
+    try {
+      const result = await syncAllToSheet(settings.sheetUrl, {
+        invoices,
+        customers,
+        workOrders,
+        payments,
+      });
+      /* Mark all invoices as synced */
+      setInvoices((prev) => {
+        const next = prev.map((x) => ({ ...x, sync: "synced" }));
+        LS.set("invoices", next);
+        return next;
+      });
+      const r = result.results || {};
+      toast.success(`Pushed to sheet: ${r.invoices || 0} invoices, ${r.customers || 0} customers, ${r.workOrders || 0} work orders, ${r.payments || 0} payments`);
+    } catch (err: any) {
+      toast.error("Failed to push to sheet: " + err.message);
+    } finally {
+      setSheetSyncing(false);
+    }
+  }, [settings.sheetUrl, invoices, customers, workOrders, payments]);
 
   const value: Ctx = {
     hydrated,
@@ -587,6 +726,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     deletePayment,
     syncOne,
     syncAll,
+    loadFromSheet,
+    pushAllToSheet,
+    sheetSyncing,
     /* workflow */
     confirmPreProforma,
     updateInvoiceStatus,

@@ -11,6 +11,9 @@ import {
   FileText,
   RefreshCw,
   Sparkles,
+  Download,
+  Upload,
+  Database,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +32,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const { settings, saveSettings } = useGQ();
+  const { settings, saveSettings, loadFromSheet, pushAllToSheet, sheetSyncing, invoices, customers, workOrders, payments } = useGQ();
   const [form, setForm] = useState<any>(() => ({ ...settings }));
   const [pinging, setPinging] = useState(false);
 
@@ -401,7 +404,7 @@ function SettingsPage() {
                   Connect your web app directly to your Google Sheets backend via Web App URL
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 text-xs">
+              <CardContent className="space-y-5 text-xs">
                 <div>
                   <Label className="text-xs">Google Apps Script Web App URL</Label>
                   <div className="flex items-center gap-2 mt-1">
@@ -424,6 +427,79 @@ function SettingsPage() {
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     Deploy your Google Apps Script as a Web App with access set to "Anyone" and paste the URL above.
                   </p>
+                </div>
+
+                {/* ── Two-Way Sync Actions ── */}
+                <div className="border-t border-border/40 pt-4 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Database className="h-3.5 w-3.5 text-primary" /> Two-Way Database Sync
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Sync data between your browser's local storage and Google Sheets database.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Download className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs font-semibold">Pull from Google Sheet</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Download all records from Google Sheets and merge into your local data.</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 text-xs gap-1.5"
+                        onClick={loadFromSheet}
+                        disabled={sheetSyncing || !form.sheetUrl}
+                      >
+                        {sheetSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                        Pull Data from Sheet
+                      </Button>
+                    </div>
+
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-semibold">Push All to Google Sheet</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Upload all local data to Google Sheets (creates/updates records).</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 text-xs gap-1.5"
+                        onClick={pushAllToSheet}
+                        disabled={sheetSyncing || !form.sheetUrl}
+                      >
+                        {sheetSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                        Push All Data to Sheet
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Current data counts */}
+                  <div className="rounded-lg bg-muted/30 border border-border/50 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Local Data Summary</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Invoices:</span>
+                        <span className="font-mono font-semibold">{invoices.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Customers:</span>
+                        <span className="font-mono font-semibold">{customers.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Work Orders:</span>
+                        <span className="font-mono font-semibold">{workOrders.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payments:</span>
+                        <span className="font-mono font-semibold">{payments.length}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

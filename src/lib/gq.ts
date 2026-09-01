@@ -46,7 +46,7 @@ export const BASE_SETTINGS: any = {
   bankBranch: "New Sanganer Road Jaipur",
   terms: DEFAULT_TERMS.join("\n"),
   footer: "",
-  sheetUrl: "",
+  sheetUrl: "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
 
 export const SAMPLE_INVOICE_07321: any = {
@@ -399,6 +399,72 @@ export function pingSheet(sheetUrl: string) {
   return fetch(sheetUrl + (sheetUrl.indexOf("?") > -1 ? "&" : "?") + "action=ping").then((r) =>
     r.json(),
   );
+}
+
+/* ---------- Data fetch functions (read from Google Sheets) ---------- */
+function sheetGet(sheetUrl: string, action: string) {
+  return fetch(sheetUrl + (sheetUrl.indexOf("?") > -1 ? "&" : "?") + "action=" + action, {
+    redirect: "follow",
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (j && j.success) return j;
+      throw new Error((j && j.message) || "Sheet returned an error");
+    });
+}
+
+function sheetPost(sheetUrl: string, payload: any) {
+  return fetch(sheetUrl, {
+    method: "POST",
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (j && j.success) return j;
+      throw new Error((j && j.message) || "Sheet refused the request");
+    });
+}
+
+export function fetchInvoices(sheetUrl: string): Promise<any[]> {
+  return sheetGet(sheetUrl, "getInvoices").then((j) => j.invoices || []);
+}
+
+export function fetchCustomers(sheetUrl: string): Promise<any[]> {
+  return sheetGet(sheetUrl, "getCustomers").then((j) => j.customers || []);
+}
+
+export function fetchWorkOrders(sheetUrl: string): Promise<any[]> {
+  return sheetGet(sheetUrl, "getWorkOrders").then((j) => j.workOrders || []);
+}
+
+export function fetchPayments(sheetUrl: string): Promise<any[]> {
+  return sheetGet(sheetUrl, "getPayments").then((j) => j.payments || []);
+}
+
+/* ---------- Data post functions (write to Google Sheets) ---------- */
+export function postCustomer(sheetUrl: string, customer: any) {
+  return sheetPost(sheetUrl, { action: "saveCustomer", customer });
+}
+
+export function postWorkOrder(sheetUrl: string, workOrder: any) {
+  return sheetPost(sheetUrl, { action: "saveWorkOrder", workOrder });
+}
+
+export function postPayment(sheetUrl: string, payment: any) {
+  return sheetPost(sheetUrl, { action: "savePayment", payment });
+}
+
+export function deleteInvoiceFromSheet(sheetUrl: string, id: string) {
+  return sheetPost(sheetUrl, { action: "deleteInvoice", id });
+}
+
+export function syncAllToSheet(
+  sheetUrl: string,
+  data: { invoices?: any[]; customers?: any[]; workOrders?: any[]; payments?: any[] },
+) {
+  return sheetPost(sheetUrl, { action: "syncAll", ...data });
 }
 
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
