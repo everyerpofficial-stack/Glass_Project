@@ -15,6 +15,9 @@ import {
   postWorkOrder,
   postPayment,
   deleteInvoiceFromSheet,
+  deleteCustomerFromSheet,
+  deleteWorkOrderFromSheet,
+  deletePaymentFromSheet,
   fetchInvoices,
   fetchCustomers,
   fetchWorkOrders,
@@ -200,59 +203,51 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         fetchPayments(settings.sheetUrl).catch(() => [] as any[]),
       ]);
 
-      /* Merge strategy: combine by id, sheet version wins if updatedAt is newer */
-      if (sheetInvoices.length) {
-        setInvoices((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const si of sheetInvoices) {
-            const existing = map.get(si.id);
-            if (!existing || (si.updatedAt && (!existing.updatedAt || si.updatedAt > existing.updatedAt))) {
-              si.sync = "synced";
-              map.set(si.id, si);
-            }
-          }
-          const merged = Array.from(map.values());
-          LS.set("invoices", merged);
-          return merged;
-        });
-      }
+      /* Replacement & Merge strategy:
+         Google Sheets is the single Source of Truth across all devices.
+         1. Any item in Google Sheets is set as synced.
+         2. Any previously synced local item (or sample item) NOT in Google Sheets was deleted -> purge it.
+         3. Preserve unsaved local drafts (sync === 'local' or sync === 'pending').
+      */
 
-      if (sheetCustomers.length) {
-        setCustomers((prev) => {
-          const map = new Map(prev.map((x) => [x.id || x.name, x]));
-          for (const sc of sheetCustomers) {
-            const key = sc.id || sc.name;
-            if (key) map.set(key, sc);
+      // Invoices
+      setInvoices((prev) => {
+        const pendingLocal = prev.filter((x: any) => x.sync === "local" || x.sync === "pending");
+        const syncedFromSheet = (sheetInvoices || []).map((si: any) => ({ ...si, sync: "synced" }));
+        
+        const finalMap = new Map<string, any>();
+        syncedFromSheet.forEach((item: any) => finalMap.set(item.id, item));
+        pendingLocal.forEach((item: any) => {
+          if (!finalMap.has(item.id)) {
+            finalMap.set(item.id, item);
           }
-          const merged = Array.from(map.values());
-          LS.set("customers", merged);
-          return merged;
         });
-      }
 
-      if (sheetWorkOrders.length) {
-        setWorkOrders((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const sw of sheetWorkOrders) {
-            if (sw.id) map.set(sw.id, sw);
-          }
-          const merged = Array.from(map.values());
-          LS.set("workOrders", merged);
-          return merged;
-        });
-      }
+        const nextInvoices = Array.from(finalMap.values());
+        LS.set("invoices", nextInvoices);
+        return nextInvoices;
+      });
 
-      if (sheetPayments.length) {
-        setPayments((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const sp of sheetPayments) {
-            if (sp.id) map.set(sp.id, sp);
-          }
-          const merged = Array.from(map.values());
-          LS.set("payments", merged);
-          return merged;
-        });
-      }
+      // Customers
+      setCustomers((_) => {
+        const nextCustomers = sheetCustomers || [];
+        LS.set("customers", nextCustomers);
+        return nextCustomers;
+      });
+
+      // Work Orders
+      setWorkOrders((_) => {
+        const nextWorkOrders = sheetWorkOrders || [];
+        LS.set("workOrders", nextWorkOrders);
+        return nextWorkOrders;
+      });
+
+      // Payments
+      setPayments((_) => {
+        const nextPayments = sheetPayments || [];
+        LS.set("payments", nextPayments);
+        return nextPayments;
+      });
 
       const total = sheetInvoices.length + sheetCustomers.length + sheetWorkOrders.length + sheetPayments.length;
       if (!opts?.quiet) {
@@ -459,7 +454,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     toast.success("Customer deleted");
-  }, []);
+    if (settings.sheetUrl) {
+      deleteCustomerFromSheet(settings.sheetUrl, id).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
   const syncAll = useCallback(() => {
     const pending = invoices.filter((r) => r.sync !== "synced");
@@ -701,7 +699,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     toast.success("Payment deleted");
-  }, []);
+    if (settings.sheetUrl) {
+      deletePaymentFromSheet(settings.sheetUrl, id).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
 
 
 

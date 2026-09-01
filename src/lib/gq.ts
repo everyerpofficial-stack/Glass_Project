@@ -460,6 +460,18 @@ export function deleteInvoiceFromSheet(sheetUrl: string, id: string) {
   return sheetPost(sheetUrl, { action: "deleteInvoice", id });
 }
 
+export function deleteCustomerFromSheet(sheetUrl: string, id: string) {
+  return sheetPost(sheetUrl, { action: "deleteCustomer", id });
+}
+
+export function deleteWorkOrderFromSheet(sheetUrl: string, id: string) {
+  return sheetPost(sheetUrl, { action: "deleteWorkOrder", id });
+}
+
+export function deletePaymentFromSheet(sheetUrl: string, id: string) {
+  return sheetPost(sheetUrl, { action: "deletePayment", id });
+}
+
 export function syncAllToSheet(
   sheetUrl: string,
   data: { invoices?: any[]; customers?: any[]; workOrders?: any[]; payments?: any[] },
