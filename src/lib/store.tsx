@@ -46,7 +46,7 @@ type Ctx = {
   deleteCustomer: (id: string) => void;
   syncOne: (rec: any) => Promise<boolean>;
   syncAll: () => void;
-  loadFromSheet: () => Promise<void>;
+  loadFromSheet: (opts?: { quiet?: boolean }) => Promise<void>;
   pushAllToSheet: () => Promise<void>;
   sheetSyncing: boolean;
   /* ── Workflow helpers ── */
@@ -184,6 +184,112 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     setHydrated(true);
   }, []);
+
+  /* ── Two-way Google Sheets sync ─────────────────────────────────── */
+  const loadFromSheet = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!settings.sheetUrl) {
+      if (!opts?.quiet) toast.error("Add your Apps Script URL in Settings first");
+      return;
+    }
+    setSheetSyncing(true);
+    try {
+      const [sheetInvoices, sheetCustomers, sheetWorkOrders, sheetPayments] = await Promise.all([
+        fetchInvoices(settings.sheetUrl).catch(() => [] as any[]),
+        fetchCustomers(settings.sheetUrl).catch(() => [] as any[]),
+        fetchWorkOrders(settings.sheetUrl).catch(() => [] as any[]),
+        fetchPayments(settings.sheetUrl).catch(() => [] as any[]),
+      ]);
+
+      /* Merge strategy: combine by id, sheet version wins if updatedAt is newer */
+      if (sheetInvoices.length) {
+        setInvoices((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const si of sheetInvoices) {
+            const existing = map.get(si.id);
+            if (!existing || (si.updatedAt && (!existing.updatedAt || si.updatedAt > existing.updatedAt))) {
+              si.sync = "synced";
+              map.set(si.id, si);
+            }
+          }
+          const merged = Array.from(map.values());
+          LS.set("invoices", merged);
+          return merged;
+        });
+      }
+
+      if (sheetCustomers.length) {
+        setCustomers((prev) => {
+          const map = new Map(prev.map((x) => [x.id || x.name, x]));
+          for (const sc of sheetCustomers) {
+            const key = sc.id || sc.name;
+            if (key) map.set(key, sc);
+          }
+          const merged = Array.from(map.values());
+          LS.set("customers", merged);
+          return merged;
+        });
+      }
+
+      if (sheetWorkOrders.length) {
+        setWorkOrders((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const sw of sheetWorkOrders) {
+            if (sw.id) map.set(sw.id, sw);
+          }
+          const merged = Array.from(map.values());
+          LS.set("workOrders", merged);
+          return merged;
+        });
+      }
+
+      if (sheetPayments.length) {
+        setPayments((prev) => {
+          const map = new Map(prev.map((x) => [x.id, x]));
+          for (const sp of sheetPayments) {
+            if (sp.id) map.set(sp.id, sp);
+          }
+          const merged = Array.from(map.values());
+          LS.set("payments", merged);
+          return merged;
+        });
+      }
+
+      const total = sheetInvoices.length + sheetCustomers.length + sheetWorkOrders.length + sheetPayments.length;
+      if (!opts?.quiet) {
+        toast.success(`Loaded ${total} records from Google Sheets`);
+      }
+    } catch (err: any) {
+      if (!opts?.quiet) {
+        toast.error("Failed to load from sheet: " + err.message);
+      }
+    } finally {
+      setSheetSyncing(false);
+    }
+  }, [settings.sheetUrl]);
+
+  /* ── Auto-sync from Google Sheets across all devices (mount, tab focus, 30s interval) ── */
+  useEffect(() => {
+    if (!hydrated || !settings.sheetUrl) return;
+
+    // Load from sheet immediately on mount (quiet mode)
+    loadFromSheet({ quiet: true });
+
+    // Auto-fetch when user switches back to this browser tab
+    const handleFocus = () => {
+      loadFromSheet({ quiet: true });
+    };
+    window.addEventListener("focus", handleFocus);
+
+    // Auto-poll every 30 seconds for live updates from other devices
+    const interval = setInterval(() => {
+      loadFromSheet({ quiet: true });
+    }, 30000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
+  }, [hydrated, settings.sheetUrl, loadFromSheet]);
 
   const setInv = useCallback((updater: any) => {
     setInvState((prev: any) => (typeof updater === "function" ? updater(prev) : updater));
@@ -597,83 +703,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     toast.success("Payment deleted");
   }, []);
 
-  /* ── Two-way Google Sheets sync ─────────────────────────────────── */
-  const loadFromSheet = useCallback(async () => {
-    if (!settings.sheetUrl) {
-      toast.error("Add your Apps Script URL in Settings first");
-      return;
-    }
-    setSheetSyncing(true);
-    try {
-      const [sheetInvoices, sheetCustomers, sheetWorkOrders, sheetPayments] = await Promise.all([
-        fetchInvoices(settings.sheetUrl).catch(() => [] as any[]),
-        fetchCustomers(settings.sheetUrl).catch(() => [] as any[]),
-        fetchWorkOrders(settings.sheetUrl).catch(() => [] as any[]),
-        fetchPayments(settings.sheetUrl).catch(() => [] as any[]),
-      ]);
 
-      /* Merge strategy: combine by id, sheet version wins if updatedAt is newer */
-      if (sheetInvoices.length) {
-        setInvoices((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const si of sheetInvoices) {
-            const existing = map.get(si.id);
-            if (!existing || (si.updatedAt && (!existing.updatedAt || si.updatedAt > existing.updatedAt))) {
-              si.sync = "synced";
-              map.set(si.id, si);
-            }
-          }
-          const merged = Array.from(map.values());
-          LS.set("invoices", merged);
-          return merged;
-        });
-      }
-
-      if (sheetCustomers.length) {
-        setCustomers((prev) => {
-          const map = new Map(prev.map((x) => [x.id || x.name, x]));
-          for (const sc of sheetCustomers) {
-            const key = sc.id || sc.name;
-            if (key) map.set(key, sc);
-          }
-          const merged = Array.from(map.values());
-          LS.set("customers", merged);
-          return merged;
-        });
-      }
-
-      if (sheetWorkOrders.length) {
-        setWorkOrders((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const sw of sheetWorkOrders) {
-            if (sw.id) map.set(sw.id, sw);
-          }
-          const merged = Array.from(map.values());
-          LS.set("workOrders", merged);
-          return merged;
-        });
-      }
-
-      if (sheetPayments.length) {
-        setPayments((prev) => {
-          const map = new Map(prev.map((x) => [x.id, x]));
-          for (const sp of sheetPayments) {
-            if (sp.id) map.set(sp.id, sp);
-          }
-          const merged = Array.from(map.values());
-          LS.set("payments", merged);
-          return merged;
-        });
-      }
-
-      const total = sheetInvoices.length + sheetCustomers.length + sheetWorkOrders.length + sheetPayments.length;
-      toast.success(`Loaded ${total} records from Google Sheets`);
-    } catch (err: any) {
-      toast.error("Failed to load from sheet: " + err.message);
-    } finally {
-      setSheetSyncing(false);
-    }
-  }, [settings.sheetUrl]);
 
   const pushAllToSheet = useCallback(async () => {
     if (!settings.sheetUrl) {

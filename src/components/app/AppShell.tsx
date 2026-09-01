@@ -16,6 +16,7 @@ import {
   Tag,
   Calendar,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { settings } = useGQ();
+  const { settings, loadFromSheet, sheetSyncing } = useGQ();
   const title = TITLES[pathname] ?? "Glass Quote";
 
   useEffect(() => {
@@ -418,6 +419,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   <Search className="h-4 w-4" />
                 </Button>
+
+                {/* Live Sync Status & Manual Refresh Button */}
+                <button
+                  onClick={() => loadFromSheet()}
+                  disabled={sheetSyncing || !settings.sheetUrl}
+                  title={settings.sheetUrl ? "Live synced across all devices. Click to refresh." : "Configure Sheet URL in Settings"}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                >
+                  <span className={cn("h-2 w-2 rounded-full bg-emerald-500", sheetSyncing && "animate-ping")} />
+                  <span className="hidden md:inline">{sheetSyncing ? "Syncing..." : "Live Sync"}</span>
+                  <RefreshCw className={cn("h-3 w-3 text-emerald-600 dark:text-emerald-400", sheetSyncing && "animate-spin")} />
+                </button>
 
                 {/* Notification bell */}
                 <button className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">

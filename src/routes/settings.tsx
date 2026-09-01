@@ -450,7 +450,7 @@ function SettingsPage() {
                         variant="outline"
                         size="sm"
                         className="w-full h-8 text-xs gap-1.5"
-                        onClick={loadFromSheet}
+                        onClick={() => loadFromSheet()}
                         disabled={sheetSyncing || !form.sheetUrl}
                       >
                         {sheetSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
