@@ -420,7 +420,7 @@ function OrderPage() {
     [proformaInvoices, savedSearch]
   );
 
-  /* Get Pre Proformas available for loading into Proforma Invoice */
+  /* Get SGU Bookings available for loading into Proforma Invoice */
   const availableBookings = useMemo(
     () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
     [invoices],
@@ -461,7 +461,7 @@ function OrderPage() {
     toast.success(`Loaded ${c.name}`);
   };
 
-  /* select a pre proforma booking to load into proforma invoice */
+  /* select a SGU booking to load into proforma invoice */
   const handleSelectBooking = (bookingId: string) => {
     const booking = invoices.find((x: any) => x.id === bookingId);
     if (!booking) return;
@@ -478,7 +478,7 @@ function OrderPage() {
     copy.delivery.paymentType = copy.delivery.paymentType || "Credit";
     setInv(copy);
     setShowForm(true);
-    toast.success(`✨ Auto-filled data from Pre Proforma ${booking.no} into Proforma Invoice`);
+    toast.success(`✨ Auto-filled data from SGU Booking ${booking.no} into Proforma Invoice`);
   };
 
   const handleOpenConfirmModal = (targetRecord?: any) => {
@@ -528,7 +528,7 @@ function OrderPage() {
           to="/booking"
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
         >
-          1. Pre Proforma
+          1. SGU Booking
         </Link>
         <Link
           to="/order"
@@ -867,7 +867,7 @@ function OrderPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Pre Proforma Ref</FieldLabel>
+                  <FieldLabel>SGU Booking Ref</FieldLabel>
                   <Input className="h-8 text-xs font-mono bg-muted/30" value={inv.preProformaNo || "N/A"} readOnly />
                 </div>
                 <div>
@@ -978,13 +978,13 @@ function OrderPage() {
               </div>
             </Section>
 
-            {/* 3. Pre Proforma Items & Details */}
-            <Section title="Pre Proforma Items & Details">
+            {/* 3. SGU Booking Items & Details */}
+            <Section title="SGU Booking Items & Details">
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
                 <table className="w-full text-[11px] border-collapse" style={{ minWidth: "850px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {["Sr.", "Pre Proforma No", "Date", "Product", "Thick", "Qty", "Area", "Amount", "Glass Name", "Weight", "Job Type", "Act Area"].map((h, i) => (
+                      {["Sr.", "SGU Booking No", "Date", "Product", "Thick", "Qty", "Area", "Amount", "Glass Name", "Weight", "Job Type", "Act Area"].map((h, i) => (
                         <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
                       ))}
                     </tr>

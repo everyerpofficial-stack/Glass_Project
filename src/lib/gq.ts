@@ -601,8 +601,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
 
   const isPre = INV.docType === "pre_proforma";
-  const docTitle = isPre ? "PRE PROFORMA INVOICE" : (S.title || "PROFORMA INVOICE");
-  const noLabel = isPre ? "Pre Proforma No" : "Proforma No";
+  const docTitle = isPre ? "SGU BOOKING" : (S.title || "PROFORMA INVOICE");
+  const noLabel = isPre ? "SGU Booking No" : "Proforma No";
 
   return `
     <div class="pdoc">

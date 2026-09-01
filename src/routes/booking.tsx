@@ -563,14 +563,14 @@ function BookingPage() {
     if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
     }
-    toast.success("Pre Proforma saved & sent to customer for confirmation");
+    toast.success("SGU Booking saved & sent to customer for confirmation");
   };
 
   const handleAcceptAndMove = () => {
     saveInvoice();
     if (inv.id) {
       updateInvoiceStatus(inv.id, "pi_sent");
-      toast.success("Pre Proforma generated & sent to customer! Moving to Proforma Invoice.");
+      toast.success("SGU Booking generated & sent to customer! Moving to Proforma Invoice.");
       navigate({ to: "/order", search: { view: undefined } });
     }
   };
@@ -585,7 +585,7 @@ function BookingPage() {
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          1. Pre Proforma
+          1. SGU Booking
         </Link>
         <Link
           to="/order"
@@ -605,23 +605,23 @@ function BookingPage() {
               {" / "}
               {showForm ? (
                 <button onClick={() => setShowForm(false)} className="hover:text-foreground transition-colors">
-                  Pre Proforma
+                  SGU Booking
                 </button>
               ) : (
-                <span className="text-primary font-semibold">Pre Proforma</span>
+                <span className="text-primary font-semibold">SGU Booking</span>
               )}
               {showForm && (
                 <>
                   {" / "}
                   <span className="text-primary font-semibold">
-                    {inv._saved ? `Edit (${inv.no})` : "New Pre Proforma"}
+                    {inv._saved ? `Edit (${inv.no})` : "New SGU Booking"}
                   </span>
                 </>
               )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              {showForm ? (inv._saved ? "Edit Pre Proforma" : "New Pre Proforma") : "Pre Proforma Management"}
+              {showForm ? (inv._saved ? "Edit SGU Booking" : "New SGU Booking") : "SGU Booking Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -652,11 +652,11 @@ function BookingPage() {
                     const ok = saveInvoice();
                     if (ok) {
                       setShowForm(false);
-                      toast.success("Pre Proforma saved successfully!");
+                      toast.success("SGU Booking saved successfully!");
                     }
                   }}
                 >
-                  <Save className="h-3.5 w-3.5" /> Save Pre Proforma
+                  <Save className="h-3.5 w-3.5" /> Save SGU Booking
                 </Button>
                 <Button
                   size="sm"
@@ -665,7 +665,7 @@ function BookingPage() {
                   onClick={() => {
                     saveInvoice();
                     if (inv.id) {
-                      toast.success(`Pre Proforma ${inv.no} saved. Opening PDF invoice...`);
+                      toast.success(`SGU Booking ${inv.no} saved. Opening PDF invoice...`);
                       navigate({ to: "/invoice", search: { id: inv.id } });
                     }
                   }}
@@ -681,7 +681,7 @@ function BookingPage() {
                 </Button>
               </>
             ) : (
-              /* RIGHT BUTTON: New Pre Proforma */
+              /* RIGHT BUTTON: New SGU Booking */
               <Button
                 size="sm"
                 className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
@@ -692,7 +692,7 @@ function BookingPage() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                New Pre Proforma
+                New SGU Booking
               </Button>
             )}
           </div>
@@ -704,7 +704,7 @@ function BookingPage() {
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
               <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Pre Proforma records</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">SGU Booking records</div>
             </div>
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
@@ -730,17 +730,17 @@ function BookingPage() {
       </div>
 
       {!showForm ? (
-        /* ── ALL SAVED PRE PROFORMAS TABLE (TOP DEFAULT VIEW) ────────── */
+        /* ── ALL SAVED SGU BOOKINGS TABLE (TOP DEFAULT VIEW) ────────── */
         <div className="p-3 sm:p-4 bg-muted/20 border-b border-border">
           <Section
-            title="All Saved Pre Proformas"
+            title="All Saved SGU Bookings"
             headerRight={
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
                   <Input
                     className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
-                    placeholder="Search saved pre proforma..."
+                    placeholder="Search saved SGU booking..."
                     value={savedSearch}
                     onChange={(e) => setSavedSearch(e.target.value)}
                   />
@@ -753,7 +753,7 @@ function BookingPage() {
           >
             {filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
-                <p>{savedSearch ? "No matching Pre Proformas found." : "No saved Pre Proformas found."}</p>
+                <p>{savedSearch ? "No matching SGU Bookings found." : "No saved SGU Bookings found."}</p>
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
@@ -762,7 +762,7 @@ function BookingPage() {
                     setShowForm(true);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5" /> New Pre Proforma
+                  <Plus className="h-3.5 w-3.5" /> New SGU Booking
                 </Button>
               </div>
             ) : (
@@ -770,7 +770,7 @@ function BookingPage() {
                 <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "820px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">Pre Proforma No</th>
+                      <th className="py-2.5 px-3">SGU Booking No</th>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
@@ -815,7 +815,7 @@ function BookingPage() {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* CONFIRM PRE PROFORMA BUTTON */}
+                              {/* CONFIRM SGU BOOKING BUTTON */}
                               <Button
                                 size="sm"
                                 className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
@@ -823,9 +823,9 @@ function BookingPage() {
                                   confirmPreProforma(item.id);
                                   navigate({ to: "/order", search: { view: "list" } });
                                 }}
-                                title="Confirm Pre Proforma & Send to Proforma Invoice"
+                                title="Confirm SGU Booking & Send to Proforma Invoice"
                               >
-                                <CheckCircle2 className="h-3 w-3" /> Confirm Pre Proforma
+                                <CheckCircle2 className="h-3 w-3" /> Confirm SGU Booking
                               </Button>
                               <Button
                                 variant="outline"
@@ -833,7 +833,7 @@ function BookingPage() {
                                 className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
-                                  toast.success(`Generating PDF for Pre Proforma ${item.no}...`);
+                                  toast.success(`Generating PDF for SGU Booking ${item.no}...`);
                                   navigate({ to: "/invoice", search: { id: item.id } });
                                 }}
                                 title="Print / Generate PDF"
@@ -847,7 +847,7 @@ function BookingPage() {
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   setShowForm(true);
-                                  toast.success(`Loaded Pre Proforma ${item.no} for editing`);
+                                  toast.success(`Loaded SGU Booking ${item.no} for editing`);
                                 }}
                               >
                                 <Edit3 className="h-3 w-3" /> Edit
@@ -873,15 +873,15 @@ function BookingPage() {
           </Section>
         </div>
       ) : (
-        /* ── PRE PROFORMA CREATION / EDITING FORM SECTION ─────────────── */
-        <div id="pre-proforma-form" className="p-3 sm:p-4 w-full">
+        /* ── SGU BOOKING CREATION / EDITING FORM SECTION ─────────────── */
+        <div id="sgu-booking-form" className="p-3 sm:p-4 w-full">
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
 
           {/* ════ LEFT COLUMN ════ */}
           <div className="space-y-4 min-w-0">
-            {/* 1. Customer & Pre Proforma Details */}
+            {/* 1. Customer & SGU Booking Details */}
             <Section
-              title="Customer & Pre Proforma Details"
+              title="Customer & SGU Booking Details"
               headerRight={
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                   <div className="relative">
@@ -921,7 +921,7 @@ function BookingPage() {
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <FieldLabel>Pre Proforma No</FieldLabel>
+                  <FieldLabel>SGU Booking No</FieldLabel>
                   <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
                 </div>
                 <div>

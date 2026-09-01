@@ -362,7 +362,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       LS.set("invoices", next);
       return next;
     });
-    toast.success("Pre Proforma confirmed & converted to Proforma Invoice!");
+    toast.success("SGU Booking confirmed & converted to Proforma Invoice!");
   }, []);
 
   const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
