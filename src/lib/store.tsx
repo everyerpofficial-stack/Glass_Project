@@ -438,10 +438,16 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       LS.set("invoices", next);
       return next;
     });
+    setWorkOrders((prev) => {
+      const next = prev.filter((x) => x.orderId !== id && x.orderNo !== id && x.piNo !== id && x.id !== id);
+      LS.set("workOrders", next);
+      return next;
+    });
     toast.success("Booking deleted");
     /* Also delete from Google Sheet if configured */
     if (settings.sheetUrl) {
       deleteInvoiceFromSheet(settings.sheetUrl, id).catch(() => {});
+      deleteWorkOrderFromSheet(settings.sheetUrl, id).catch(() => {});
     }
   }, [settings.sheetUrl]);
 

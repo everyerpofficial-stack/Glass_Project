@@ -280,7 +280,7 @@ function WorkOrderPage() {
     }
   }, [searchParams?.tab]);
 
-  // Set default active WO if workOrders exist
+  // Set active WO only if searchParams contains woId
   useEffect(() => {
     if (searchParams?.woId) {
       const wo = workOrders.find((x) => x.id === searchParams.woId || x.woNo === searchParams.woId || x.orderId === searchParams.woId);
@@ -288,11 +288,19 @@ function WorkOrderPage() {
         setActiveWO(wo);
         if (wo.orderId) setSelectedOrderId(wo.orderId);
       }
-    } else if (!activeWO && workOrders.length > 0) {
-      setActiveWO(workOrders[0]);
-      if (workOrders[0].orderId) setSelectedOrderId(workOrders[0].orderId);
     }
   }, [workOrders, searchParams?.woId]);
+
+  // Reset activeWO if the selected order was deleted from invoices
+  useEffect(() => {
+    if (activeWO) {
+      const exists = invoices.some((x) => x.id === activeWO.orderId || x.no === activeWO.piNo || x.orderNo === activeWO.orderNo);
+      if (!exists) {
+        setActiveWO(null);
+        setSelectedOrderId("");
+      }
+    }
+  }, [invoices, activeWO]);
 
   /* Get confirmed orders */
   const confirmedOrders = useMemo(
