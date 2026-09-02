@@ -194,8 +194,13 @@ export function InvoiceDetailModal({
   };
 
   /* Helper: Open clean standalone print window for isolated document printing */
-  const printDocumentHTML = (bodyHTML: string, title: string = "Print Document", styleAddons: string = "") => {
-    const win = window.open("", "_blank", "width=950,height=1100");
+  const printDocumentHTML = (
+    bodyHTML: string,
+    title: string = "Print Document",
+    orientation: "portrait" | "landscape" = "portrait",
+    styleAddons: string = ""
+  ) => {
+    const win = window.open("", "_blank", "width=1050,height=1100");
     if (!win) {
       window.print();
       return;
@@ -208,9 +213,14 @@ export function InvoiceDetailModal({
         <title>${title}</title>
         <meta charset="utf-8" />
         <style>
-          @page { size: A4 portrait; margin: 8mm 6mm; }
-          body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #000; }
+          @page { size: A4 ${orientation}; margin: 6mm 5mm; }
+          html, body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; background: #fff !important; color: #000 !important; width: 100%; }
           * { box-sizing: border-box; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          .wo-print-area { width: 100% !important; max-width: 100% !important; border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; background: #fff !important; color: #000 !important; }
+          .wo-print-area table { width: 100% !important; min-width: 100% !important; margin-bottom: 12px; font-size: 10px; border-collapse: collapse !important; }
+          .wo-print-area th, .wo-print-area td { border: 1px solid #000 !important; padding: 4px 6px !important; color: #000 !important; }
+          .doc-preview { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
           ${styleAddons}
         </style>
       </head>
@@ -232,7 +242,7 @@ export function InvoiceDetailModal({
 
   const handlePrintProforma = () => {
     if (proformaHTML) {
-      printDocumentHTML(proformaHTML, `Proforma_Invoice_${invoice.no}`);
+      printDocumentHTML(proformaHTML, `Proforma_Invoice_${invoice.no}`, "portrait");
     } else {
       window.print();
     }
@@ -241,7 +251,11 @@ export function InvoiceDetailModal({
   const handlePrintCutSheet = () => {
     const woEl = document.querySelector(".wo-print-area");
     if (woEl) {
-      printDocumentHTML(woEl.outerHTML, `Work_Order_${activeWO?.woNo || invoice.no}`);
+      const woStyles = `
+        .wo-print-area { width: 100% !important; max-width: 100% !important; }
+        .wo-print-area th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      `;
+      printDocumentHTML(woEl.outerHTML, `Work_Order_${activeWO?.woNo || invoice.no}`, "landscape", woStyles);
     } else {
       window.print();
     }
@@ -255,9 +269,9 @@ export function InvoiceDetailModal({
         .join("");
       const gridHTML = `<div style="display: grid; grid-template-columns: repeat(${labelsPerRow}, 1fr); gap: 10px; width: 100%;">${stickersContainer}</div>`;
       const stickerStyles = `
-        .sticker-label { background: #FFD700 !important; color: #000 !important; border: 2px solid #b45309 !important; border-radius: 8px; padding: 8px; page-break-inside: avoid; break-inside: avoid; }
+        .sticker-label { background: #FFD700 !important; color: #000 !important; border: 2px solid #b45309 !important; border-radius: 8px; padding: 8px; page-break-inside: avoid; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       `;
-      printDocumentHTML(gridHTML, `Barcode_Stickers_${activeWO?.woNo || invoice.no}`, stickerStyles);
+      printDocumentHTML(gridHTML, `Barcode_Stickers_${activeWO?.woNo || invoice.no}`, "portrait", stickerStyles);
     } else {
       window.print();
     }
