@@ -854,7 +854,7 @@ function BookingPage() {
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
                             <span className="hover:underline font-bold">
-                              {formatOrderId(item.no)}
+                              {item.no || "—"}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
