@@ -884,11 +884,12 @@ function BookingPage() {
                             </button>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* CONFIRM ORDER BOOKING BUTTON */}
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Confirm & Convert Symbol Button */}
                               <Button
-                                size="sm"
-                                className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                                 onClick={() => {
                                   const targetPI = confirmPreProforma(item.id);
                                   if (targetPI && targetPI.id) {
@@ -898,14 +899,29 @@ function BookingPage() {
                                 }}
                                 title="Confirm Order Booking & Open Proforma Invoice"
                               >
-                                <CheckCircle2 className="h-3 w-3" /> Confirm Order Booking
+                                <CheckCircle2 className="h-3.5 w-3.5" />
                               </Button>
 
-
+                              {/* Edit Symbol Button */}
                               <Button
                                 variant="outline"
-                                size="sm"
-                                className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
+                                size="icon"
+                                className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  setShowForm(true);
+                                  toast.success(`Loaded Order Booking ${item.no} for editing`);
+                                }}
+                                title="Edit Order Booking"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </Button>
+
+                              {/* Print Symbol Button */}
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   toast.success(`Generating PDF for Order Booking ${item.no}...`);
@@ -913,27 +929,17 @@ function BookingPage() {
                                 }}
                                 title="Print / Generate PDF"
                               >
-                                <Printer className="h-3 w-3" /> PDF
+                                <Printer className="h-3.5 w-3.5" />
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/5"
-                                onClick={() => {
-                                  loadInvoice(item.id, false);
-                                  setShowForm(true);
-                                  toast.success(`Loaded Order Booking ${item.no} for editing`);
-                                }}
-                              >
-                                <Edit3 className="h-3 w-3" /> Edit
-                              </Button>
+
+                              {/* Delete Symbol Button */}
                               <ConfirmDelete
                                 title={`Delete Order Booking ${item.no}?`}
                                 description={`This permanently removes ${item.no} (${item.cust?.name || "no customer"}) from this device and from your Google Sheet, along with any work order generated from it. This cannot be undone.`}
                                 onConfirm={() => deleteInvoice(item.id)}
                               >
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="icon"
                                   className="h-7 w-7 text-muted-foreground hover:text-red-500"
                                   title="Delete"
@@ -1074,11 +1080,45 @@ function BookingPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Billing Address</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.addr || ""} onChange={(e) => updateInvField("cust.addr", e.target.value)} placeholder="S 5, Shri Govind Complex, Jhotwara, Jaipur" />
+                  <Input
+                    className="h-8 text-xs"
+                    value={inv.cust?.addr || ""}
+                    onChange={(e) => {
+                      const newAddr = e.target.value;
+                      const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
+                      updateInvField("cust.addr", newAddr);
+                      if (isSame) {
+                        updateInvField("cust.ship", newAddr);
+                      }
+                    }}
+                    placeholder="S 5, Shri Govind Complex, Jhotwara, Jaipur"
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <FieldLabel>Dispatch Address</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.ship || ""} onChange={(e) => updateInvField("cust.ship", e.target.value)} placeholder="Site / Shipping Address" />
+                  <div className="flex items-center justify-between mb-1">
+                    <FieldLabel>Dispatch Address</FieldLabel>
+                    <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                        checked={Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateInvField("cust.ship", inv.cust?.addr || "");
+                          } else {
+                            updateInvField("cust.ship", "");
+                          }
+                        }}
+                      />
+                      <span>Same as Billing Address</span>
+                    </label>
+                  </div>
+                  <Input
+                    className="h-8 text-xs"
+                    value={inv.cust?.ship || ""}
+                    onChange={(e) => updateInvField("cust.ship", e.target.value)}
+                    placeholder="Site / Shipping Address"
+                  />
                 </div>
               </div>
             </Section>

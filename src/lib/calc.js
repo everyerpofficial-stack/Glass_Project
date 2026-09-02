@@ -27,7 +27,7 @@
     mmDecimals: 0,           // invoices show whole mm
     cuttingAllowanceMM: 0,   // added for the cutting/production size
     chargeAllowanceMM: 0,    // added to EACH dimension for the billed size
-    extraAreaFormula: 'none', // 'none' | '+25mm' | '+50mm' | 'custom'
+    extraAreaFormula: '+25.4mm', // 'none' | '+25.4mm' | '+25mm' | '+50mm' | 'custom'
     extraAreaCustomMM: 0,    // custom extra area mm when extraAreaFormula='custom'
     snapChargeableToSooth: false,
     areaDecimals: 3,

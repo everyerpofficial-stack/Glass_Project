@@ -676,6 +676,27 @@ function OrderPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
                 </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                  onClick={() => {
+                    if (saveInvoice()) {
+                      toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
+                    }
+                  }}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save Invoice
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
+                  onClick={handleConfirmOrder}
+                  disabled={isWorkflowLocked}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Confirm Order & Send to Workflow
+                </Button>
               </>
             ) : (
               /* RIGHT BUTTON: New Invoice */
@@ -854,19 +875,13 @@ function OrderPage() {
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <div className="flex items-center justify-end gap-1">
                               {isConfirmed && (
                                 <Button
-                                  size="sm"
+                                  size="icon"
                                   variant="outline"
-                                  className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
+                                  className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                                   onClick={() => {
-                                    /* This button only views an existing work
-                                       order. It used to regenerate one on every
-                                       click, and generateWorkOrder mints a fresh
-                                       uid each time, so saveWorkOrder appended a
-                                       new row instead of updating — a duplicate
-                                       work order per click. */
                                     const existing = workOrders.find((w: any) =>
                                       workOrderBelongsTo(w, item),
                                     );
@@ -881,35 +896,37 @@ function OrderPage() {
                                   }}
                                   title="View in Work Order Workflow"
                                 >
-                                  <CheckCircle2 className="h-3 w-3" /> In Workflow <ArrowRight className="h-3 w-3" />
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
 
                               {!isConfirmed && (
                                 <Button
                                   variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs px-2 gap-1 text-primary border-primary/30 hover:bg-primary/5"
+                                  size="icon"
+                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
                                   onClick={() => {
                                     loadInvoice(item.id, false);
                                     setShowForm(true);
                                     toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
                                   }}
+                                  title="Edit Proforma Invoice"
                                 >
-                                  <Edit3 className="h-3 w-3" /> Edit
+                                  <Edit3 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
 
                               <Button
                                 variant="outline"
-                                size="sm"
-                                className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5"
+                                size="icon"
+                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   navigate({ to: "/invoice", search: { id: item.id } });
                                 }}
+                                title="Print / Save PDF"
                               >
-                                <Printer className="h-3 w-3" /> Print
+                                <Printer className="h-3.5 w-3.5" />
                               </Button>
 
                               <ConfirmDelete
@@ -918,9 +935,9 @@ function OrderPage() {
                                 onConfirm={() => deleteInvoice(item.id)}
                               >
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                  className="h-7 w-7 text-rose-600 border-rose-500/30 hover:bg-rose-500/10"
                                   title="Delete"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -1045,10 +1062,38 @@ function OrderPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Billing Address</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.addr || ""} onChange={(e) => updateInvField("cust.addr", e.target.value)} />
+                  <Input
+                    className="h-8 text-xs"
+                    value={inv.cust?.addr || ""}
+                    onChange={(e) => {
+                      const newAddr = e.target.value;
+                      const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
+                      updateInvField("cust.addr", newAddr);
+                      if (isSame) {
+                        updateInvField("cust.ship", newAddr);
+                      }
+                    }}
+                  />
                 </div>
                 <div className="sm:col-span-2">
-                  <FieldLabel>Dispatch Address</FieldLabel>
+                  <div className="flex items-center justify-between mb-1">
+                    <FieldLabel>Dispatch Address</FieldLabel>
+                    <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                        checked={Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateInvField("cust.ship", inv.cust?.addr || "");
+                          } else {
+                            updateInvField("cust.ship", "");
+                          }
+                        }}
+                      />
+                      <span>Same as Billing Address</span>
+                    </label>
+                  </div>
                   <Input className="h-8 text-xs" value={inv.cust?.ship || ""} onChange={(e) => updateInvField("cust.ship", e.target.value)} />
                 </div>
               </div>
@@ -1179,8 +1224,26 @@ function OrderPage() {
 
             {/* 6. Action Buttons */}
             <div className="flex flex-wrap gap-2 justify-end">
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
-                <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 shadow-sm"
+                onClick={() => {
+                  if (saveInvoice()) {
+                    toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
+                  }
+                }}
+              >
+                <Save className="h-4 w-4" /> Save Invoice
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 shadow-sm"
+                onClick={handleConfirmOrder}
+                disabled={isWorkflowLocked}
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm Order & Send to Workflow
               </Button>
             </div>
           </div>
@@ -1280,6 +1343,31 @@ function OrderPage() {
                 <div className="flex justify-between py-2 text-sm mt-1 border-t-2 border-border">
                   <span className="text-red-500 font-bold">Grand Total</span>
                   <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">{nf(totals.grandTotal ?? 0)}</span>
+                </div>
+
+                {/* Sidebar Action Buttons */}
+                <div className="pt-3 border-t border-border space-y-2 mt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+                    onClick={() => {
+                      if (saveInvoice()) {
+                        toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
+                      }
+                    }}
+                  >
+                    <Save className="h-4 w-4" /> Save Invoice
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-full h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
+                    onClick={handleConfirmOrder}
+                    disabled={isWorkflowLocked}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Confirm Order & Send to Workflow
+                  </Button>
                 </div>
 
 

@@ -46,6 +46,7 @@ export const BASE_SETTINGS: any = {
   bankBranch: "New Sanganer Road Jaipur",
   terms: DEFAULT_TERMS.join("\n"),
   footer: "",
+  extraAreaFormula: "+25.4mm",
   sheetUrl: "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
 

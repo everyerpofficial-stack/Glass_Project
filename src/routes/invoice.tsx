@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   MoveHorizontal,
+  X,
 } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,18 @@ export function InvoiceViewPage() {
 
           <Button size="sm" onClick={handlePrint} className="h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground">
             <Printer className="h-4 w-4 mr-1.5" /> Print / Save PDF
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigate({ to: isProforma ? "/order" : "/booking", search: { view: "list" } });
+            }}
+            className="h-9 text-xs text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 font-semibold"
+            title="Close preview and return"
+          >
+            <X className="h-4 w-4 mr-1" /> Close
           </Button>
         </div>
       </div>
