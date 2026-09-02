@@ -278,16 +278,15 @@ export function getNextProformaNo(records: any[], year?: string): string {
   return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
 
-export function getNextOrderId(records: any[]): string {
-  let max = 1000;
+export function getNextOrderNo(records: any[], start = 1001): string {
+  let max = start - 1;
   (records || []).forEach((r: any) => {
-    const candidates = [r?.orderNo, r?.preProformaNo, r?.no];
-    candidates.forEach((val) => {
+    [r?.orderNo, r?.preProformaNo].forEach((val) => {
       if (!val) return;
-      const str = String(val).replace(/^OB-?/i, "").trim();
-      const num = parseInt(str, 10);
-      if (Number.isFinite(num) && num > max && num < 999999) {
-        max = num;
+      const str = String(val).trim().replace(/^OB-?/i, "");
+      if (/^\d+$/.test(str)) {
+        const n = parseInt(str, 10);
+        if (Number.isFinite(n) && n > max) max = n;
       }
     });
   });
@@ -515,14 +514,14 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
   const dObj = new Date();
   dObj.setDate(dObj.getDate() + 7);
   const defaultDue = dObj.toISOString().slice(0, 10);
-  const prefix = docType === "proforma" ? "PI-" : "OB-";
-  const initialNo = prefix + (S.nextNo || 1001);
+  const y = new Date().getFullYear().toString();
+  const initialNo = `${y}-001`;
 
   return {
     id: uid(docType === "proforma" ? "inv-pi" : "inv-ob"),
     docType,
     no: initialNo,
-    orderNo: initialNo,
+    orderNo: "",
     date: tDay,
     dueDate: defaultDue,
     poNo: "",

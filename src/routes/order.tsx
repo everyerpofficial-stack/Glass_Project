@@ -952,12 +952,12 @@ function OrderPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>Order Booking Ref</FieldLabel>
-                  <Input className="h-8 text-xs font-mono bg-muted/30" value={formatOrderId(inv.preProformaNo || inv.orderNo)} readOnly />
+                  <FieldLabel>Sales Person</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} placeholder="Office" />
                 </div>
                 <div>
                   <FieldLabel>P.O. No.</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} />
+                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
                 </div>
               </div>
             </Section>

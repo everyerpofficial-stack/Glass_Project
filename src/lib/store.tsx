@@ -22,7 +22,7 @@ import {
   fetchSheetSnapshot,
   nextSeqForPrefix,
   getNextProformaNo,
-  getNextOrderId,
+  getNextOrderNo,
   hasEnteredRateForInvoice,
   setStorageFailureHandler,
   pushAllInChunks,
@@ -493,23 +493,14 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const newInvoice = useCallback((docType: string = "pre_proforma") => {
-    /* blankInvoice stamps `<prefix><nextNo>`, so the sequence has to come from
-       the numbers already issued for that prefix — see nextSeqForPrefix. */
-    if (docType === "proforma") {
-      const piNo = getNextProformaNo(invoices);
-      const blank = blankInvoice(settings, docType);
-      blank.no = piNo;
-      blank.orderNo = piNo;
-      setInvState(blank);
-      toast(`Started new Proforma Invoice (${blank.no})`);
-      return;
-    }
     const piNo = getNextProformaNo(invoices);
     const blank = blankInvoice(settings, docType);
     blank.no = piNo;
     blank.orderNo = "";
+    blank.preProformaNo = "";
     setInvState(blank);
-    toast(`Started new Order Booking (${blank.no})`);
+    const typeLabel = docType === "proforma" ? "Proforma Invoice" : "Order Booking";
+    toast(`Started new ${typeLabel} (${blank.no})`);
   }, [invoices, settings]);
 
   const syncOne = useCallback(
@@ -781,28 +772,26 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setInvoices((prev) => {
       const sourceBooking = prev.find((x) => x.id === id);
       if (!sourceBooking) return prev;
-      /* Confirming twice (a double-click, or a second visit to the list) used to
-         mint a second Proforma Invoice from the same booking. */
-      const bookingNo = String(sourceBooking.no || sourceBooking.orderNo || "");
+      const bookingNo = String(sourceBooking.no || "");
       const already = prev.find(
-        (x) => x.docType === "proforma" && bookingNo && String(x.preProformaNo || "") === bookingNo,
+        (x) => x.docType === "proforma" && bookingNo && (String(x.no || "") === bookingNo || String(x.preProformaNo || "") === bookingNo)
       );
       if (already) {
         duplicateOf = already;
         return prev;
       }
+
+      const newOrderNo = getNextOrderNo(prev);
       const piNo = sourceBooking.no || getNextProformaNo(prev);
-      const newOrderNo = getNextOrderId(prev);
+
       newProforma = {
         ...JSON.parse(JSON.stringify(sourceBooking)),
         id: uid("inv-pi"),
         docType: "proforma",
         no: piNo,
         orderNo: newOrderNo,
-        preProformaNo: piNo,
-        status: "draft",
-        /* Copied from a synced booking, so it would inherit sync:"synced" and be
-           purged by the next merge if the post below has not landed yet. */
+        preProformaNo: newOrderNo,
+        status: "order_confirmed",
         sync: "local",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -813,6 +802,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             ...x,
             docType: "proforma_converted",
             status: "order_confirmed",
+            orderNo: newOrderNo,
+            preProformaNo: newOrderNo,
             sync: "local",
             updatedAt: new Date().toISOString(),
           };
@@ -831,7 +822,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       toast.error("Order Booking not found");
       return null;
     }
-    toast.success(`Generated new Proforma Invoice ${newProforma.no} from ${newProforma.preProformaNo || "booking"}!`);
+    toast.success(`Confirmed! Assigned Order No. ${newProforma.orderNo} for PI ${newProforma.no}`);
     if (settings.sheetUrl) {
       postInvoice(settings.sheetUrl, newProforma).catch(() => {});
       const sourceBooking = invoices.find((x) => x.id === id);

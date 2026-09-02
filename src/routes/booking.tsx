@@ -854,7 +854,7 @@ function BookingPage() {
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
                             <span className="hover:underline font-bold">
-                              {item.no}
+                              {formatOrderId(item.no)}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
@@ -1028,12 +1028,12 @@ function BookingPage() {
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
                 </div>
                 <div>
-                  <FieldLabel>P.O. No.</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
-                </div>
-                <div>
                   <FieldLabel>Sales Person</FieldLabel>
                   <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} placeholder="Office" />
+                </div>
+                <div>
+                  <FieldLabel>P.O. No.</FieldLabel>
+                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
                 </div>
               </div>
 
