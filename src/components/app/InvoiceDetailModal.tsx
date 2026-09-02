@@ -199,129 +199,129 @@ export function InvoiceDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[96vw] h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-slate-700/80 shadow-2xl bg-background">
+      <DialogContent className="max-w-7xl w-[98vw] h-[94vh] max-h-[94vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-slate-700/80 shadow-2xl bg-background [&>button.absolute]:hidden">
         <DialogTitle className="sr-only">
           {docTypeLabel} {invoice.no} Details
         </DialogTitle>
 
-        {/* ════ TOP EDGE-TO-EDGE HEADER BANNER ════ */}
-        <div className="bg-slate-900 text-slate-100 px-4 sm:px-6 py-3 border-b border-slate-800 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* ════ HEADER ROW 1: Invoice Info + Actions ════ */}
+        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 border-b border-slate-800/60 shrink-0 flex items-center justify-between gap-4">
+          {/* Left: Invoice identity */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shrink-0">
-              <FileText className="h-5 w-5" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow shrink-0">
+              <FileText className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono font-bold text-emerald-400">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-bold text-emerald-400">
                   #{invoice.no}
                 </span>
-                <span className="text-xs font-bold text-slate-200 truncate">
+                <span className="text-sm font-bold text-slate-100 truncate max-w-[200px]">
                   {invoice.cust?.name || "Customer"}
                 </span>
                 {isPaidFull ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    Paid Full
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap">
+                    ✓ Paid Full
                   </span>
                 ) : paidAmount > 0 ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 whitespace-nowrap">
                     Partial Paid
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap">
                     Credit / Pending
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
-                <span>Date: {dmy(invoice.date)}</span>
-                <span>•</span>
-                <span>Total: ₹ {nf(grandTotal)}</span>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                Date: {dmy(invoice.date)} &nbsp;•&nbsp; Grand Total: ₹ {nf(grandTotal)}
               </div>
             </div>
           </div>
 
-          {/* ── TOP SEGMENTED TABS NAV ── */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                activeTab === "overview"
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Overview
-            </button>
-
-            <button
-              onClick={() => setActiveTab("proforma")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                activeTab === "proforma"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Proforma PDF
-            </button>
-
-            <button
-              onClick={() => { ensureWorkOrder(); setActiveTab("cutsheet"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                activeTab === "cutsheet"
-                  ? "bg-amber-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <Factory className="h-3.5 w-3.5" />
-              Work Order Cut Sheet
-            </button>
-
-            <button
-              onClick={() => { ensureWorkOrder(); setActiveTab("stickers"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                activeTab === "stickers"
-                  ? "bg-yellow-500 text-black shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <Tag className="h-3.5 w-3.5" />
-              Barcode Stickers
-            </button>
-          </div>
-
-          {/* ── TOP RIGHT CONTROLS ── */}
+          {/* Right: Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold border border-slate-700"
-              onClick={handlePrintActive}
-            >
-              <Printer className="h-3.5 w-3.5 text-emerald-400" />
-              Print
-            </Button>
             {onEdit && (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5 text-slate-200 border-slate-700 hover:bg-slate-800"
+                className="h-7 text-[11px] gap-1 px-2.5 text-slate-200 border-slate-700 hover:bg-slate-800"
                 onClick={() => {
                   onOpenChange(false);
                   onEdit(invoice);
                 }}
               >
-                <Edit3 className="h-3.5 w-3.5 text-primary" />
-                Edit
+                <Edit3 className="h-3 w-3" />
+                Edit Invoice
               </Button>
             )}
+            <Button
+              size="sm"
+              className="h-7 text-[11px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              onClick={handlePrintActive}
+            >
+              <Printer className="h-3 w-3" />
+              Print
+            </Button>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 flex items-center justify-center transition-colors text-sm font-bold ml-1"
+              className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs font-bold"
+              title="Close"
             >
               ✕
             </button>
           </div>
+        </div>
+
+        {/* ════ HEADER ROW 2: Tab Navigation ════ */}
+        <div className="bg-slate-950 px-5 py-1.5 border-b border-slate-800 shrink-0 flex items-center gap-1.5 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "overview"
+                ? "bg-emerald-600 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            }`}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            Overview
+          </button>
+
+          <button
+            onClick={() => setActiveTab("proforma")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "proforma"
+                ? "bg-blue-600 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            }`}
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Proforma PDF
+          </button>
+
+          <button
+            onClick={() => { ensureWorkOrder(); setActiveTab("cutsheet"); }}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "cutsheet"
+                ? "bg-amber-600 text-white shadow-md"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            }`}
+          >
+            <Factory className="h-3.5 w-3.5" />
+            Work Order Cut Sheet
+          </button>
+
+          <button
+            onClick={() => { ensureWorkOrder(); setActiveTab("stickers"); }}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "stickers"
+                ? "bg-yellow-500 text-black shadow-md"
+                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+            }`}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            Barcode Stickers
+          </button>
         </div>
 
         {/* ════ MAIN MODAL BODY AREA (SCROLLABLE EDGE-TO-EDGE) ════ */}
