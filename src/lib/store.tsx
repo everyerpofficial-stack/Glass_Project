@@ -22,6 +22,7 @@ import {
   fetchSheetSnapshot,
   nextSeqForPrefix,
   getNextProformaNo,
+  getNextOrderId,
   hasEnteredRateForInvoice,
   setStorageFailureHandler,
   pushAllInChunks,
@@ -503,10 +504,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       toast(`Started new Proforma Invoice (${blank.no})`);
       return;
     }
-    const prefix = "OB-";
-    const nextNum = nextSeqForPrefix(invoices, prefix);
-    const customSettings = { ...settings, nextNo: nextNum };
-    const blank = blankInvoice(customSettings, docType);
+    const piNo = getNextProformaNo(invoices);
+    const blank = blankInvoice(settings, docType);
+    blank.no = piNo;
+    blank.orderNo = "";
     setInvState(blank);
     toast(`Started new Order Booking (${blank.no})`);
   }, [invoices, settings]);
@@ -790,14 +791,15 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         duplicateOf = already;
         return prev;
       }
-      const piNo = getNextProformaNo(prev);
+      const piNo = sourceBooking.no || getNextProformaNo(prev);
+      const newOrderNo = getNextOrderId(prev);
       newProforma = {
         ...JSON.parse(JSON.stringify(sourceBooking)),
         id: uid("inv-pi"),
         docType: "proforma",
         no: piNo,
-        orderNo: piNo,
-        preProformaNo: sourceBooking.no || sourceBooking.orderNo || "",
+        orderNo: newOrderNo,
+        preProformaNo: piNo,
         status: "draft",
         /* Copied from a synced booking, so it would inherit sync:"synced" and be
            purged by the next merge if the post below has not landed yet. */

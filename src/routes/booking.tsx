@@ -829,7 +829,7 @@ function BookingPage() {
                 <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "820px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">Order Booking No</th>
+                      <th className="py-2.5 px-3">PI No</th>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Customer Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
@@ -854,7 +854,7 @@ function BookingPage() {
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
                             <span className="hover:underline font-bold">
-                              {formatOrderId(item.no)}
+                              {item.no}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
@@ -1020,7 +1020,7 @@ function BookingPage() {
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <FieldLabel>Order Booking No</FieldLabel>
+                  <FieldLabel>PI No</FieldLabel>
                   <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
                 </div>
                 <div>

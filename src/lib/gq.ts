@@ -278,6 +278,22 @@ export function getNextProformaNo(records: any[], year?: string): string {
   return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
 
+export function getNextOrderId(records: any[]): string {
+  let max = 1000;
+  (records || []).forEach((r: any) => {
+    const candidates = [r?.orderNo, r?.preProformaNo, r?.no];
+    candidates.forEach((val) => {
+      if (!val) return;
+      const str = String(val).replace(/^OB-?/i, "").trim();
+      const num = parseInt(str, 10);
+      if (Number.isFinite(num) && num > max && num < 999999) {
+        max = num;
+      }
+    });
+  });
+  return String(max + 1);
+}
+
 /* ---------- One record per commercial order ----------
    Confirming an Order Booking does not replace it: it mints a Proforma Invoice
    carrying a full copy of the booking's totals and keeps the booking row so the
