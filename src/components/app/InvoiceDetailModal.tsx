@@ -193,8 +193,84 @@ export function InvoiceDetailModal({
     }
   };
 
+  /* Helper: Open clean standalone print window for isolated document printing */
+  const printDocumentHTML = (bodyHTML: string, title: string = "Print Document", styleAddons: string = "") => {
+    const win = window.open("", "_blank", "width=950,height=1100");
+    if (!win) {
+      window.print();
+      return;
+    }
+    win.document.open();
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <meta charset="utf-8" />
+        <style>
+          @page { size: A4 portrait; margin: 8mm 6mm; }
+          body { margin: 0; padding: 12px; font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #000; }
+          * { box-sizing: border-box; }
+          ${styleAddons}
+        </style>
+      </head>
+      <body>
+        ${bodyHTML}
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+              window.close();
+            }, 350);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
+  const handlePrintProforma = () => {
+    if (proformaHTML) {
+      printDocumentHTML(proformaHTML, `Proforma_Invoice_${invoice.no}`);
+    } else {
+      window.print();
+    }
+  };
+
+  const handlePrintCutSheet = () => {
+    const woEl = document.querySelector(".wo-print-area");
+    if (woEl) {
+      printDocumentHTML(woEl.outerHTML, `Work_Order_${activeWO?.woNo || invoice.no}`);
+    } else {
+      window.print();
+    }
+  };
+
+  const handlePrintStickers = () => {
+    const stickerEls = document.querySelectorAll(".sticker-label");
+    if (stickerEls.length > 0) {
+      const stickersContainer = Array.from(stickerEls)
+        .map((el) => el.outerHTML)
+        .join("");
+      const gridHTML = `<div style="display: grid; grid-template-columns: repeat(${labelsPerRow}, 1fr); gap: 10px; width: 100%;">${stickersContainer}</div>`;
+      const stickerStyles = `
+        .sticker-label { background: #FFD700 !important; color: #000 !important; border: 2px solid #b45309 !important; border-radius: 8px; padding: 8px; page-break-inside: avoid; break-inside: avoid; }
+      `;
+      printDocumentHTML(gridHTML, `Barcode_Stickers_${activeWO?.woNo || invoice.no}`, stickerStyles);
+    } else {
+      window.print();
+    }
+  };
+
   const handlePrintActive = () => {
-    window.print();
+    if (activeTab === "cutsheet") {
+      handlePrintCutSheet();
+    } else if (activeTab === "stickers") {
+      handlePrintStickers();
+    } else {
+      handlePrintProforma();
+    }
   };
 
   return (
@@ -551,7 +627,7 @@ export function InvoiceDetailModal({
                 <span className="text-xs text-muted-foreground font-semibold">
                   A4 Printable Proforma Invoice PDF Preview
                 </span>
-                <Button size="sm" onClick={handlePrintActive} className="h-8 text-xs font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+                <Button size="sm" onClick={handlePrintProforma} className="h-8 text-xs font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
                   <Printer className="h-3.5 w-3.5" /> Print / Save PDF
                 </Button>
               </div>
@@ -573,7 +649,7 @@ export function InvoiceDetailModal({
                   <Factory className="h-4 w-4 text-amber-500" />
                   Work Order Cut Sheet for #{activeWO?.woNo || invoice.orderNo || invoice.no}
                 </span>
-                <Button size="sm" onClick={handlePrintActive} className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+                <Button size="sm" onClick={handlePrintCutSheet} className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
                   <Printer className="h-3.5 w-3.5" /> Print Cut Sheet
                 </Button>
               </div>
@@ -695,7 +771,7 @@ export function InvoiceDetailModal({
                     </SelectContent>
                   </Select>
 
-                  <Button size="sm" onClick={handlePrintActive} className="h-8 text-xs font-bold gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-black">
+                  <Button size="sm" onClick={handlePrintStickers} className="h-8 text-xs font-bold gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-black">
                     <Printer className="h-3.5 w-3.5" /> Print Sticker Labels
                   </Button>
                 </div>
