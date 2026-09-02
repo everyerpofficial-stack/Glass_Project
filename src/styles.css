@@ -382,11 +382,66 @@
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+  #printroot { display: block; }
+
+  /* Compact spacing for .pdoc in print so 1-page proforma invoices fit on exactly 1 sheet of paper */
+  .doc-preview .pdoc,
+  .pdoc {
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 8pt !important;
     width: 100% !important;
     max-width: 100% !important;
   }
-
-  #printroot { display: block; }
+  .pdoc .ph {
+    padding-bottom: 2px !important;
+  }
+  .pdoc .plogo {
+    height: 36px !important;
+  }
+  .pdoc .pco h1 {
+    font-size: 13pt !important;
+  }
+  .pdoc .pco div {
+    font-size: 7.5pt !important;
+    line-height: 1.25 !important;
+  }
+  .pdoc .ptitle {
+    padding: 2px 0 !important;
+    font-size: 10pt !important;
+  }
+  .pdoc .meta td {
+    padding: 2px 4px !important;
+    font-size: 7.5pt !important;
+  }
+  .pdoc .items2 th, 
+  .pdoc .items2 td {
+    padding: 2px 4px !important;
+    font-size: 7.5pt !important;
+  }
+  .pdoc .foot .lft {
+    padding: 3px 5px !important;
+    font-size: 7pt !important;
+    line-height: 1.3 !important;
+  }
+  .pdoc .foot .rgt td {
+    padding: 1.5px 4px !important;
+    font-size: 7.5pt !important;
+  }
+  .pdoc .words {
+    padding: 3px 5px !important;
+    font-size: 7.5pt !important;
+  }
+  .pdoc .terms {
+    padding: 3px 5px !important;
+    font-size: 7pt !important;
+    line-height: 1.3 !important;
+  }
+  .pdoc .sign {
+    padding: 8px 6px 2px !important;
+    font-size: 7.5pt !important;
+  }
 }
 
 .pdoc { width: 100%; color: #000; font-family: system-ui, -apple-system, sans-serif; }

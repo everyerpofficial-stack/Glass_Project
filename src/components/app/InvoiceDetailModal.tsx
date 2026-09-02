@@ -215,13 +215,13 @@ export function InvoiceDetailModal({
     }
   };
 
-  const handlePrintProforma = () => printActive("portrait", "6mm 4mm");
+  const handlePrintProforma = () => printActive("portrait", "4mm 3mm");
   /* The cut sheet's table is far wider than it is tall — print in landscape */
-  const handlePrintCutSheet = () => printActive("landscape", "6mm 4mm");
+  const handlePrintCutSheet = () => printActive("landscape", "5mm 4mm");
   const handlePrintStickers = () => printActive("portrait", "5mm");
 
   const handlePrintActive = () =>
-    printActive(activeTab === "cutsheet" ? "landscape" : "portrait", activeTab === "stickers" ? "5mm" : "6mm 4mm");
+    printActive(activeTab === "cutsheet" ? "landscape" : "portrait", activeTab === "stickers" ? "5mm" : "4mm 3mm");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
