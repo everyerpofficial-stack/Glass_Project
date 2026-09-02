@@ -32,10 +32,10 @@ function setPageRule(orientation: PrintOrientation, margin: string) {
 
 /* Print one region of the current page.
 
-   Takes the element itself rather than a selector on purpose: `.wo-print-area`
-   exists both inside the detail modal and on the /work-order route, and a
-   document-order query would find the route's copy sitting behind the modal
-   and print that one instead. */
+   Clones the target element into a dedicated `#printroot` attached directly to
+   `document.body`. This guarantees that the printed document starts at `scrollTop = 0`
+   at the top of Page 1 without any modal offsets, backdrop artifacts, or parent
+   scroll offsets affecting paper layout. */
 export function printElement(
   el: Element | null | undefined,
   opts: { orientation?: PrintOrientation; margin?: string } = {},
@@ -43,7 +43,20 @@ export function printElement(
   if (typeof document === "undefined" || typeof window === "undefined") return false;
   if (!el) return false;
 
-  const { orientation = "portrait", margin = "8mm 6mm" } = opts;
+  const { orientation = "portrait", margin = "6mm 4mm" } = opts;
+
+  let printRoot = document.getElementById("printroot");
+  if (!printRoot) {
+    printRoot = document.createElement("div");
+    printRoot.id = "printroot";
+    document.body.appendChild(printRoot);
+  }
+
+  // Clear previous root contents & append clone of target element
+  printRoot.innerHTML = "";
+  const clone = el.cloneNode(true) as HTMLElement;
+  clone.setAttribute("data-print-area", "");
+  printRoot.appendChild(clone);
 
   el.setAttribute("data-print-area", "");
   document.documentElement.setAttribute("data-printing", "");
@@ -53,6 +66,7 @@ export function printElement(
   const cleanup = () => {
     if (done) return;
     done = true;
+    if (printRoot) printRoot.innerHTML = "";
     el.removeAttribute("data-print-area");
     document.documentElement.removeAttribute("data-printing");
     document.getElementById(PAGE_STYLE_ID)?.remove();
@@ -70,3 +84,4 @@ export function printElement(
   }
   return true;
 }
+

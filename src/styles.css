@@ -234,12 +234,15 @@
   /* Default page box. printElement() injects a per-document @page rule over
      this one so the cut sheet can go landscape while the invoice stays
      portrait. */
-  @page { size: A4 portrait; margin: 8mm 6mm; }
+  @page { size: A4 portrait; margin: 6mm 4mm; }
 
   html, body {
     background: #fff !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
   /* Chrome drops backgrounds and background-colours when printing unless a page
@@ -250,35 +253,32 @@
     print-color-adjust: exact !important;
   }
 
-  /* -- Region isolation --
-     Everything outside the printed region's own chain is removed from the
-     layout, so the region starts at the top of page 1 and paginates normally.
-     `:not(:has(...))` is what keeps the region's ancestors — and only those —
-     in place while every sibling and unrelated branch goes. */
-  html[data-printing] body
-    *:not([data-print-area]):not([data-print-area] *):not(:has([data-print-area])) {
+  /* -- Region isolation via #printroot --
+     Everything under body except #printroot is removed from print layout.
+     #printroot contains a clean clone of the document being printed, so it
+     starts at scrollTop = 0 at top of Page 1 with zero modal/flex offsets. */
+  html[data-printing] body > *:not(#printroot) {
     display: none !important;
   }
 
-  /* Fallback for engines without :has(), where the rule above is dropped
-     wholesale as an invalid selector. visibility keeps the region rendering
-     correctly; it just cannot reclaim the space around it. */
-  html[data-printing] body * {
-    visibility: hidden !important;
-  }
-  html[data-printing] [data-print-area],
-  html[data-printing] [data-print-area] * {
-    visibility: visible !important;
+  html[data-printing] #printroot {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
   }
 
-  /* The region fills the page and sheds the on-screen card chrome — the rounded
-     white panel, its border and shadow — which has no business on paper. */
+  /* Fallback isolation if data-printing is attached directly to element */
   html[data-printing] [data-print-area] {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -292,45 +292,6 @@
     display: grid !important;
   }
 
-  /* Nothing between the region and the page may clip, scroll or offset it.
-     `:has()` selects exactly the region's ancestors, so the modal shell is
-     flattened without touching anything inside the document being printed. The
-     detail modal is a fixed, translated, max-height box with its own scroll
-     area -- left alone it would print only the sliver scrolled into view, at
-     half a page's offset. */
-  html[data-printing] body *:has([data-print-area]) {
-    position: static !important;
-    transform: none !important;
-    overflow: visible !important;
-    max-height: none !important;
-    height: auto !important;
-    max-width: none !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    background: #fff !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: block !important;
-  }
-
-  /* Same treatment for the dialog shell itself, so browsers without :has()
-     still get an unclipped page rather than a cropped one. */
-  html[data-printing] [role="dialog"] {
-    position: static !important;
-    transform: none !important;
-    width: auto !important;
-    max-width: none !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: #fff !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
   /* Keep rows and labels whole across a page break. */
   html[data-printing] [data-print-area] tr,
   html[data-printing] [data-print-area] .sticker-label {
@@ -341,16 +302,7 @@
     display: table-header-group !important;
   }
 
-  /* -- Whole-page printing (no region marked) --
-     Ctrl+P on a route with no print button still drops the app shell.
-
-     These selectors used to live in a *second* `@media print` block further
-     down this file, unscoped. Because it came later it won every tie, and one
-     of its rules was `[role="dialog"] { display: none }` — so printing while
-     the detail modal was open produced a blank page. That is what pushed the
-     print buttons into opening a second window and rebuilding the document
-     from scratch there, which is where the styling was lost. One print block,
-     scoped to the two cases, keeps them from fighting. */
+  /* -- Whole-page printing fallback (no printElement region) -- */
   html:not([data-printing]) header,
   html:not([data-printing]) nav,
   html:not([data-printing]) aside,
@@ -383,7 +335,6 @@
     margin: 0 !important;
     padding: 0 !important;
   }
-  #printroot { display: block; }
 
   /* Compact spacing & edge-to-edge alignment for .pdoc in print */
   .doc-preview,
@@ -404,7 +355,7 @@
     page-break-before: always !important;
     break-before: page !important;
     margin-top: 0 !important;
-    padding-top: 4px !important;
+    padding-top: 0 !important;
   }
   .pdoc .ph {
     padding: 4px 6px !important;
