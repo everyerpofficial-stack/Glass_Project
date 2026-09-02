@@ -647,7 +647,15 @@ function BookingPage() {
   );
 
   const selectCustomer = (c: any) => {
-    setInv((prev: any) => ({ ...prev, cust: { ...c } }));
+    const hasSeparateShip = Boolean(c.ship && c.ship.trim() !== "" && c.ship !== c.addr);
+    setInv((prev: any) => ({
+      ...prev,
+      cust: {
+        ...c,
+        sameAsBilling: false,
+        ship: hasSeparateShip ? c.ship : "",
+      },
+    }));
     setCustSearch("");
     setCustDropOpen(false);
     toast.success(`Loaded customer: ${c.name}`);
@@ -1106,9 +1114,11 @@ function BookingPage() {
                       <input
                         type="checkbox"
                         className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
-                        checked={Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr)}
+                        checked={Boolean(inv.cust?.sameAsBilling)}
                         onChange={(e) => {
-                          if (e.target.checked) {
+                          const isChecked = e.target.checked;
+                          updateInvField("cust.sameAsBilling", isChecked);
+                          if (isChecked) {
                             updateInvField("cust.ship", inv.cust?.addr || "");
                           } else {
                             updateInvField("cust.ship", "");
@@ -1121,7 +1131,10 @@ function BookingPage() {
                   <Input
                     className="h-8 text-xs"
                     value={inv.cust?.ship || ""}
-                    onChange={(e) => updateInvField("cust.ship", e.target.value)}
+                    onChange={(e) => {
+                      updateInvField("cust.sameAsBilling", false);
+                      updateInvField("cust.ship", e.target.value);
+                    }}
                     placeholder="Site / Shipping Address"
                   />
                 </div>
