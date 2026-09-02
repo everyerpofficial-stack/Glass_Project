@@ -563,7 +563,7 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
       greenTax: 0,
       tcsPercent: 0,
       // Extra area
-      extraAreaFormula: S.extraAreaFormula || "none",
+      extraAreaFormula: S.extraAreaFormula || "+25.4mm",
       extraAreaCustomMM: S.extraAreaCustomMM || 0,
       // GST
       gstType: S.gstType,
@@ -658,6 +658,49 @@ export function computeTotals(S: any, INV: any) {
   }
   return G.calcInvoice(allItems, engineOpts(S, INV));
 }
+
+export function isRateEntered(val: any): boolean {
+  if (val === "" || val == null) return false;
+  const str = String(val).trim();
+  if (!str) return false;
+  const num = Number(str);
+  return !isNaN(num) && num > 0;
+}
+
+export function hasEnteredRateForInvoice(INV: any): boolean {
+  if (!INV) return false;
+
+  if (INV.layers && INV.layers.length > 0) {
+    for (const l of INV.layers) {
+      const layerRateOk = isRateEntered(l.rate);
+      const items = l.items || [];
+      if (items.length > 0) {
+        for (const it of items) {
+          const itemRateOk = isRateEntered(it.rate);
+          if (!layerRateOk && !itemRateOk) {
+            return false;
+          }
+          if (it.rate !== "" && it.rate != null && String(it.rate).trim() !== "" && !itemRateOk) {
+            return false;
+          }
+        }
+      } else {
+        if (!layerRateOk) return false;
+      }
+    }
+    return true;
+  }
+
+  if (INV.items && INV.items.length > 0) {
+    for (const it of INV.items) {
+      if (!isRateEntered(it.rate)) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 
 /* ---------- the saved record shape (unchanged columns) ---------- */
 export function buildRecord(INV: any, TOT: any) {
@@ -1107,7 +1150,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
           <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
           <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
           <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${esc(it.shape || "BLOCK")}</td>
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
         </tr>
       `;
@@ -1142,7 +1184,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
               <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
               <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
               <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Shape</th>
               <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
             </tr>
           </thead>
@@ -1154,7 +1195,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
               <td class="n" style="border:1px solid #000; text-align:right; font-family:monospace">${displayArea}</td>
               <td style="border:1px solid #000"></td>
               <td class="n" style="border:1px solid #000; text-align:right; font-family:monospace">${nf(grpAmount)}</td>
-              <td style="border:1px solid #000"></td>
               <td style="border:1px solid #000"></td>
             </tr>
           </tbody>
@@ -1200,7 +1240,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
   const isPre = INV.docType === "pre_proforma";
   const docTitle = isPre ? "ORDER BOOKING" : (S.title || "PROFORMA INVOICE");
-  const noLabel = isPre ? "Order Booking No" : "Proforma No";
+  const noLabel = "Proforma No.";
+  const displayOrderNo = (isPre || INV.status === "draft" || INV.status === "pi_sent" || !INV.orderNo || (isPre && INV.orderNo === INV.no)) ? "—" : INV.orderNo;
 
   return `
     <div class="pdoc">
@@ -1227,7 +1268,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
             <td style="width:50%; border:1px solid #000; padding:4px">
               <b>${noLabel} : ${esc(INV.no)}</b><br>
               Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
-              Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(INV.orderNo || "—")}
+              Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(displayOrderNo)}
             </td>
             <td style="border:1px solid #000; padding:4px">
               Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Office")}<br>

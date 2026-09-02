@@ -22,6 +22,7 @@ import {
   fetchSheetSnapshot,
   nextSeqForPrefix,
   getNextProformaNo,
+  hasEnteredRateForInvoice,
   setStorageFailureHandler,
   pushAllInChunks,
   uid,
@@ -160,7 +161,7 @@ type Ctx = {
   lastSyncedAt: number | null;
   /* ── Workflow helpers ── */
   toggleWhatsAppSent: (id: string) => void;
-  confirmPreProforma: (id: string) => void;
+  confirmPreProforma: (id: string) => any;
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
   confirmOrder: (
     bookingId: string,
@@ -169,6 +170,7 @@ type Ctx = {
       paymentType?: string;
       refNo?: string;
       notes?: string;
+      dueDate?: string;
     }
   ) => void;
   generateWorkOrder: (orderId: string) => any;
@@ -604,6 +606,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       toast.error("Add at least one valid item");
       return false;
     }
+    if (!hasEnteredRateForInvoice(inv)) {
+      toast.error("Enter rate for all items before saving");
+      return false;
+    }
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
     rec.docType = inv.docType || "pre_proforma";
@@ -761,15 +767,15 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     if (nextState) {
-      toast.success("Marked as sent on WhatsApp ✓");
+      toast.success("Follow Up status set to Yes ✓");
     } else {
-      toast.info("Marked as not sent on WhatsApp");
+      toast.info("Follow Up status set to No");
     }
   }, []);
 
   const confirmPreProforma = useCallback((id: string) => {
     let newProforma: any = null;
-    let duplicateOf: string | null = null;
+    let duplicateOf: any = null;
     setInvoices((prev) => {
       const sourceBooking = prev.find((x) => x.id === id);
       if (!sourceBooking) return prev;
@@ -780,7 +786,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         (x) => x.docType === "proforma" && bookingNo && String(x.preProformaNo || "") === bookingNo,
       );
       if (already) {
-        duplicateOf = already.no || "";
+        duplicateOf = already;
         return prev;
       }
       const piNo = getNextProformaNo(prev);
@@ -815,12 +821,12 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return next;
     });
     if (duplicateOf) {
-      toast.warning(`Proforma Invoice ${duplicateOf} already exists for this booking.`);
-      return;
+      toast.info(`Opening existing Proforma Invoice ${duplicateOf.no || duplicateOf} for this booking.`);
+      return duplicateOf;
     }
     if (!newProforma) {
       toast.error("Order Booking not found");
-      return;
+      return null;
     }
     toast.success(`Generated new Proforma Invoice ${newProforma.no} from ${newProforma.preProformaNo || "booking"}!`);
     if (settings.sheetUrl) {
@@ -834,6 +840,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         }).catch(() => {});
       }
     }
+    return newProforma;
   }, [invoices, settings.sheetUrl]);
 
   const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
@@ -888,6 +895,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         paymentType?: string;
         refNo?: string;
         notes?: string;
+        dueDate?: string;
       }
     ) => {
       let targetRecord: any = null;
@@ -920,6 +928,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
               paidAmount,
               remainingBalance,
               paymentStatus,
+              dueDate: paymentDetails?.dueDate !== undefined ? paymentDetails.dueDate : x.dueDate,
             };
             targetRecord = updated;
             return updated;

@@ -239,7 +239,7 @@
 
     // extra area formula
     var extraMM = 0;
-    if (s.extraAreaFormula === '+25mm') extraMM = 25;
+    if (s.extraAreaFormula === '+25.4mm' || s.extraAreaFormula === '+25mm') extraMM = 25.4;
     else if (s.extraAreaFormula === '+50mm') extraMM = 50;
     else if (s.extraAreaFormula === 'custom') extraMM = parseFloat(s.extraAreaCustomMM) || 0;
     var effectiveChargeAllowance = (parseFloat(s.chargeAllowanceMM) || 0) + extraMM;

@@ -94,6 +94,7 @@ type ConfirmPaymentDetails = {
   paymentType: string;
   refNo: string;
   notes: string;
+  dueDate?: string;
 };
 
 function ConfirmPaymentModal({
@@ -131,9 +132,13 @@ function ConfirmPaymentModalBody({
   );
   const [refNo, setRefNo] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [dueDate, setDueDate] = useState<string>(
+    invoice.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+  );
 
   const numericPaid = Number(paidAmountStr) || 0;
   const remainingBalance = Math.max(0, grandTotal - numericPaid);
+  const isFullPaid = numericPaid >= grandTotal && grandTotal > 0;
 
   const getStatusBadge = () => {
     if (numericPaid >= grandTotal && grandTotal > 0) {
@@ -174,6 +179,7 @@ function ConfirmPaymentModalBody({
       paymentType,
       refNo,
       notes,
+      dueDate: isFullPaid ? "" : dueDate,
     });
   };
 
@@ -319,6 +325,21 @@ function ConfirmPaymentModalBody({
             </div>
           </div>
 
+          {/* Payment Due Date (Hidden if Full Paid) */}
+          {!isFullPaid && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-2.5">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">
+                Payment Due Date
+              </label>
+              <Input
+                type="date"
+                className="h-8 text-xs font-mono bg-background"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          )}
+
           {/* Reference & Notes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -375,7 +396,7 @@ function ConfirmPaymentModalBody({
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
   const navigate = useNavigate();
-  const searchParams = useSearch({ strict: false }) as { view?: string };
+  const searchParams = useSearch({ strict: false }) as { view?: string; id?: string };
   const {
     inv,
     setInv,
@@ -407,12 +428,15 @@ function OrderPage() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
-    if (searchParams?.view === "form") {
+    if (searchParams?.id) {
+      loadInvoice(searchParams.id, false);
+      setShowForm(true);
+    } else if (searchParams?.view === "form") {
       setShowForm(true);
     } else if (searchParams?.view === "list") {
       setShowForm(false);
     }
-  }, [searchParams?.view]);
+  }, [searchParams?.id, searchParams?.view, loadInvoice]);
 
   const proformaInvoices = useMemo(
     () => invoices.filter((x: any) => x.docType === "proforma"),
@@ -543,12 +567,7 @@ function OrderPage() {
        paymentStatus, writes the Payments row and flips the record to
        order_confirmed. Without it the modal collected the payment and threw it
        away: the invoice stayed a draft and no payment was ever recorded. */
-    confirmOrder(targetConfirmInvoice.id, {
-      paidAmount: paymentDetails.paidAmount,
-      paymentType: paymentDetails.paymentType,
-      refNo: paymentDetails.refNo,
-      notes: paymentDetails.notes,
-    });
+    confirmOrder(targetConfirmInvoice.id, paymentDetails);
 
     /* Only mint a work order if this invoice does not already have one.
        generateWorkOrder stamps a fresh uid every call, so saveWorkOrder would
@@ -567,8 +586,9 @@ function OrderPage() {
     }
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
+    setShowForm(false);
     toast.success(`Order ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} confirmed & sent to workflow!`);
-    navigate({ to: "/work-order", search: { woId: targetConfirmInvoice.id } });
+    navigate({ to: "/order", search: { view: "list" } });
   };
 
   const handleConfirmOrder = () => {
@@ -655,24 +675,6 @@ function OrderPage() {
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => newInvoice("proforma")}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Start Fresh</span>
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  onClick={saveInvoice}
-                >
-                  <Save className="h-3.5 w-3.5" /> Save Invoice
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
-                  onClick={handleConfirmOrder}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Confirm & Send to Workflow
                 </Button>
               </>
             ) : (
@@ -853,8 +855,7 @@ function OrderPage() {
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* CONFIRM ORDER / WORKFLOW BUTTON */}
-                              {isConfirmed ? (
+                              {isConfirmed && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -881,19 +882,6 @@ function OrderPage() {
                                   title="View in Work Order Workflow"
                                 >
                                   <CheckCircle2 className="h-3 w-3" /> In Workflow <ArrowRight className="h-3 w-3" />
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs px-2 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
-                                  onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    setShowForm(true);
-                                    toast.success(`Loaded Proforma Invoice ${item.no}. Fill details & click Confirm.`);
-                                  }}
-                                  title="Confirm & Fill Details for Proforma Invoice"
-                                >
-                                  <CheckCircle2 className="h-3 w-3" /> Confirm
                                 </Button>
                               )}
 
@@ -959,7 +947,7 @@ function OrderPage() {
 
             {/* 1. Order Header */}
             <Section title="Proforma Invoice Details" accent="bg-emerald-500/5">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <FieldLabel>Order / Invoice No</FieldLabel>
                   <Input className="h-8 text-xs font-mono bg-emerald-500/5" value={inv.orderNo || inv.no || ""} onChange={(e) => updateInvField("orderNo", e.target.value)} />
@@ -967,10 +955,6 @@ function OrderPage() {
                 <div>
                   <FieldLabel>Invoice Date</FieldLabel>
                   <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Payment Due Date</FieldLabel>
-                  <Input type="date" className="h-8 text-xs font-mono" value={inv.dueDate || ""} onChange={(e) => updateInvField("dueDate", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Order Booking Ref</FieldLabel>
@@ -1028,7 +1012,12 @@ function OrderPage() {
                 </div>
                 <div>
                   <FieldLabel>Phone</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.cust?.phone || ""} onChange={(e) => updateInvField("cust.phone", e.target.value)} />
+                  <Input
+                    className="h-8 text-xs font-mono"
+                    value={inv.cust?.phone || ""}
+                    onChange={(e) => updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    maxLength={10}
+                  />
                 </div>
                 <div>
                   <FieldLabel>Email</FieldLabel>
@@ -1189,34 +1178,10 @@ function OrderPage() {
             </div>
 
             {/* 6. Action Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <FileText className="h-3.5 w-3.5" /> Edit Trail
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
               </Button>
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <MessageSquare className="h-3.5 w-3.5" /> SMS
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <RefreshCw className="h-3.5 w-3.5" /> Update Sr. No
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <BarChart3 className="h-3.5 w-3.5" /> Status
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                Name Change
-              </Button>
-              <div className="ml-auto flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-9 text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white font-bold"
-                  onClick={handleConfirmOrder}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Confirm Order
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
-                </Button>
-              </div>
             </div>
           </div>
 
@@ -1317,14 +1282,7 @@ function OrderPage() {
                   <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">{nf(totals.grandTotal ?? 0)}</span>
                 </div>
 
-                <div className="pt-3 border-t border-border/30 mt-3">
-                  <Button
-                    className="w-full h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
-                    onClick={handleConfirmOrder}
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Confirm & Send to Workflow
-                  </Button>
-                </div>
+
               </div>
             </div>
           </div>

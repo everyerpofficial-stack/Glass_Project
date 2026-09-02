@@ -180,6 +180,79 @@ function PRow({
   );
 }
 
+/* ─── Remark Selector Cell ────────────────────────────────────────── */
+function RemarkCell({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const PRESETS = ["BLOCK", "DESIGN", "DRAWING"];
+  const isPreset = PRESETS.includes(value) || value === "";
+  const [isCustomMode, setIsCustomMode] = useState(!isPreset && Boolean(value));
+
+  useEffect(() => {
+    if (!PRESETS.includes(value) && value !== "") {
+      setIsCustomMode(true);
+    }
+  }, [value]);
+
+  if (isCustomMode) {
+    return (
+      <div className="flex items-center gap-1 min-w-[110px]">
+        <Input
+          type="text"
+          autoFocus
+          className="h-8 text-xs w-full bg-background font-medium"
+          value={value}
+          placeholder="Enter custom remark..."
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+          title="Select from dropdown"
+          onClick={() => {
+            setIsCustomMode(false);
+            onChange("BLOCK");
+          }}
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Select
+      value={value || "BLOCK"}
+      onValueChange={(val) => {
+        if (val === "__custom__") {
+          setIsCustomMode(true);
+          onChange("");
+        } else {
+          onChange(val);
+        }
+      }}
+    >
+      <SelectTrigger className="h-8 text-xs w-full min-w-[110px] bg-background border-border font-medium">
+        <SelectValue placeholder="Select Remark" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="BLOCK">BLOCK</SelectItem>
+        <SelectItem value="DESIGN">DESIGN</SelectItem>
+        <SelectItem value="DRAWING">DRAWING</SelectItem>
+        <SelectItem value="__custom__" className="font-semibold text-primary">
+          + Custom Remark...
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 /* ─── Bulk Entry Modal ───────────────────────────────────────────── */
 function BulkEntryModal({
   open,
@@ -454,6 +527,9 @@ function BookingPage() {
       if (!copy.layers[layerIdx]) return prev;
       if (!copy.layers[layerIdx].items[itemIdx]) return prev;
       copy.layers[layerIdx].items[itemIdx][field] = val;
+      if (field === "remark") {
+        copy.layers[layerIdx].items[itemIdx]["shape"] = val;
+      }
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
@@ -681,17 +757,17 @@ function BookingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
-                <Clock className="h-3 w-3" /> Pending WhatsApp
+                <Clock className="h-3 w-3" /> Pending Follow Up
               </div>
               <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingWhatsAppCount}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting WhatsApp send</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting follow up</div>
             </div>
             <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
               <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
-                <CheckCircle2 className="h-3 w-3" /> WhatsApp Sent
+                <CheckCircle2 className="h-3 w-3" /> Followed Up
               </div>
               <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{sentWhatsAppCount}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Sent to customer</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Follow up completed</div>
             </div>
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
@@ -751,7 +827,7 @@ function BookingPage() {
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
-                      <th className="py-2.5 px-3 text-center">Send WhatsApp</th>
+                      <th className="py-2.5 px-3 text-center">Follow Up</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -792,17 +868,17 @@ function BookingPage() {
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
                                   : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
                               }`}
-                              title={item.whatsappSent ? "Status: Sent (Click to toggle)" : "Status: Not Sent (Click to toggle)"}
+                              title={item.whatsappSent ? "Status: Yes (Click to toggle)" : "Status: No (Click to toggle)"}
                             >
                               {item.whatsappSent ? (
                                 <>
                                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                  <span>Sent</span>
+                                  <span>Yes</span>
                                 </>
                               ) : (
                                 <>
                                   <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                  <span>Not Sent</span>
+                                  <span>No</span>
                                 </>
                               )}
                             </button>
@@ -814,9 +890,13 @@ function BookingPage() {
                                 size="sm"
                                 className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                                 onClick={() => {
-                                  confirmPreProforma(item.id);
+                                  const targetPI = confirmPreProforma(item.id);
+                                  if (targetPI && targetPI.id) {
+                                    loadInvoice(targetPI.id, false);
+                                    navigate({ to: "/order", search: { view: "form", id: targetPI.id } as any });
+                                  }
                                 }}
-                                title="Confirm Order Booking & Send to Proforma Invoice"
+                                title="Confirm Order Booking & Open Proforma Invoice"
                               >
                                 <CheckCircle2 className="h-3 w-3" /> Confirm Order Booking
                               </Button>
@@ -980,7 +1060,13 @@ function BookingPage() {
                 </div>
                 <div>
                   <FieldLabel>Phone</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.cust?.phone || ""} onChange={(e) => updateInvField("cust.phone", e.target.value)} placeholder="9799998611" />
+                  <Input
+                    className="h-8 text-xs font-mono"
+                    value={inv.cust?.phone || ""}
+                    onChange={(e) => updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    maxLength={10}
+                    placeholder="9799998611"
+                  />
                 </div>
                 <div>
                   <FieldLabel>Email</FieldLabel>
@@ -1040,12 +1126,11 @@ function BookingPage() {
                   {/* Area Formula */}
                   <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Area Formula:</span>
-                    <Select value={inv.ch?.extraAreaFormula || "none"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
-                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[80px]"><SelectValue /></SelectTrigger>
+                    <Select value={inv.ch?.extraAreaFormula || "+25.4mm"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
+                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[95px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="+25mm">+ 25 MM</SelectItem>
-                        <SelectItem value="+50mm">+ 50 MM</SelectItem>
+                        <SelectItem value="+25.4mm">+ 25.4 MM</SelectItem>
                         <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1081,12 +1166,10 @@ function BookingPage() {
               }
             >
               {(() => {
-                const extraAreaFormula = inv.ch?.extraAreaFormula || "none";
+                const extraAreaFormula = inv.ch?.extraAreaFormula || "+25.4mm";
                 const extraAreaLabel =
-                  extraAreaFormula === "+25mm"
-                    ? "+25 MM"
-                    : extraAreaFormula === "+50mm"
-                    ? "+50 MM"
+                  extraAreaFormula === "+25.4mm" || extraAreaFormula === "+25mm"
+                    ? "+25.4 MM"
                     : extraAreaFormula === "custom"
                     ? inv.ch?.extraAreaCustomMM
                       ? `+${inv.ch.extraAreaCustomMM} MM`
@@ -1578,12 +1661,10 @@ function BookingPage() {
                                     </td>
 
                                     {/* Remark */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        className="h-8 text-xs w-full"
+                                    <td className="py-1.5 px-1 min-w-[120px]">
+                                      <RemarkCell
                                         value={item.remark || ""}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "remark", e.target.value)}
-                                        placeholder="Remark"
+                                        onChange={(val) => updateLayerItem(layerIdx, itemIdx, "remark", val)}
                                       />
                                     </td>
 

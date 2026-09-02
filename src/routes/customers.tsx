@@ -364,8 +364,9 @@ function CustomersPage() {
                     <Input
                       className="h-8 text-xs font-mono"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+91 9799998611"
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                      maxLength={10}
+                      placeholder="9799998611"
                     />
                   </div>
                   <div>
