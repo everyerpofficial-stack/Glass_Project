@@ -18,7 +18,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useGQ } from "@/lib/store";
 import { ListSkeleton, TableSkeleton, ValueSkeleton } from "@/components/app/DataSkeleton";
-import { cur, nf } from "@/lib/gq";
+import { commercialRecords, cur, liveWorkOrders, sumGrandTotal } from "@/lib/gq";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -35,16 +35,24 @@ function getGreeting() {
 function Dashboard() {
   const { invoices, customers, workOrders, settings, hydrated } = useGQ();
 
-  const totalBookings = invoices.length;
+  /* Confirming a booking mints a Proforma Invoice holding a copy of the
+     booking's totals and keeps the booking row for the audit trail, so summing
+     `invoices` straight counted one order's money twice. commercialRecords()
+     drops bookings that a proforma has superseded, leaving one row per order. */
+  const revenueRecords = useMemo(() => commercialRecords(invoices), [invoices]);
+  /* Work orders left behind by a deleted invoice must not be counted — the
+     pipeline card would keep advertising work orders that no longer open. */
+  const activeWorkOrders = useMemo(
+    () => liveWorkOrders(workOrders, invoices),
+    [workOrders, invoices],
+  );
+  const totalBookings = revenueRecords.length;
   const totalCustomers = customers.length;
   const draftCount = invoices.filter((x) => (x.status || "draft") === "draft").length;
   const piSentCount = invoices.filter((x) => x.status === "pi_sent").length;
   const confirmedCount = invoices.filter((x) => x.status === "order_confirmed").length;
   const woGeneratedCount = invoices.filter((x) => x.status === "work_order_generated").length;
-  const totalRevenue = invoices.reduce(
-    (acc, inv) => acc + (Number(inv.totals?.grandTotal) || 0),
-    0,
-  );
+  const totalRevenue = sumGrandTotal(revenueRecords);
   const recentBookings = invoices.slice(0, 5);
   const userName = settings.salesPerson || "Admin";
 
@@ -96,7 +104,7 @@ function Dashboard() {
           label="Proforma Invoices Confirmed"
           value={String(confirmedCount + woGeneratedCount)}
           loading={!hydrated}
-          sub={`${workOrders.length} work orders`}
+          sub={`${activeWorkOrders.length} work orders`}
           icon={CheckCircle2}
           iconBg="bg-emerald-50"
           iconColor="text-emerald-600"
@@ -140,7 +148,7 @@ function Dashboard() {
               step: "3",
               label: "Work Order & Stickers",
               count: confirmedCount + woGeneratedCount,
-              sublabel: `${workOrders.length} Work Orders`,
+              sublabel: `${activeWorkOrders.length} Work Orders`,
               color: "bg-emerald-500",
               to: "/work-order" as const,
               search: undefined,

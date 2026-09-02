@@ -102,8 +102,31 @@ function doGet(e) {
   return jsonResponse_(result);
 }
 
+/* Every write goes through one script-wide lock.
+   The web app is deployed "Execute as: Me / Anyone has access", so two devices
+   saving at the same moment run as concurrent executions against the same
+   spreadsheet. Without a lock both read the same row index, both see "not
+   found", and both appendRow — two rows for one invoice id. A deleteRow racing
+   a setValues is worse: the row numbers shift under the writer and it
+   overwrites somebody else's record. */
+var WRITE_LOCK_TIMEOUT_MS = 30000;
+
 function doPost(e) {
   var result;
+  var lock = null;
+
+  try {
+    lock = LockService.getScriptLock();
+  } catch (err) {
+    lock = null;
+  }
+
+  if (lock && !lock.tryLock(WRITE_LOCK_TIMEOUT_MS)) {
+    return jsonResponse_({
+      success: false,
+      message: 'The sheet is busy with another save. Nothing was written — please try again.'
+    });
+  }
 
   try {
     var body = {};
@@ -145,6 +168,10 @@ function doPost(e) {
     }
   } catch (err) {
     result = { success: false, message: err.message || String(err) };
+  } finally {
+    if (lock) {
+      try { lock.releaseLock(); } catch (err2) {}
+    }
   }
 
   return jsonResponse_(result);
@@ -233,16 +260,42 @@ function handleSaveInvoice_(invoice) {
     invoice.paymentStatus || '',
     invoice.createdAt || new Date().toISOString(),
     invoice.updatedAt || new Date().toISOString(),
-    JSON.stringify(invoice)
+    safeJson_(invoice)
   ];
+
+  /* Document numbers are allocated on the device, from the records that device
+     has synced. Two people creating an invoice inside the same sync window can
+     therefore pick the same number. That is not something to silently accept in
+     an invoicing system, and it is not something to reject either — refusing
+     the write would lose the work. Save the row, and hand the collision back so
+     the client can tell the user to renumber. */
+  var conflictId = findNumberConflict_(sheet, invoice);
 
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
   } else {
-    sheet.appendRow(row);
+    appendRowIndexed_(sheet, row);
   }
 
-  return { success: true, id: invoice.id, action: 'saved' };
+  var out = { success: true, id: invoice.id, action: 'saved' };
+  if (conflictId) {
+    out.numberConflict = { no: String(invoice.no || ''), existingId: conflictId };
+  }
+  if (row[row.length - 1] === '' ) {
+    out.oversized = true;
+  }
+  return out;
+}
+
+/* Another row already using this document number, under a different id.
+   Answered from the row index, so this stays O(1) per save. */
+function findNumberConflict_(sheet, invoice) {
+  var no = String(invoice.no == null ? '' : invoice.no).trim().toLowerCase();
+  if (!no) return null;
+
+  var owner = getRowIndex_(sheet).ownerId[no];
+  if (owner && owner !== String(invoice.id)) return owner;
+  return null;
 }
 
 /* ---------- Get All Invoices ---------- */
@@ -276,7 +329,7 @@ function handleGetInvoices_() {
     invoices.push({
       id: row[0],
       no: row[1],
-      date: row[2],
+      date: cellDate_(row[2]),
       docType: row[3] || 'pre_proforma',
       status: row[4] || 'draft',
       cust: {
@@ -323,11 +376,12 @@ function handleGetInvoices_() {
         commission: row[42]
       },
       sync: 'synced',
+      items: [],
       paidAmount: row[44],
       remainingBalance: row[45],
       paymentStatus: row[46],
-      createdAt: row[47],
-      updatedAt: row[48]
+      createdAt: cellStamp_(row[47]),
+      updatedAt: cellStamp_(row[48])
     });
   }
 
@@ -343,6 +397,7 @@ function handleDeleteInvoice_(id) {
 
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
+    invalidateRowIndex_(sheet);
     return { success: true, id: id, action: 'deleted' };
   }
 
@@ -356,6 +411,7 @@ function handleDeleteCustomer_(id) {
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
+    invalidateRowIndex_(sheet);
     return { success: true, id: id, action: 'deleted' };
   }
   return { success: false, message: 'Customer not found: ' + id };
@@ -368,6 +424,7 @@ function handleDeleteWorkOrder_(id) {
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
+    invalidateRowIndex_(sheet);
     return { success: true, id: id, action: 'deleted' };
   }
   return { success: false, message: 'Work order not found: ' + id };
@@ -380,6 +437,7 @@ function handleDeletePayment_(id) {
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
+    invalidateRowIndex_(sheet);
     return { success: true, id: id, action: 'deleted' };
   }
   return { success: false, message: 'Payment not found: ' + id };
@@ -412,7 +470,7 @@ function handleSaveCustomer_(customer) {
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
   } else {
-    sheet.appendRow(row);
+    appendRowIndexed_(sheet, row);
   }
 
   return { success: true, action: 'saved' };
@@ -442,8 +500,8 @@ function handleGetCustomers_() {
       city: row[7],
       status: row[8] || 'active',
       clBalance: row[9] || 0,
-      createdAt: row[10],
-      updatedAt: row[11]
+      createdAt: cellStamp_(row[10]),
+      updatedAt: cellStamp_(row[11])
     });
   }
 
@@ -480,13 +538,13 @@ function handleSaveWorkOrder_(wo) {
     wo.totalSqft || 0,
     wo.weightKg || 0,
     wo.createdAt || new Date().toISOString(),
-    JSON.stringify(wo)
+    safeJson_(wo)
   ];
 
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
   } else {
-    sheet.appendRow(row);
+    appendRowIndexed_(sheet, row);
   }
 
   return { success: true, action: 'saved' };
@@ -523,7 +581,7 @@ function handleGetWorkOrders_() {
       orderId: row[2],
       orderNo: row[3],
       piNo: row[4],
-      piDate: row[5],
+      piDate: cellDate_(row[5]),
       customer: row[6],
       dispatchTo: row[7],
       poNo: row[8],
@@ -537,7 +595,8 @@ function handleGetWorkOrders_() {
       totalSqm: row[16],
       totalSqft: row[17],
       weightKg: row[18],
-      createdAt: row[19]
+      pieces: [],
+      createdAt: cellStamp_(row[19])
     });
   }
 
@@ -568,7 +627,7 @@ function handleSavePayment_(payment) {
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
   } else {
-    sheet.appendRow(row);
+    appendRowIndexed_(sheet, row);
   }
 
   return { success: true, action: 'saved' };
@@ -591,12 +650,12 @@ function handleGetPayments_() {
       id: row[0],
       custName: row[1],
       invoiceNo: row[2],
-      date: row[3],
+      date: cellDate_(row[3]),
       amount: row[4],
       mode: row[5],
       refNo: row[6],
       notes: row[7],
-      createdAt: row[8]
+      createdAt: cellStamp_(row[8])
     });
   }
 
@@ -610,7 +669,13 @@ function handleGetPayments_() {
    throws degrades to an empty array plus an entry in `errors` rather than
    failing the whole payload. */
 function handleGetAll_() {
-  var out = { success: true, errors: [] };
+  /* `failed` names the tabs whose read threw, keyed so the client can tell them
+     apart from a tab that is genuinely empty. It used to send only a flat
+     `errors` list of strings, and the client read the accompanying `[]` as "the
+     sheet says this collection is empty" — which makes the merge treat every
+     previously-synced row as deleted elsewhere and purge the local cache. One
+     throwing tab wiped that collection off the device. */
+  var out = { success: true, errors: [], failed: {} };
 
   var tabs = [
     { key: 'invoices',   fn: handleGetInvoices_ },
@@ -624,8 +689,10 @@ function handleGetAll_() {
       var res = tabs[i].fn();
       out[tabs[i].key] = res[tabs[i].key] || [];
     } catch (err) {
+      var msg = err.message || String(err);
       out[tabs[i].key] = [];
-      out.errors.push(tabs[i].key + ': ' + (err.message || String(err)));
+      out.failed[tabs[i].key] = msg;
+      out.errors.push(tabs[i].key + ': ' + msg);
     }
   }
 
@@ -634,37 +701,54 @@ function handleGetAll_() {
 
 /* ---------- Sync All (bulk upload) ---------- */
 function handleSyncAll_(body) {
+  /* Counters used to increment per *attempt*, so a record the sheet rejected
+     still reported as pushed and the client cleared its pending flag — the row
+     was then only on the device, marked synced, and the next merge dropped it.
+     Count what actually landed, and name what did not. */
   var results = { invoices: 0, customers: 0, workOrders: 0, payments: 0 };
+  var failures = [];
 
-  if (body.invoices && body.invoices.length) {
-    for (var i = 0; i < body.invoices.length; i++) {
-      handleSaveInvoice_(body.invoices[i]);
-      results.invoices++;
+  var groups = [
+    { key: 'invoices',   rows: body.invoices,   fn: handleSaveInvoice_ },
+    { key: 'customers',  rows: body.customers,  fn: handleSaveCustomer_ },
+    { key: 'workOrders', rows: body.workOrders, fn: handleSaveWorkOrder_ },
+    { key: 'payments',   rows: body.payments,   fn: handleSavePayment_ }
+  ];
+
+  for (var g = 0; g < groups.length; g++) {
+    var rows = groups[g].rows;
+    if (!rows || !rows.length) continue;
+
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      try {
+        var res = groups[g].fn(row);
+        if (res && res.success) {
+          results[groups[g].key]++;
+        } else {
+          failures.push({
+            collection: groups[g].key,
+            id: (row && row.id) || '',
+            message: (res && res.message) || 'rejected by the sheet'
+          });
+        }
+      } catch (err) {
+        failures.push({
+          collection: groups[g].key,
+          id: (row && row.id) || '',
+          message: err.message || String(err)
+        });
+      }
     }
   }
 
-  if (body.customers && body.customers.length) {
-    for (var j = 0; j < body.customers.length; j++) {
-      handleSaveCustomer_(body.customers[j]);
-      results.customers++;
-    }
-  }
-
-  if (body.workOrders && body.workOrders.length) {
-    for (var k = 0; k < body.workOrders.length; k++) {
-      handleSaveWorkOrder_(body.workOrders[k]);
-      results.workOrders++;
-    }
-  }
-
-  if (body.payments && body.payments.length) {
-    for (var l = 0; l < body.payments.length; l++) {
-      handleSavePayment_(body.payments[l]);
-      results.payments++;
-    }
-  }
-
-  return { success: true, action: 'syncAll', results: results };
+  return {
+    success: true,
+    action: 'syncAll',
+    results: results,
+    failures: failures,
+    failureCount: failures.length
+  };
 }
 
 
@@ -781,35 +865,134 @@ function getOrCreateSheet_(name, headers) {
   return sheet;
 }
 
+/* ---------- Row lookup index ----------
+   findRowById_ used to re-read the whole id column on every call. syncAll calls
+   it once per record, so pushing N invoices read the id column N times — O(n²)
+   Spreadsheet round trips, and the dominant reason a bulk push blew past the
+   client's write timeout (and, with enough records, Apps Script's own 6-minute
+   execution ceiling). The index is built once per execution and kept current as
+   rows are appended; a deleteRow shifts every row below it, so that drops the
+   index and the next lookup rebuilds it. */
+var ROW_INDEX_ = {};
+
+function getRowIndex_(sheet) {
+  var name = sheet.getName();
+  if (ROW_INDEX_[name]) return ROW_INDEX_[name];
+
+  /* byName doubles as the document-number index: column B is `name` on the
+     Customers tab and `no` on the others, and both are looked up the same way.
+     `ownerId` records which id currently holds that column-B value, so a
+     duplicate-number check costs a map lookup rather than another full scan —
+     without it syncAll went back to reading the whole sheet once per record. */
+  var idx = { byId: {}, byName: {}, ownerId: {} };
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    var rows = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      var id = String(rows[i][0] == null ? '' : rows[i][0]);
+      var raw = String(rows[i][1] == null ? '' : rows[i][1]).trim();
+      var nm = raw.toLowerCase();
+      /* First occurrence wins so a pre-existing duplicate keeps resolving to the
+         same row instead of alternating between them. */
+      if (id && !idx.byId.hasOwnProperty(id)) idx.byId[id] = i + 2;
+      if (nm && !idx.byName.hasOwnProperty(nm)) {
+        idx.byName[nm] = i + 2;
+        idx.ownerId[nm] = id;
+      }
+    }
+  }
+  ROW_INDEX_[name] = idx;
+  return idx;
+}
+
+function invalidateRowIndex_(sheet) {
+  delete ROW_INDEX_[sheet.getName()];
+}
+
+/* Append a row and keep the index in step, so a later save of the same id
+   updates this row instead of appending a second one. */
+function appendRowIndexed_(sheet, row) {
+  sheet.appendRow(row);
+  var idx = ROW_INDEX_[sheet.getName()];
+  if (idx) {
+    var rowNum = sheet.getLastRow();
+    var id = String(row[0] == null ? '' : row[0]);
+    var nm = String(row[1] == null ? '' : row[1]).trim().toLowerCase();
+    if (id && !idx.byId.hasOwnProperty(id)) idx.byId[id] = rowNum;
+    if (nm && !idx.byName.hasOwnProperty(nm)) {
+      idx.byName[nm] = rowNum;
+      idx.ownerId[nm] = id;
+    }
+  }
+}
+
 /* Find a row by ID (column A = id) */
 function findRowById_(sheet, id) {
   if (!id) return -1;
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return -1;
-
-  var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === String(id)) {
-      return i + 2;
-    }
-  }
-  return -1;
+  var row = getRowIndex_(sheet).byId[String(id)];
+  return row || -1;
 }
 
 /* Find a row by name (column B = name) — for customers */
 function findRowByName_(sheet, name) {
   if (!name) return -1;
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return -1;
+  var row = getRowIndex_(sheet).byName[String(name).trim().toLowerCase()];
+  return row || -1;
+}
 
-  var names = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
-  var lowerName = String(name).trim().toLowerCase();
-  for (var i = 0; i < names.length; i++) {
-    if (String(names[i][0]).trim().toLowerCase() === lowerName) {
-      return i + 2;
-    }
+/* ---------- Cell payload guard ----------
+   A Google Sheets cell holds at most 50,000 characters. `fullJSON` carries the
+   entire invoice, so a large order (a hundred-plus pieces across several
+   layers) can exceed it — and Sheets then rejects the *whole* setValues call,
+   so the save fails outright and the record never reaches the sheet. Shed the
+   derived parts rather than losing the row: `calc` is recomputed from `items`
+   on load, so dropping it costs nothing. */
+var CELL_CHAR_LIMIT_ = 50000;
+
+function safeJson_(obj) {
+  var json;
+  try {
+    json = JSON.stringify(obj);
+  } catch (err) {
+    return '';
   }
-  return -1;
+  if (json.length <= CELL_CHAR_LIMIT_) return json;
+
+  try {
+    var trimmed = JSON.parse(json);
+    delete trimmed.calc;
+    json = JSON.stringify(trimmed);
+    if (json.length <= CELL_CHAR_LIMIT_) return json;
+  } catch (err) {}
+
+  /* Still too big — leave the cell empty so the typed columns are used on read.
+     A partial record beats a failed write. */
+  return '';
+}
+
+/* ---------- Cell value normalisation ----------
+   appendRow parses a value the way typing it into the cell would, so the string
+   '2026-03-16' is stored as a real date and reads back as a Date object. The
+   payments and customers tabs carry no fullJSON to fall back on, so those dates
+   reached the UI as '2026-03-15T18:30:00.000Z'. Normalise on read. */
+/* Duck-typed rather than `instanceof Date`: the value comes back from the
+   Spreadsheet service, and an identity check on a cross-realm object is exactly
+   the kind of thing that silently reports false and lets a raw
+   '2026-03-15T18:30:00.000Z' through to the invoice screen. */
+function isDateValue_(v) {
+  return Boolean(v) && typeof v === 'object' && typeof v.getTime === 'function' && !isNaN(v.getTime());
+}
+
+function cellDate_(v) {
+  if (isDateValue_(v)) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return v == null ? '' : String(v);
+}
+
+function cellStamp_(v) {
+  if (isDateValue_(v)) return v.toISOString();
+  return v == null ? '' : String(v);
 }
 
 /* Create a JSON response */

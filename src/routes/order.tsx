@@ -35,7 +35,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid } from "@/lib/gq";
+import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid, workOrderBelongsTo } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -439,6 +439,8 @@ function OrderPage() {
         if (!query) return true;
         return (
           item.no?.toLowerCase().includes(query) ||
+          item.preProformaNo?.toLowerCase().includes(query) ||
+          item.orderNo?.toLowerCase().includes(query) ||
           item.cust?.name?.toLowerCase().includes(query) ||
           item.cust?.phone?.toLowerCase().includes(query) ||
           item.cust?.gstin?.toLowerCase().includes(query)
@@ -523,7 +525,13 @@ function OrderPage() {
       return;
     }
     if (target === inv && !inv._saved) {
-      saveInvoice();
+      /* saveInvoice() returns false and shows its own error when the customer
+         name or the line items don't validate. Ignoring that opened the payment
+         modal against a record that was never saved, so confirmOrder found
+         nothing to update, generateWorkOrder reported "Order not found", and
+         the page still announced "Order confirmed" and navigated away — a
+         confirmation the system had not actually recorded. */
+      if (!saveInvoice()) return;
     }
     setTargetConfirmInvoice(target);
     setConfirmModalOpen(true);
@@ -542,10 +550,20 @@ function OrderPage() {
       notes: paymentDetails.notes,
     });
 
-    const wo = generateWorkOrder(targetConfirmInvoice.id);
-    if (wo) {
-      saveWorkOrder(wo);
-      updateInvoiceStatus(targetConfirmInvoice.id, "work_order_generated");
+    /* Only mint a work order if this invoice does not already have one.
+       generateWorkOrder stamps a fresh uid every call, so saveWorkOrder would
+       append rather than update — confirming a second time (a double-click, or
+       re-confirming after an edit) piled up duplicate work orders. The list
+       view already guarded this; the modal did not. */
+    const existingWO = workOrders.find((w: any) =>
+      workOrderBelongsTo(w, targetConfirmInvoice),
+    );
+    if (!existingWO) {
+      const wo = generateWorkOrder(targetConfirmInvoice.id);
+      if (wo) {
+        saveWorkOrder(wo);
+        updateInvoiceStatus(targetConfirmInvoice.id, "work_order_generated");
+      }
     }
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
@@ -681,7 +699,10 @@ function OrderPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
-              <div className="text-xl font-bold text-foreground mt-0.5">{invoices.length}</div>
+              {/* Counted every record in the store — bookings included — while
+                  claiming to count proforma records, so it never agreed with
+                  the table right below it. */}
+              <div className="text-xl font-bold text-foreground mt-0.5">{proformaInvoices.length}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
             </div>
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
@@ -747,15 +768,18 @@ function OrderPage() {
               </div>
             ) : (
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "850px" }}>
+                <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "1050px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">Invoice / PI No</th>
+                      <th className="py-2.5 px-3">Order ID</th>
                       <th className="py-2.5 px-3">Date & Payment Due</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
-                      <th className="py-2.5 px-3 text-right">Grand Total</th>
+                      <th className="py-2.5 px-3 text-right">Total Balance</th>
+                      <th className="py-2.5 px-3 text-right">Paid Amount</th>
+                      <th className="py-2.5 px-3 text-right">Remaining Balance</th>
                       <th className="py-2.5 px-3 text-center w-12" title="Order Status">Status</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
@@ -764,6 +788,10 @@ function OrderPage() {
                     {filteredSavedInvoices.map((item: any) => {
                       const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
                       const dueInfo = getPaymentDueDateInfo(item);
+                      const grandTotal = Number(item.totals?.grandTotal || 0);
+                      const paidAmount = Number(item.paidAmount || 0);
+                      const remainingBalance = Math.max(0, grandTotal - paidAmount);
+                      const orderId = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined) || "—";
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/15 transition-colors">
@@ -779,6 +807,15 @@ function OrderPage() {
                               {item.no}
                             </button>
                           </td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
+                            {orderId !== "—" ? (
+                              <span className="px-1.5 py-0.5 rounded bg-muted/60 text-foreground border border-border/50">
+                                {orderId}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/60">—</span>
+                            )}
+                          </td>
                           <td className="py-2.5 px-3 font-mono text-[11px] leading-tight">
                             <div>{dmy(item.date)}</div>
                             <div className="mt-1">
@@ -792,8 +829,16 @@ function OrderPage() {
                             {item.cust?.phone || "—"}
                           </td>
                           <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
-                            ₹ {nf(item.totals?.grandTotal || 0)}
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
+                            ₹ {nf(grandTotal)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                            ₹ {nf(paidAmount)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold">
+                            <span className={remainingBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}>
+                              ₹ {nf(remainingBalance)}
+                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             {isConfirmed ? (
@@ -813,7 +858,7 @@ function OrderPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-xs px-2.5 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
+                                  className="h-7 text-xs px-2 gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 font-medium shadow-xs"
                                   onClick={() => {
                                     /* This button only views an existing work
                                        order. It used to regenerate one on every
@@ -821,8 +866,8 @@ function OrderPage() {
                                        uid each time, so saveWorkOrder appended a
                                        new row instead of updating — a duplicate
                                        work order per click. */
-                                    const existing = workOrders.find(
-                                      (w: any) => w.orderId === item.id || w.orderNo === item.id,
+                                    const existing = workOrders.find((w: any) =>
+                                      workOrderBelongsTo(w, item),
                                     );
                                     if (!existing) {
                                       const wo = generateWorkOrder(item.id);
@@ -835,12 +880,12 @@ function OrderPage() {
                                   }}
                                   title="View in Work Order Workflow"
                                 >
-                                  <CheckCircle2 className="h-3 w-3" /> Sent to Workflow <ArrowRight className="h-3 w-3" />
+                                  <CheckCircle2 className="h-3 w-3" /> In Workflow <ArrowRight className="h-3 w-3" />
                                 </Button>
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
+                                  className="h-7 text-xs px-2 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                                   onClick={() => {
                                     loadInvoice(item.id, false);
                                     setShowForm(true);
@@ -848,7 +893,7 @@ function OrderPage() {
                                   }}
                                   title="Confirm & Fill Details for Proforma Invoice"
                                 >
-                                  <CheckCircle2 className="h-3 w-3" /> Confirm & Fill Details
+                                  <CheckCircle2 className="h-3 w-3" /> Confirm
                                 </Button>
                               )}
 
@@ -1032,7 +1077,11 @@ function OrderPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {inv.items.map((item: any, idx: number) => {
+                    {/* `|| []` matters: a record rebuilt from the sheet's typed
+                        columns (the path taken when `fullJSON` is missing or
+                        unparseable) has no `items`, and mapping over undefined
+                        took the whole page to the error boundary. */}
+                    {(inv.items || []).map((item: any, idx: number) => {
                       const line = totals.lines?.[idx];
                       return (
                         <tr key={item.id || idx} className="hover:bg-muted/10">

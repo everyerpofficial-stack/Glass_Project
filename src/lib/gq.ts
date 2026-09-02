@@ -277,6 +277,94 @@ export function getNextProformaNo(records: any[], year?: string): string {
   return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
 
+/* ---------- One record per commercial order ----------
+   Confirming an Order Booking does not replace it: it mints a Proforma Invoice
+   carrying a full copy of the booking's totals and keeps the booking row so the
+   audit trail survives. Both rows therefore hold the same grandTotal, and every
+   place that summed `invoices` straight — the dashboard's Total Revenue, the
+   Reports revenue and monthly trend, and a customer's Total Invoiced (and so
+   the Due Balance derived from it) — reported one order as two and roughly
+   doubled the money on screen.
+
+   A booking is superseded when it has been converted, or when some proforma
+   names it as its `preProformaNo` (the /order "load a booking" path copies the
+   booking without flipping the original's docType). Superseded bookings drop
+   out; everything else counts exactly once. */
+export function isSupersededBooking(rec: any, supersededNos: Set<string>): boolean {
+  if (!rec) return false;
+  if (rec.docType === "proforma_converted") return true;
+  if (rec.docType === "proforma") return false;
+
+  const no = String(rec.no || rec.orderNo || "").trim();
+  return Boolean(no) && supersededNos.has(no);
+}
+
+/* Booking numbers that some proforma has already been raised against. Collected
+   in one pass — checking each record against the whole list instead would make
+   this quadratic, and it runs on every dashboard render. */
+export function supersededBookingNos(invoices: any[]): Set<string> {
+  const set = new Set<string>();
+  (invoices || []).forEach((x: any) => {
+    if (x?.docType !== "proforma") return;
+    const ref = String(x?.preProformaNo || "").trim();
+    if (ref) set.add(ref);
+  });
+  return set;
+}
+
+/* ---------- Work order ↔ invoice linkage ----------
+   A work order is generated from an invoice and carries three references back:
+   `orderId` (the invoice's record id) plus `piNo` / `orderNo` (its document
+   numbers). Deleting an invoice used to look for work orders where
+   `wo.orderNo === <invoice id>` or `wo.piNo === <invoice id>` — a document
+   number compared against a record id, which never matches. Only the `orderId`
+   arm ever worked, so any work order written without it survived its invoice,
+   and the delete request sent to the sheet used the invoice's id against the
+   WorkOrders tab (keyed by the work order's own id) and matched nothing at all.
+   Orphans then reappeared on the next sync and the Work Order page rendered
+   one for an invoice that no longer existed.
+
+   One rule, used by both the delete cascade and the page's filtering, so the
+   two can never disagree about what belongs to what. */
+export function workOrderBelongsTo(wo: any, inv: any): boolean {
+  if (!wo || !inv) return false;
+  if (wo.orderId && inv.id && String(wo.orderId) === String(inv.id)) return true;
+
+  /* Fall back to document numbers — compared like with like. */
+  const invNos = [inv.no, inv.orderNo]
+    .filter(Boolean)
+    .map((v: any) => String(v).trim())
+    .filter(Boolean);
+  if (!invNos.length) return false;
+
+  return [wo.piNo, wo.orderNo]
+    .filter(Boolean)
+    .map((v: any) => String(v).trim())
+    .some((n: string) => n !== "" && invNos.includes(n));
+}
+
+/* Work orders whose invoice is still present. Anything else is an orphan: it
+   must not be shown, auto-selected, or printed. */
+export function liveWorkOrders(workOrders: any[], invoices: any[]): any[] {
+  return (workOrders || []).filter((wo) =>
+    (invoices || []).some((inv) => workOrderBelongsTo(wo, inv)),
+  );
+}
+
+/* The de-duplicated set to use for any money total or record count. */
+export function commercialRecords(invoices: any[]): any[] {
+  const all = invoices || [];
+  const superseded = supersededBookingNos(all);
+  return all.filter((rec) => !isSupersededBooking(rec, superseded));
+}
+
+export function sumGrandTotal(records: any[]): number {
+  return (records || []).reduce(
+    (acc: number, rec: any) => acc + (Number(rec?.totals?.grandTotal) || 0),
+    0,
+  );
+}
+
 export function loadSettings(): any {
   return Object.assign({}, BASE_SETTINGS, G.DEFAULTS, G.PRESETS.anand, LS.get("settings", {}));
 }
@@ -505,16 +593,28 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
 
 /* effective engine settings = global settings + this invoice's charges */
 export function engineOpts(S: any, INV: any) {
-  const o: any = Object.assign({}, S, INV.ch);
-  o.thicknessMM = INV.glass.thickness;
-  o.roundOff = String(INV.ch.roundOff) === "1";
-  o.inputUnit = INV.inputUnit || S.inputUnit || "inch";
-  o.frequencyEnabled = o.inputUnit === "mm" ? false : Boolean(INV.frequencyEnabled);
+  /* computeTotals runs inside the provider's useMemo, so anything that throws
+     here takes down every route at once, not just the page being viewed. Rows
+     rebuilt from the sheet's typed columns (the path used when `fullJSON` is
+     missing or unparseable) carry no `ch` and no `glass`, and reading
+     `INV.glass.thickness` off one of those was a blank screen with no way back
+     short of clearing site data. Treat both as optional. */
+  const inv = INV || {};
+  const ch = inv.ch || {};
+  const o: any = Object.assign({}, S, ch);
+  o.thicknessMM = inv.glass?.thickness;
+  /* Only override when the record actually carries the flag — forcing `false`
+     on a record with no `ch` would silently turn off rounding that the saved
+     settings ask for. */
+  if (ch.roundOff !== undefined) o.roundOff = String(ch.roundOff) === "1";
+  o.inputUnit = inv.inputUnit || S.inputUnit || "inch";
+  o.frequencyEnabled = o.inputUnit === "mm" ? false : Boolean(inv.frequencyEnabled);
   return G.settings(o);
 }
 
 /* single source of truth for every number shown in the UI */
 export function computeTotals(S: any, INV: any) {
+  INV = INV || {};
   let allItems: any[] = [];
   if (INV.layers && INV.layers.length > 0) {
     allItems = INV.layers.flatMap((l: any, idx: number) => {
@@ -654,7 +754,7 @@ function sheetGet(sheetUrl: string, action: string): Promise<any> {
     });
 }
 
-function sheetPost(sheetUrl: string, payload: any): Promise<any> {
+function sheetPost(sheetUrl: string, payload: any, timeoutMs = SHEET_WRITE_TIMEOUT_MS): Promise<any> {
   return fetchWithTimeout(
     sheetUrl,
     {
@@ -665,7 +765,7 @@ function sheetPost(sheetUrl: string, payload: any): Promise<any> {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
     },
-    SHEET_WRITE_TIMEOUT_MS,
+    timeoutMs,
   )
     .then((r) => r.json())
     .then((j) => {
@@ -674,8 +774,27 @@ function sheetPost(sheetUrl: string, payload: any): Promise<any> {
     });
 }
 
-export function postInvoice(sheetUrl: string, rec: any) {
-  return sheetPost(sheetUrl, { action: "saveInvoice", invoice: rec }).then(() => true);
+/* Resolves with the sheet's own reply so the caller can surface a
+   `numberConflict` (another record already carries this document number) or an
+   `oversized` flag instead of just knowing that "it saved". */
+export function postInvoice(sheetUrl: string, rec: any): Promise<any> {
+  return sheetPost(sheetUrl, { action: "saveInvoice", invoice: rec });
+}
+
+/* A delete the sheet answers with "not found" has already happened — that is a
+   success, not something to retry forever. Anything else (timeout, CORS, a
+   redeployed URL) means the row is still there and the local delete has to be
+   remembered so the next background merge does not bring it back. */
+const NOT_FOUND_RE = /not found/i;
+
+function runDelete(p: Promise<any>): Promise<boolean> {
+  return p.then(
+    () => true,
+    (err: Error) => {
+      if (NOT_FOUND_RE.test(err?.message || "")) return true;
+      throw err;
+    },
+  );
 }
 
 export function pingSheet(sheetUrl: string) {
@@ -737,12 +856,25 @@ function fetchAllTabsIndividually(sheetUrl: string): Promise<SheetSnapshot> {
 
 export function fetchSheetSnapshot(sheetUrl: string): Promise<SheetSnapshot> {
   return sheetGet(sheetUrl, "getAll")
-    .then((j) => ({
-      invoices: { ok: true as const, data: j.invoices || [] },
-      customers: { ok: true as const, data: j.customers || [] },
-      workOrders: { ok: true as const, data: j.workOrders || [] },
-      payments: { ok: true as const, data: j.payments || [] },
-    }))
+    .then((j) => {
+      /* A tab whose read threw comes back as `[]` plus an entry in `failed`.
+         Taking that `[]` at face value tells the merge the sheet holds no rows
+         for that collection, and the merge then purges every synced row from
+         the device — one bad tab wiping the local copy of the customer list.
+         Only a tab that actually returned counts as authoritative. */
+      const failed = (j && j.failed) || {};
+      const tab = (key: keyof SheetSnapshot): SheetTabResult<any> =>
+        failed[key]
+          ? { ok: false, error: new Error(String(failed[key])) }
+          : { ok: true, data: j[key] || [] };
+
+      return {
+        invoices: tab("invoices"),
+        customers: tab("customers"),
+        workOrders: tab("workOrders"),
+        payments: tab("payments"),
+      };
+    })
     .catch((err: Error) => {
       /* Only an Apps Script deployment that predates `getAll` is worth retrying
          tab-by-tab. A timeout or a transport failure means the backend is slow
@@ -775,26 +907,96 @@ export function postPayment(sheetUrl: string, payment: any) {
 }
 
 export function deleteInvoiceFromSheet(sheetUrl: string, id: string) {
-  return sheetPost(sheetUrl, { action: "deleteInvoice", id });
+  return runDelete(sheetPost(sheetUrl, { action: "deleteInvoice", id }));
 }
 
 export function deleteCustomerFromSheet(sheetUrl: string, id: string) {
-  return sheetPost(sheetUrl, { action: "deleteCustomer", id });
+  return runDelete(sheetPost(sheetUrl, { action: "deleteCustomer", id }));
 }
 
 export function deleteWorkOrderFromSheet(sheetUrl: string, id: string) {
-  return sheetPost(sheetUrl, { action: "deleteWorkOrder", id });
+  return runDelete(sheetPost(sheetUrl, { action: "deleteWorkOrder", id }));
 }
 
 export function deletePaymentFromSheet(sheetUrl: string, id: string) {
-  return sheetPost(sheetUrl, { action: "deletePayment", id });
+  return runDelete(sheetPost(sheetUrl, { action: "deletePayment", id }));
 }
 
 export function syncAllToSheet(
   sheetUrl: string,
   data: { invoices?: any[]; customers?: any[]; workOrders?: any[]; payments?: any[] },
 ) {
-  return sheetPost(sheetUrl, { action: "syncAll", ...data });
+  return sheetPost(sheetUrl, { action: "syncAll", ...data }, SHEET_BULK_TIMEOUT_MS);
+}
+
+/* ---------- Chunked bulk push ----------
+   "Push all to sheet" used to send every record in a single POST under the
+   ordinary 15s write budget. Apps Script writes each row one at a time, so a
+   real dataset blew straight past it: the client aborted and reported failure
+   while the server carried on writing, the local `sync` flags were never
+   cleared, and the obvious response — press it again — replayed the whole
+   thing. Sending fixed-size batches keeps every request inside a budget the
+   backend can actually meet, and makes progress durable: batch 3 failing does
+   not undo batches 1 and 2. */
+export const SHEET_BULK_TIMEOUT_MS = 120000;
+export const SHEET_BULK_CHUNK = 25;
+
+export type BulkPushResult = {
+  results: { invoices: number; customers: number; workOrders: number; payments: number };
+  failures: { collection: string; id: string; message: string }[];
+  /* Ids the sheet confirmed, per collection — only these may be marked synced. */
+  savedIds: Record<string, string[]>;
+  batchErrors: string[];
+};
+
+function chunk<T>(rows: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
+export async function pushAllInChunks(
+  sheetUrl: string,
+  data: { invoices?: any[]; customers?: any[]; workOrders?: any[]; payments?: any[] },
+  onProgress?: (done: number, total: number) => void,
+): Promise<BulkPushResult> {
+  const collections: (keyof typeof data)[] = ["invoices", "customers", "workOrders", "payments"];
+  const out: BulkPushResult = {
+    results: { invoices: 0, customers: 0, workOrders: 0, payments: 0 },
+    failures: [],
+    savedIds: { invoices: [], customers: [], workOrders: [], payments: [] },
+    batchErrors: [],
+  };
+
+  const total = collections.reduce((n, key) => n + (data[key]?.length || 0), 0);
+  let done = 0;
+
+  for (const key of collections) {
+    const rows = data[key] || [];
+    for (const batch of chunk(rows, SHEET_BULK_CHUNK)) {
+      const failedIds = new Set<string>();
+      try {
+        const res = await syncAllToSheet(sheetUrl, { [key]: batch });
+        out.results[key] += Number(res?.results?.[key]) || 0;
+        (res?.failures || []).forEach((f: any) => {
+          out.failures.push(f);
+          if (f?.id) failedIds.add(String(f.id));
+        });
+      } catch (err: any) {
+        /* The batch never landed — every id in it stays unsynced. */
+        out.batchErrors.push(err?.message || String(err));
+        batch.forEach((r: any) => failedIds.add(String(r?.id ?? "")));
+      }
+      batch.forEach((r: any) => {
+        const id = String(r?.id ?? "");
+        if (id && !failedIds.has(id)) out.savedIds[key]!.push(id);
+      });
+      done += batch.length;
+      onProgress?.(done, total);
+    }
+  }
+
+  return out;
 }
 
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
@@ -1005,7 +1207,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       <!-- PAGE 1 -->
       <div class="page page-1">
         <div class="ph" style="border:1px solid #000; padding:6px">
-          ${S.logo ? `<img class="plogo" src="${S.logo}" alt="Logo" style="height:44px; width:auto">` : `<div class="plogo"></div>`}
+          ${S.logo ? `<img class="plogo" src="${esc(S.logo)}" alt="Logo" style="height:44px; width:auto">` : `<div class="plogo"></div>`}
           <div class="pco">
             <h1 style="font-size:14pt; margin:0">${esc(S.coName || "Hindustan Float Glass Pvt. Ltd.")}</h1>
             <div style="font-size:8pt">${esc(S.addr).replace(/\n/g, "<br>")}</div>

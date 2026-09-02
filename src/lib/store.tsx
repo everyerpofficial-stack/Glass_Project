@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
+  BASE_SETTINGS,
   LS,
   SAMPLE_INVOICE_07321,
   blankInvoice,
@@ -22,8 +23,9 @@ import {
   nextSeqForPrefix,
   getNextProformaNo,
   setStorageFailureHandler,
-  syncAllToSheet,
+  pushAllInChunks,
   uid,
+  workOrderBelongsTo,
 } from "./gq";
 import type { SheetTabResult } from "./gq";
 
@@ -35,6 +37,44 @@ export type WorkflowStatus = "draft" | "pi_sent" | "order_confirmed" | "work_ord
 const SYNC_POLL_MS = 30000;
 const SYNC_MIN_INTERVAL_MS = 10000;
 
+/* ── Pending deletions ─────────────────────────────────────────────
+   Deleting a record removes it locally and fires a delete at the sheet. When
+   that delete does not land — offline, a timeout, a redeployed URL — the row is
+   still in the sheet, and the background poll 30 seconds later merges it
+   straight back onto the device. From the user's side a deleted invoice simply
+   reappears, so they delete it again, and it comes back again.
+
+   A tombstone records the intent: the id is held back from every merge, and the
+   delete is retried on each sync until the sheet confirms it. Tombstones are
+   persisted so a reload cannot resurrect the row either, and they carry a
+   timestamp so they can be aged out once the deletion has clearly taken. */
+const TOMBSTONE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+type Tombstones = Record<string, Record<string, number>>;
+
+/* Which remote delete belongs to which collection, keyed by the same storage
+   key the tombstones use. */
+const DELETERS: Record<string, (url: string, id: string) => Promise<boolean>> = {
+  invoices: deleteInvoiceFromSheet,
+  customers: deleteCustomerFromSheet,
+  workOrders: deleteWorkOrderFromSheet,
+  payments: deletePaymentFromSheet,
+};
+
+function loadTombstones(): Tombstones {
+  const raw = LS.get<Tombstones>("deleted", {});
+  const now = Date.now();
+  const out: Tombstones = {};
+  Object.entries(raw || {}).forEach(([collection, ids]) => {
+    const kept: Record<string, number> = {};
+    Object.entries(ids || {}).forEach(([id, at]) => {
+      if (now - (Number(at) || 0) < TOMBSTONE_TTL_MS) kept[id] = Number(at) || now;
+    });
+    if (Object.keys(kept).length) out[collection] = kept;
+  });
+  return out;
+}
+
 /* Merge one sheet tab into local state.
    Rows the sheet returned win — it is the shared source of truth. Rows that
    exist only locally survive *only* while they are still unsynced (`local` or
@@ -43,15 +83,19 @@ const SYNC_MIN_INTERVAL_MS = 10000;
    `synced` and now absent from the sheet was deleted elsewhere, so it is
    purged. Sorting is newest-first because Apps Script returns rows in append
    order, which would otherwise make every "Recent" list show the oldest rows. */
-function mergeSheetCollection(prev: any[], fromSheet: any[]) {
+function mergeSheetCollection(prev: any[], fromSheet: any[], deletedIds?: Record<string, number>) {
+  const isDeleted = (id: string) => Boolean(deletedIds && deletedIds[id] !== undefined);
   const byId = new Map<string, any>();
   (fromSheet || []).forEach((row: any) => {
     if (!row || row.id == null || row.id === "") return;
-    byId.set(String(row.id), { ...row, sync: "synced" });
+    const key = String(row.id);
+    if (isDeleted(key)) return;
+    byId.set(key, { ...row, sync: "synced" });
   });
   (prev || []).forEach((row: any) => {
     if (!row || row.id == null || row.id === "") return;
     const key = String(row.id);
+    if (isDeleted(key)) return;
     if (!byId.has(key) && (row.sync === "local" || row.sync === "pending")) {
       byId.set(key, row);
     }
@@ -151,6 +195,55 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const syncInFlight = useRef(false);
   const lastSyncAttempt = useRef(0);
+  /* Deletions the sheet has not confirmed yet. Held in a ref because the merge
+     runs inside setState updaters, which must see the latest value rather than
+     the one captured when the callback was created. */
+  const tombstones = useRef<Tombstones>({});
+
+  const rememberDeletion = useCallback((collection: string, id: string) => {
+    const next = { ...tombstones.current };
+    next[collection] = { ...(next[collection] || {}), [String(id)]: Date.now() };
+    tombstones.current = next;
+    LS.set("deleted", next);
+  }, []);
+
+  const forgetDeletion = useCallback((collection: string, id: string) => {
+    const bucket = tombstones.current[collection];
+    if (!bucket || bucket[String(id)] === undefined) return;
+    const nextBucket = { ...bucket };
+    delete nextBucket[String(id)];
+    const next = { ...tombstones.current, [collection]: nextBucket };
+    tombstones.current = next;
+    LS.set("deleted", next);
+  }, []);
+
+  /* Run a delete against the sheet, remembering it until the sheet agrees.
+     Confirmed deletes (including "already gone") clear the tombstone. */
+  const syncDeletion = useCallback(
+    (collection: string, id: string, remote: (url: string, id: string) => Promise<boolean>) => {
+      const url = settings.sheetUrl;
+      if (!url) return;
+      remote(url, id)
+        .then(() => forgetDeletion(collection, id))
+        .catch(() => {
+          /* Left in place: the next sync retries, and until then the merge will
+             not bring the row back. */
+        });
+    },
+    [settings.sheetUrl, forgetDeletion],
+  );
+
+  /* Re-issue every delete the sheet has not acknowledged. Runs on the same
+     schedule as the read poll, so a deletion made offline reaches the sheet as
+     soon as the connection is back. */
+  const retryPendingDeletions = useCallback(() => {
+    if (!settings.sheetUrl) return;
+    Object.entries(tombstones.current).forEach(([collection, ids]) => {
+      const remote = DELETERS[collection];
+      if (!remote) return;
+      Object.keys(ids || {}).forEach((id) => syncDeletion(collection, id, remote));
+    });
+  }, [settings.sheetUrl, syncDeletion]);
 
   /* A refused localStorage write used to fail silently, so work could vanish on
      the next reload with nothing having warned the user. */
@@ -166,16 +259,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
   /* hydrate from localStorage after mount (SSR-safe) */
   useEffect(() => {
-    const s = Object.assign({}, loadSettings(), {
-      coName: "Hindustan Float Glass Pvt. Ltd.",
-      addr: "S-5, Shree Govind Complex,\nPareek College Mode, Jhotwara Road,\nJaipur, Rajasthan, 302013",
-      email: "hindustan@live.in",
-      gstin: "08AACCH4208C1Z3",
-      pan: "U26109RJ2010PTC031953",
-      logo: "/logo.png",
-    });
+    tombstones.current = loadTombstones();
+
+    /* Settings hydration used to re-assert the company name, address, email,
+       GSTIN, PAN and logo over whatever was stored, on every single mount.
+       Editing any of them in Settings appeared to work — the toast fired,
+       localStorage was written — and the next page load put the hard-coded
+       values back, so the company block printed on every invoice could not
+       actually be changed. Those same values are already the defaults in
+       BASE_SETTINGS, which loadSettings() layers *under* the stored settings,
+       so defaults still apply on a fresh install and an edit now survives. */
+    const s = Object.assign({}, loadSettings());
     if (!s.sheetUrl) {
-      s.sheetUrl = "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec";
+      s.sheetUrl = BASE_SETTINGS.sheetUrl;
     }
     setSettings(s);
     LS.set("settings", s);
@@ -284,7 +380,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             return 0;
           }
           setter((prev) => {
-            const next = mergeSheetCollection(prev, tab.data);
+            const next = mergeSheetCollection(prev, tab.data, tombstones.current[lsKey]);
             LS.set(lsKey, next);
             return next;
           });
@@ -344,6 +440,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
          the backend (Apps Script serialises executions per account). */
       if (Date.now() - lastSyncAttempt.current < SYNC_MIN_INTERVAL_MS) return;
       lastSyncAttempt.current = Date.now();
+      /* Retry any delete the sheet has not confirmed. Without this a deletion
+         made while offline would be honoured on this device forever but never
+         reach the sheet, so every *other* device would keep the record. */
+      retryPendingDeletions();
       void loadFromSheet({ quiet: true });
     };
 
@@ -359,7 +459,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", refresh);
       clearInterval(interval);
     };
-  }, [hydrated, settings.sheetUrl, loadFromSheet]);
+  }, [hydrated, settings.sheetUrl, loadFromSheet, retryPendingDeletions]);
 
   const setInv = useCallback((updater: any) => {
     setInvState((prev: any) => (typeof updater === "function" ? updater(prev) : updater));
@@ -415,13 +515,29 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         return Promise.resolve(false);
       }
       return postInvoice(settings.sheetUrl, rec)
-        .then(() => {
+        .then((res: any) => {
           setInvoices((prev) => {
             const next = prev.map((x) => (x.id === rec.id ? { ...x, sync: "synced" } : x));
             LS.set("invoices", next);
             return next;
           });
-          toast.success("Synced to your sheet");
+          /* Document numbers are picked on the device from the records it has
+             synced, so two people creating one inside the same 30s window can
+             land on the same number. The sheet now reports that instead of
+             quietly holding two live documents under one number. */
+          if (res?.numberConflict) {
+            toast.warning(
+              `Saved, but ${res.numberConflict.no} is already used by another record on the sheet. Renumber one of them before sending it out.`,
+              { duration: 15000 },
+            );
+          } else if (res?.oversized) {
+            toast.warning(
+              "Saved, but this document is too large to store in full on the sheet. The totals and header are safe; re-open it from this device to keep every line item.",
+              { duration: 15000 },
+            );
+          } else {
+            toast.success("Synced to your sheet");
+          }
           return true;
         })
         .catch((err: Error) => {
@@ -551,27 +667,61 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteInvoice = useCallback((id: string) => {
+    /* Work out what is going before touching state. A state updater runs at
+       render time, not on this line, so anything collected inside one is still
+       empty by the time the sheet calls below would read it — and calling
+       rememberDeletion from inside an updater would be a side effect during
+       render, which StrictMode runs twice. */
+    const target = invoices.find((x) => x.id === id);
+    /* Deleting a Proforma Invoice has to take its work order — and therefore
+       its barcode stickers, which are rendered from the work order's pieces —
+       with it. workOrderBelongsTo carries the matching rule; the old inline
+       check compared the work order's document numbers against the invoice's
+       record id and matched nothing. */
+    const doomedWorkOrderIds = target
+      ? workOrders.filter((wo) => workOrderBelongsTo(wo, target)).map((wo) => String(wo.id))
+      : [];
+
+    /* Tombstone first, then remove: the other order leaves a window where a
+       background merge lands in between and puts the row straight back. */
+    rememberDeletion("invoices", id);
+    doomedWorkOrderIds.forEach((woId) => rememberDeletion("workOrders", woId));
+
     setInvoices((prev) => {
       const next = prev.filter((x) => x.id !== id);
       LS.set("invoices", next);
       return next;
     });
-    setWorkOrders((prev) => {
-      const next = prev.filter((x) => x.orderId !== id && x.orderNo !== id && x.piNo !== id && x.id !== id);
-      LS.set("workOrders", next);
-      return next;
-    });
-    toast.success("Booking deleted");
+    if (doomedWorkOrderIds.length) {
+      const doomed = new Set(doomedWorkOrderIds);
+      setWorkOrders((prev) => {
+        const next = prev.filter((x) => !doomed.has(String(x.id)));
+        LS.set("workOrders", next);
+        return next;
+      });
+    }
+    toast.success(
+      doomedWorkOrderIds.length
+        ? `Deleted, along with ${doomedWorkOrderIds.length} work order${doomedWorkOrderIds.length === 1 ? "" : "s"} and its stickers`
+        : "Deleted",
+    );
     /* Also delete from Google Sheet if configured */
     if (settings.sheetUrl) {
-      deleteInvoiceFromSheet(settings.sheetUrl, id).catch(() => {});
-      deleteWorkOrderFromSheet(settings.sheetUrl, id).catch(() => {});
+      syncDeletion("invoices", id, deleteInvoiceFromSheet);
+      /* Work-order rows are keyed by their own id. This used to pass the
+         *invoice* id to deleteWorkOrder, which never matched a row, so the work
+         orders belonging to a deleted invoice stayed on the sheet forever and
+         came back on the next sync. */
+      doomedWorkOrderIds.forEach((woId) =>
+        syncDeletion("workOrders", woId, deleteWorkOrderFromSheet),
+      );
     }
-  }, [settings.sheetUrl]);
+  }, [settings.sheetUrl, invoices, workOrders, rememberDeletion, syncDeletion]);
 
 
 
   const deleteCustomer = useCallback((id: string) => {
+    rememberDeletion("customers", id);
     setCustomers((prev) => {
       const next = prev.filter((x) => x.id !== id);
       LS.set("customers", next);
@@ -579,9 +729,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     });
     toast.success("Customer deleted");
     if (settings.sheetUrl) {
-      deleteCustomerFromSheet(settings.sheetUrl, id).catch(() => {});
+      syncDeletion("customers", id, deleteCustomerFromSheet);
     }
-  }, [settings.sheetUrl]);
+  }, [settings.sheetUrl, rememberDeletion, syncDeletion]);
 
   const syncAll = useCallback(() => {
     const pending = invoices.filter((r) => r.sync !== "synced");
@@ -916,6 +1066,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
 
   const deletePayment = useCallback((id: string) => {
+    rememberDeletion("payments", id);
     setPayments((prev) => {
       const next = prev.filter((x) => x.id !== id);
       LS.set("payments", next);
@@ -923,9 +1074,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     });
     toast.success("Payment deleted");
     if (settings.sheetUrl) {
-      deletePaymentFromSheet(settings.sheetUrl, id).catch(() => {});
+      syncDeletion("payments", id, deletePaymentFromSheet);
     }
-  }, [settings.sheetUrl]);
+  }, [settings.sheetUrl, rememberDeletion, syncDeletion]);
 
 
 
@@ -935,32 +1086,53 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       return;
     }
     setSheetSyncing(true);
+    const toastId = toast.loading("Pushing to Google Sheets…");
     try {
-      const result = await syncAllToSheet(settings.sheetUrl, {
-        invoices,
-        customers,
-        workOrders,
-        payments,
-      });
-      /* Everything in the payload is now on the sheet — clear the local flags so
-         the next merge does not re-upload them. */
-      const markAll = (
+      /* Sent in batches rather than as one giant POST — see pushAllInChunks.
+         The result names exactly which ids the sheet acknowledged. */
+      const result = await pushAllInChunks(
+        settings.sheetUrl,
+        { invoices, customers, workOrders, payments },
+        (done, total) =>
+          toast.loading(`Pushing to Google Sheets… ${done}/${total}`, { id: toastId }),
+      );
+
+      /* Mark only the ids the sheet confirmed. Blanket-marking everything
+         "synced" was how a failed push lost data: the rows were flagged as
+         living on the sheet, so the next merge saw them missing there and
+         purged them from the device. */
+      const markSaved = (
         setter: (fn: (prev: any[]) => any[]) => void,
         lsKey: string,
-      ) =>
+        savedIds: string[],
+      ) => {
+        const saved = new Set(savedIds);
         setter((prev) => {
-          const next = prev.map((x) => ({ ...x, sync: "synced" }));
+          const next = prev.map((x) =>
+            saved.has(String(x.id)) ? { ...x, sync: "synced" } : x,
+          );
           LS.set(lsKey, next);
           return next;
         });
-      markAll(setInvoices, "invoices");
-      markAll(setCustomers, "customers");
-      markAll(setWorkOrders, "workOrders");
-      markAll(setPayments, "payments");
-      const r = result.results || {};
-      toast.success(`Pushed to sheet: ${r.invoices || 0} invoices, ${r.customers || 0} customers, ${r.workOrders || 0} work orders, ${r.payments || 0} payments`);
+      };
+      markSaved(setInvoices, "invoices", result.savedIds["invoices"] || []);
+      markSaved(setCustomers, "customers", result.savedIds["customers"] || []);
+      markSaved(setWorkOrders, "workOrders", result.savedIds["workOrders"] || []);
+      markSaved(setPayments, "payments", result.savedIds["payments"] || []);
+
+      const r = result.results;
+      const summary = `Pushed to sheet: ${r.invoices} invoices, ${r.customers} customers, ${r.workOrders} work orders, ${r.payments} payments`;
+      const failed = result.failures.length + result.batchErrors.length;
+      if (failed) {
+        toast.error(
+          `${summary}. ${failed} record(s) did not save — they are still marked unsynced, so pushing again will retry just those.`,
+          { id: toastId, duration: 12000 },
+        );
+      } else {
+        toast.success(summary, { id: toastId });
+      }
     } catch (err: any) {
-      toast.error("Failed to push to sheet: " + err.message);
+      toast.error("Failed to push to sheet: " + (err?.message || err), { id: toastId });
     } finally {
       setSheetSyncing(false);
     }

@@ -25,7 +25,7 @@ import {
   Legend,
 } from "recharts";
 import { useGQ } from "@/lib/store";
-import { cur, nf } from "@/lib/gq";
+import { commercialRecords, cur, sumGrandTotal } from "@/lib/gq";
 
 export const Route = createFileRoute("/reports")({
   component: ReportsAnalyticsPage,
@@ -36,9 +36,13 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"
 function ReportsAnalyticsPage() {
   const { invoices, customers, settings } = useGQ();
 
-  const totalRevenue = useMemo(() => {
-    return invoices.reduce((acc, q) => acc + (Number(q.totals?.grandTotal) || 0), 0);
-  }, [invoices]);
+  /* One row per commercial order. A confirmed booking and the Proforma Invoice
+     generated from it both carry the same grandTotal, so summing `invoices`
+     directly reported roughly twice the revenue actually written. Applies to
+     the volume count and the monthly trend for the same reason. */
+  const revenueRecords = useMemo(() => commercialRecords(invoices), [invoices]);
+
+  const totalRevenue = useMemo(() => sumGrandTotal(revenueRecords), [revenueRecords]);
 
   const syncedCount = invoices.filter((x) => x.sync === "synced").length;
   const pendingCount = invoices.filter((x) => x.sync !== "synced").length;
@@ -46,7 +50,7 @@ function ReportsAnalyticsPage() {
   // Thickness distribution data
   const thicknessData = useMemo(() => {
     const counts: Record<string, number> = {};
-    invoices.forEach((q) => {
+    revenueRecords.forEach((q) => {
       const th = `${q.glass?.thickness || 5}mm`;
       counts[th] = (counts[th] || 0) + 1;
     });
@@ -54,7 +58,7 @@ function ReportsAnalyticsPage() {
       name: key,
       value: counts[key],
     }));
-  }, [invoices]);
+  }, [revenueRecords]);
 
   // Sync status data
   const syncStatusData = useMemo(() => [
@@ -77,7 +81,7 @@ function ReportsAnalyticsPage() {
     ];
     const buckets = months.map((month) => ({ month, quotes: 0, revenue: 0 }));
 
-    invoices.forEach((q) => {
+    revenueRecords.forEach((q) => {
       const d = new Date(q?.date);
       if (isNaN(d.getTime()) || d.getFullYear() !== reportYear) return;
       const bucket = buckets[d.getMonth()];
@@ -87,7 +91,7 @@ function ReportsAnalyticsPage() {
     });
 
     return buckets;
-  }, [invoices, reportYear]);
+  }, [revenueRecords, reportYear]);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
@@ -103,7 +107,7 @@ function ReportsAnalyticsPage() {
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <KPICard
           label="Total Quotation Volume"
-          value={String(invoices.length)}
+          value={String(revenueRecords.length)}
           sub="Total saved quotes"
           icon={FileText}
           iconBg="bg-blue-50"

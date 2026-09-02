@@ -90,29 +90,59 @@ function SystemChecksPage() {
         </div>
       </div>
 
-      {/* ---------- Test Suite Summary Banner ---------- */}
-      {testSuiteResults && (
-        <Card className="border border-emerald-500/30 bg-emerald-500/5 shadow-md">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-emerald-500/20 p-2.5 text-emerald-600">
-                <CheckCircle2 className="h-6 w-6" />
+      {/* ---------- Test Suite Summary Banner ----------
+           The heading was the literal string "100% OPERATIONAL" and the banner
+           was always green, so a failing calculation engine still reported
+           itself healthy on the one page whose job is to say otherwise. */}
+      {testSuiteResults && (() => {
+        const failedCount = Number(testSuiteResults.total) - Number(testSuiteResults.passed);
+        const allPassed = failedCount === 0 && Number(testSuiteResults.total) > 0;
+        return (
+          <Card
+            className={
+              allPassed
+                ? "border border-emerald-500/30 bg-emerald-500/5 shadow-md"
+                : "border border-red-500/40 bg-red-500/5 shadow-md"
+            }
+          >
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={
+                    allPassed
+                      ? "rounded-full bg-emerald-500/20 p-2.5 text-emerald-600"
+                      : "rounded-full bg-red-500/20 p-2.5 text-red-600"
+                  }
+                >
+                  {allPassed ? <CheckCircle2 className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold text-foreground">
+                    {allPassed
+                      ? "Calculation Engine Status: 100% OPERATIONAL"
+                      : `Calculation Engine Status: ${failedCount} CHECK${failedCount === 1 ? "" : "S"} FAILING`}
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    {allPassed
+                      ? `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed with 0 formula deviations`
+                      : `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed. Do not rely on printed figures until this is resolved.`}
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-base font-semibold text-foreground">
-                  Calculation Engine Status: 100% OPERATIONAL
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  {testSuiteResults.passed} of {testSuiteResults.total} automated checks passed with 0 formula deviations
-                </CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-mono text-xs">
-              {testSuiteResults.passed} / {testSuiteResults.total} PASSED
-            </Badge>
-          </CardHeader>
-        </Card>
-      )}
+              <Badge
+                variant="outline"
+                className={
+                  allPassed
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-mono text-xs"
+                    : "bg-red-500/10 text-red-600 border-red-500/30 font-mono text-xs"
+                }
+              >
+                {testSuiteResults.passed} / {testSuiteResults.total} PASSED
+              </Badge>
+            </CardHeader>
+          </Card>
+        );
+      })()}
 
       {/* ---------- Test Details Table & System Status ---------- */}
       <div className="grid gap-6 lg:grid-cols-3">

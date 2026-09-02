@@ -41,7 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankInvoice, dmy, nf, today } from "@/lib/gq";
+import { blankInvoice, commercialRecords, dmy, nf, today } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customers")({
@@ -177,10 +177,15 @@ function CustomersPage() {
     navigate({ to: "/booking" });
   };
 
-  /* Filter customer's invoices and payments when detail popup is open */
+  /* Filter customer's invoices and payments when detail popup is open.
+     Restricted to one record per order: a confirmed booking and the Proforma
+     Invoice raised from it both carry the same grandTotal, so the ledger was
+     billing this customer twice for every confirmed order — and the Due Balance
+     underneath, being Total Invoiced minus Total Paid, inherited the error. */
   const customerInvoices = useMemo(() => {
     if (!viewCust) return [];
-    return invoices.filter(
+    const oneRowPerOrder = commercialRecords(invoices);
+    return oneRowPerOrder.filter(
       (inv) => String(inv.cust?.name || "").toLowerCase() === String(viewCust.name || "").toLowerCase()
     );
   }, [invoices, viewCust]);
