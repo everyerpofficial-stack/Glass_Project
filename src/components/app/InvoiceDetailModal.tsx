@@ -243,9 +243,8 @@ export function InvoiceDetailModal({
           <div className="flex items-center gap-2 shrink-0">
             {onEdit && (
               <Button
-                variant="outline"
                 size="sm"
-                className="h-7 text-[11px] gap-1 px-2.5 text-slate-200 border-slate-700 hover:bg-slate-800"
+                className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm"
                 onClick={() => {
                   onOpenChange(false);
                   onEdit(invoice);
@@ -332,56 +331,64 @@ export function InvoiceDetailModal({
             <div className="space-y-5 animate-in fade-in-50">
               {/* Financial KPI Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-card border border-border rounded-xl p-3.5 shadow-xs">
-                  <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                {/* Total Amount */}
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     Total Amount
                   </div>
-                  <div className="text-xl font-bold text-foreground font-mono mt-1">
+                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">
                     ₹ {nf(grandTotal)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     Grand bill total
                   </div>
                 </div>
 
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 shadow-xs">
-                  <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
-                    Paid Amount
+                {/* Paid Amount */}
+                <div className="bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl p-3.5 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300 tracking-wider">
+                    ✓ Paid Amount
                   </div>
-                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                  <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-1">
                     ₹ {nf(paidAmount)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
                     Received so far
                   </div>
                 </div>
 
+                {/* Pending Balance */}
                 <div
-                  className={`rounded-xl p-3.5 border shadow-xs ${
+                  className={`rounded-xl p-3.5 border-2 shadow-sm ${
                     pendingAmount > 0
-                      ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
-                      : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-700"
+                      : "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700"
                   }`}
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider">
-                    Pending Balance
+                  <div className={`text-[10px] font-bold uppercase tracking-wider ${
+                    pendingAmount > 0 ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"
+                  }`}>
+                    {pendingAmount > 0 ? "⚠ Pending Balance" : "✓ No Balance Due"}
                   </div>
-                  <div className="text-xl font-bold font-mono mt-1">
+                  <div className={`text-xl font-bold font-mono mt-1 ${
+                    pendingAmount > 0 ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"
+                  }`}>
                     ₹ {nf(pendingAmount)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {pendingAmount > 0 ? "Remaining to pay" : "No balance due"}
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {pendingAmount > 0 ? "Remaining to pay" : "Fully cleared"}
                   </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-3.5 shadow-xs">
-                  <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                {/* Payment Due Date */}
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     Payment Due Date
                   </div>
-                  <div className="text-base font-bold text-foreground font-mono mt-1">
+                  <div className="text-base font-bold text-slate-900 dark:text-white font-mono mt-1">
                     {dmy(dueInfo.dueDate)}
                   </div>
-                  <div className="text-[10px] font-semibold mt-0.5 text-primary">
+                  <div className="text-[10px] font-semibold mt-0.5 text-blue-600 dark:text-blue-400">
                     {dueInfo.label}
                   </div>
                 </div>
