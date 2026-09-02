@@ -796,12 +796,12 @@ function OrderPage() {
                       <th className="py-2.5 px-3">PI No</th>
                       <th className="py-2.5 px-3">Invoice No</th>
                       <th className="py-2.5 px-3">Date & Payment Due</th>
-                      <th className="py-2.5 px-3">Customer / M/S Name</th>
+                      <th className="py-2.5 px-3">Customer Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
-                      <th className="py-2.5 px-3 text-center">Delivered</th>
                       <th className="py-2.5 px-3 text-right">Total Amount</th>
                       <th className="py-2.5 px-3 text-right">Recivied Amount</th>
                       <th className="py-2.5 px-3 text-right font-mono">Due Amount</th>
+                      <th className="py-2.5 px-3 text-center">Delivered</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -852,6 +852,17 @@ function OrderPage() {
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
                             {item.cust?.phone || "—"}
                           </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
+                            ₹ {nf(grandTotal)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                            ₹ {nf(paidAmount)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold">
+                            <span className={remainingBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}>
+                              ₹ {nf(remainingBalance)}
+                            </span>
+                          </td>
                           <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             {isDelivered ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
@@ -866,17 +877,6 @@ function OrderPage() {
                                 <XCircle className="h-3 w-3" /> No
                               </button>
                             )}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
-                            ₹ {nf(grandTotal)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                            ₹ {nf(paidAmount)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold">
-                            <span className={remainingBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}>
-                              ₹ {nf(remainingBalance)}
-                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">

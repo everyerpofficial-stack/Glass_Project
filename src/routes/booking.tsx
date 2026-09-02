@@ -831,7 +831,7 @@ function BookingPage() {
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">Order Booking No</th>
                       <th className="py-2.5 px-3">Date</th>
-                      <th className="py-2.5 px-3">Customer / M/S Name</th>
+                      <th className="py-2.5 px-3">Customer Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Grand Total</th>
