@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { dmy, nf, getPaymentDueDateInfo, workOrderBelongsTo, buildPrintHTML, computeTotals } from "@/lib/gq";
 import { useGQ } from "@/lib/store";
+import { printElement } from "@/lib/print";
 import {
   FileText,
   User,
@@ -115,6 +117,11 @@ export function InvoiceDetailModal({
   const { workOrders, settings, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } = useGQ();
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(initialTab);
   const [labelsPerRow, setLabelsPerRow] = useState<number>(4);
+  /* Points at the printable element of whichever tab is open. Only one tab is
+     mounted at a time, so a single ref is unambiguous — and it beats querying
+     by class name, since `.wo-print-area` also exists on the /work-order route
+     sitting behind this modal. */
+  const printRef = useRef<HTMLDivElement>(null);
 
   /* Reset tab when modal opens */
   const invoiceId = invoice?.id;
@@ -193,99 +200,27 @@ export function InvoiceDetailModal({
     }
   };
 
-  /* Helper: Open clean standalone print window for isolated document printing */
-  const printDocumentHTML = (
-    bodyHTML: string,
-    title: string = "Print Document",
-    orientation: "portrait" | "landscape" = "portrait",
-    styleAddons: string = ""
-  ) => {
-    const win = window.open("", "_blank", "width=1050,height=1100");
-    if (!win) {
-      window.print();
-      return;
-    }
-    win.document.open();
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${title}</title>
-        <meta charset="utf-8" />
-        <style>
-          @page { size: A4 ${orientation}; margin: 6mm 5mm; }
-          html, body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; background: #fff !important; color: #000 !important; width: 100%; }
-          * { box-sizing: border-box; }
-          table { width: 100% !important; border-collapse: collapse !important; }
-          .wo-print-area { width: 100% !important; max-width: 100% !important; border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; background: #fff !important; color: #000 !important; }
-          .wo-print-area table { width: 100% !important; min-width: 100% !important; margin-bottom: 12px; font-size: 10px; border-collapse: collapse !important; }
-          .wo-print-area th, .wo-print-area td { border: 1px solid #000 !important; padding: 4px 6px !important; color: #000 !important; }
-          .doc-preview { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-          ${styleAddons}
-        </style>
-      </head>
-      <body>
-        ${bodyHTML}
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              window.close();
-            }, 350);
-          };
-        </script>
-      </body>
-      </html>
-    `);
-    win.document.close();
-  };
+  /* Print whichever document the open tab is showing.
 
-  const handlePrintProforma = () => {
-    if (proformaHTML) {
-      printDocumentHTML(proformaHTML, `Proforma_Invoice_${invoice.no}`, "portrait");
-    } else {
-      window.print();
+     Every tab attaches `printRef` to its printable element, and only one tab is
+     mounted at a time, so the ref always points at what the user is looking at.
+     printElement() prints that element out of the live page — same DOM, same
+     stylesheet — which is what makes the paper match the preview. The previous
+     approach copied the element's HTML into a blank second window that had no
+     stylesheet at all, so the sticker's colour, grid and type sizes were all
+     dropped and it printed as plain text. */
+  const printActive = (orientation: "portrait" | "landscape") => {
+    if (!printElement(printRef.current, { orientation })) {
+      toast.error("Nothing to print on this tab yet.");
     }
   };
 
-  const handlePrintCutSheet = () => {
-    const woEl = document.querySelector(".wo-print-area");
-    if (woEl) {
-      const woStyles = `
-        .wo-print-area { width: 100% !important; max-width: 100% !important; }
-        .wo-print-area th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      `;
-      printDocumentHTML(woEl.outerHTML, `Work_Order_${activeWO?.woNo || invoice.no}`, "landscape", woStyles);
-    } else {
-      window.print();
-    }
-  };
+  const handlePrintProforma = () => printActive("portrait");
+  /* The cut sheet's table is far wider than it is tall. */
+  const handlePrintCutSheet = () => printActive("landscape");
+  const handlePrintStickers = () => printActive("portrait");
 
-  const handlePrintStickers = () => {
-    const stickerEls = document.querySelectorAll(".sticker-label");
-    if (stickerEls.length > 0) {
-      const stickersContainer = Array.from(stickerEls)
-        .map((el) => el.outerHTML)
-        .join("");
-      const gridHTML = `<div style="display: grid; grid-template-columns: repeat(${labelsPerRow}, 1fr); gap: 10px; width: 100%;">${stickersContainer}</div>`;
-      const stickerStyles = `
-        .sticker-label { background: #FFD700 !important; color: #000 !important; border: 2px solid #b45309 !important; border-radius: 8px; padding: 8px; page-break-inside: avoid; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      `;
-      printDocumentHTML(gridHTML, `Barcode_Stickers_${activeWO?.woNo || invoice.no}`, "portrait", stickerStyles);
-    } else {
-      window.print();
-    }
-  };
-
-  const handlePrintActive = () => {
-    if (activeTab === "cutsheet") {
-      handlePrintCutSheet();
-    } else if (activeTab === "stickers") {
-      handlePrintStickers();
-    } else {
-      handlePrintProforma();
-    }
-  };
+  const handlePrintActive = () => printActive(activeTab === "cutsheet" ? "landscape" : "portrait");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -648,6 +583,7 @@ export function InvoiceDetailModal({
 
               <div className="bg-white text-black border border-slate-700 rounded-xl p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto">
                 <div
+                  ref={printRef}
                   className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0"
                   dangerouslySetInnerHTML={{ __html: proformaHTML || "" }}
                 />
@@ -671,7 +607,10 @@ export function InvoiceDetailModal({
               {!activeWO ? (
                 <div className="text-center py-16 text-xs text-muted-foreground">Generating Work Order Cut Sheet...</div>
               ) : (
-                <div className="wo-print-area bg-white text-black rounded-xl border border-slate-700 p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto">
+                <div
+                  ref={printRef}
+                  className="wo-print-area bg-white text-black rounded-xl border border-slate-700 p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto"
+                >
                   {/* WO Header */}
                   <div className="border-b-2 border-black pb-3 mb-3">
                     <div className="flex justify-between items-start">
@@ -795,7 +734,8 @@ export function InvoiceDetailModal({
                 <div className="text-center py-16 text-xs text-muted-foreground">No barcode stickers available for this order.</div>
               ) : (
                 <div
-                  className="grid gap-3 max-w-5xl mx-auto print:gap-1"
+                  ref={printRef}
+                  className="sticker-print-area grid gap-3 max-w-5xl mx-auto print:gap-1"
                   style={{
                     gridTemplateColumns: `repeat(${labelsPerRow}, 1fr)`,
                   }}

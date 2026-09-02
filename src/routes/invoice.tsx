@@ -7,12 +7,13 @@ import {
   MoveHorizontal,
   X,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useGQ } from "@/lib/store";
 import { buildPrintHTML, computeTotals, dmy } from "@/lib/gq";
+import { printElement } from "@/lib/print";
 
 export const Route = createFileRoute("/invoice")({
   /* Three routes deep-link here with ?id=. Declaring the schema keeps the param
@@ -50,8 +51,10 @@ export function InvoiceViewPage() {
     return buildPrintHTML(settings, targetInv, totals);
   }, [settings, targetInv, totals]);
 
+  /* Print the document itself, not the page around it. */
+  const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = () => {
-    window.print();
+    printElement(printRef.current, { orientation: "portrait" });
   };
 
   return (
@@ -138,6 +141,7 @@ export function InvoiceViewPage() {
         <CardContent className="p-1 sm:p-6 print:p-0">
           <div className="overflow-x-auto w-full scrollbar-thin">
             <div
+              ref={printRef}
               className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0"
               dangerouslySetInnerHTML={{ __html: printHTML || "" }}
             />

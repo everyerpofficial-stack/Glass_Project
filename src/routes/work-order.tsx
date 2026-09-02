@@ -22,6 +22,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { ListSkeleton } from "@/components/app/DataSkeleton";
 import { nf, dmy, liveWorkOrders, workOrderBelongsTo } from "@/lib/gq";
+import { printElement } from "@/lib/print";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/work-order")({
@@ -434,8 +435,16 @@ function WorkOrderPage() {
     }
   };
 
+  /* Print just the document, out of the live page — the cut sheet in landscape,
+     the sticker sheet in portrait. A bare window.print() sent the whole route to
+     paper, sidebar and toolbar included. */
+  const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = () => {
-    window.print();
+    if (!printElement(printRef.current, {
+      orientation: activeTab === "cutsheet" ? "landscape" : "portrait",
+    })) {
+      toast.error("Nothing to print yet.");
+    }
   };
 
   /* Product-grouped pieces for Work Order Cut Sheet */
@@ -601,7 +610,10 @@ function WorkOrderPage() {
           </div>
         ) : activeTab === "cutsheet" ? (
           /* ══════════ TAB 1: WORK ORDER CUT SHEET ══════════ */
-          <div className="wo-print-area bg-white text-black rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none">
+          <div
+            ref={printRef}
+            className="wo-print-area bg-white text-black rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none"
+          >
             {/* WO Header */}
             <div className="border-b-2 border-black p-4 print:p-3">
               <div className="flex justify-between items-start">
@@ -712,7 +724,7 @@ function WorkOrderPage() {
           </div>
         ) : (
           /* ══════════ TAB 2: BARCODE STICKER LABELS ══════════ */
-          <div className="sticker-print-area">
+          <div ref={printRef} className="sticker-print-area">
             {/* Info bar */}
             <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground print:hidden">
               <span className="font-semibold">{labels.length} label(s) generated for {activeWO.customer}</span>
