@@ -38,8 +38,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct, formatOrderId } from "@/lib/gq";
-import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
+import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct, formatOrderId, formatPiNo } from "@/lib/gq";
 
 const BASE_GLASS_PRODUCTS = [
   "04 mm Clear Glass",
@@ -848,13 +847,13 @@ function BookingPage() {
                           key={item.id}
                           className="hover:bg-muted/30 transition-colors cursor-pointer"
                           onClick={() => {
-                            setDetailInvoice(item);
-                            setDetailOpen(true);
+                            loadInvoice(item.id, false);
+                            setShowForm(true);
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
                             <span className="hover:underline font-bold">
-                              {item.no || "—"}
+                              {formatPiNo(item.no)}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
@@ -1021,7 +1020,7 @@ function BookingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
                   <FieldLabel>PI No</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.no || ""} onChange={(e) => updateInvField("no", e.target.value)} />
+                  <Input className="h-8 text-xs font-mono" value={formatPiNo(inv.no)} onChange={(e) => updateInvField("no", e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>Date</FieldLabel>
@@ -1910,17 +1909,6 @@ function BookingPage() {
           }
         }}
         inputUnit={inputUnit}
-      />
-
-      {/* Invoice Detail Popup Modal */}
-      <InvoiceDetailModal
-        invoice={detailInvoice}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onEdit={(item) => {
-          loadInvoice(item.id, false);
-          setShowForm(true);
-        }}
       />
     </div>
   );
