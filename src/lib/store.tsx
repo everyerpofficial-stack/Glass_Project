@@ -928,6 +928,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
               paidAmount,
               remainingBalance,
               paymentStatus,
+              paymentRef: paymentDetails?.refNo !== undefined ? paymentDetails.refNo : x.paymentRef,
+              paymentNotes: paymentDetails?.notes !== undefined ? paymentDetails.notes : x.paymentNotes,
               dueDate: paymentDetails?.dueDate !== undefined ? paymentDetails.dueDate : x.dueDate,
             };
             targetRecord = updated;

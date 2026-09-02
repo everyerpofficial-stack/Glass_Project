@@ -30,7 +30,6 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/booking", label: "Order Booking", icon: ClipboardList },
   { to: "/order", label: "Proforma Invoice", icon: ShoppingCart },
-  { to: "/work-order", label: "Work Order & Stickers", icon: Factory },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },

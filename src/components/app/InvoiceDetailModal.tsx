@@ -4,7 +4,8 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { dmy, nf, getPaymentDueDateInfo } from "@/lib/gq";
+import { dmy, nf, getPaymentDueDateInfo, workOrderBelongsTo } from "@/lib/gq";
+import { useGQ } from "@/lib/store";
 import {
   FileText,
   User,
@@ -18,6 +19,7 @@ import {
   Clock,
   AlertCircle,
   Calendar,
+  Factory,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -35,6 +37,8 @@ export function InvoiceDetailModal({
   onEdit,
 }: InvoiceDetailModalProps) {
   const navigate = useNavigate();
+  const { workOrders, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } = useGQ();
+
   if (!invoice) return null;
 
   const grandTotal = Number(invoice.totals?.grandTotal || 0);
@@ -223,6 +227,34 @@ export function InvoiceDetailModal({
                     {invoice.freightType || "To be Billed"}
                   </div>
                 </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    Payment Mode
+                  </div>
+                  <div className="font-semibold text-foreground mt-0.5">
+                    {invoice.delivery?.paymentType || invoice.delivery?.paymentTerm || "Credit"}
+                  </div>
+                </div>
+                {invoice.paymentRef && (
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      Payment Ref / Txn No
+                    </div>
+                    <div className="font-mono text-foreground mt-0.5">
+                      {invoice.paymentRef}
+                    </div>
+                  </div>
+                )}
+                {invoice.paymentNotes && (
+                  <div className="col-span-2">
+                    <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      Payment Note
+                    </div>
+                    <div className="text-foreground mt-0.5 italic">
+                      {invoice.paymentNotes}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -281,6 +313,25 @@ export function InvoiceDetailModal({
                 }}
               >
                 <Printer className="h-3.5 w-3.5" /> Print / PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 font-semibold"
+                onClick={() => {
+                  const existing = workOrders.find((w: any) => workOrderBelongsTo(w, invoice));
+                  if (!existing) {
+                    const wo = generateWorkOrder(invoice.id);
+                    if (wo) {
+                      saveWorkOrder(wo);
+                      updateInvoiceStatus(invoice.id, "work_order_generated");
+                    }
+                  }
+                  onOpenChange(false);
+                  navigate({ to: "/work-order", search: { woId: invoice.id } });
+                }}
+              >
+                <Factory className="h-3.5 w-3.5" /> Work Order & Stickers
               </Button>
               {onEdit && (
                 <Button

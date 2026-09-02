@@ -1235,9 +1235,38 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (t.cgst) summary.push(fr("C-GST " + nf(o.cgstPercent || 9) + " %", nf(t.cgst)));
   if (t.sgst) summary.push(fr("S-GST " + nf(o.sgstPercent || 9) + " %", nf(t.sgst)));
   if (t.igst) summary.push(fr("IGST " + nf(o.igstPercent || 18) + " %", nf(t.igst)));
-  summary.push(fr("Gross Total", nf(t.grossTotal)));
-  if (t.roundOff) summary.push(fr("Round Off", (t.roundOff > 0 ? "+" : "") + nf(t.roundOff)));
   summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
+
+  const grandTotalVal = Number(t.grandTotal || 0);
+  const paidVal = Number(INV.paidAmount || 0);
+  const dueVal = Math.max(0, grandTotalVal - paidVal);
+  const isPaidFull = dueVal <= 0 && grandTotalVal > 0;
+  const payStatusText = isPaidFull
+    ? "PAID IN FULL"
+    : paidVal > 0
+    ? "PARTIALLY PAID"
+    : "UNPAID / CREDIT";
+  const payTypeLabel = INV.delivery?.paymentType || INV.delivery?.paymentTerm || "Credit";
+
+  summary.push(
+    `<tr class="pay-row pay-paid" style="border-top:1.5px solid #000; font-weight:bold; background:#f0fdf4; color:#15803d"><td style="padding:3px 6px">Amount Paid</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(paidVal)}</td></tr>`
+  );
+  summary.push(
+    `<tr class="pay-row pay-due" style="font-weight:bold; background:${dueVal > 0 ? '#fffbeb' : '#f0fdf4'}; color:${dueVal > 0 ? '#b45309' : '#15803d'}"><td style="padding:3px 6px">Balance Due</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(dueVal)}</td></tr>`
+  );
+  summary.push(
+    `<tr class="pay-row pay-status" style="background:#f8fafc; font-size:8pt"><td style="padding:3px 6px">Payment Status</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right; color:${isPaidFull ? '#15803d' : paidVal > 0 ? '#2563eb' : '#b45309'}">${payStatusText}</td></tr>`
+  );
+  if (payTypeLabel) {
+    summary.push(
+      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Mode</td><td class="n" style="padding:2px 6px; text-align:right">${esc(payTypeLabel)}</td></tr>`
+    );
+  }
+  if (INV.dueDate && !isPaidFull) {
+    summary.push(
+      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Due Date</td><td class="n" style="padding:2px 6px; text-align:right">${dmy(INV.dueDate)}</td></tr>`
+    );
+  }
 
   const isPre = INV.docType === "pre_proforma";
   const docTitle = isPre ? "ORDER BOOKING" : (S.title || "PROFORMA INVOICE");

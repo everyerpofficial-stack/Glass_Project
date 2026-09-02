@@ -383,7 +383,7 @@ function ConfirmPaymentModalBody({
               className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 shadow-md"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Confirm Order & Move to Workflow
+              Confirm Payment & Save Invoice
               <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
             </Button>
           </div>
@@ -584,11 +584,12 @@ function OrderPage() {
         updateInvoiceStatus(targetConfirmInvoice.id, "work_order_generated");
       }
     }
+    const confirmedId = targetConfirmInvoice.id;
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
     setShowForm(false);
-    toast.success(`Order ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} confirmed & sent to workflow!`);
-    navigate({ to: "/order", search: { view: "list" } });
+    toast.success(`Proforma Invoice ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} saved & confirmed successfully!`);
+    navigate({ to: "/invoice", search: { id: confirmedId } });
   };
 
   const handleConfirmOrder = () => {
@@ -781,8 +782,7 @@ function OrderPage() {
                       <th className="py-2.5 px-3 text-center">Items</th>
                       <th className="py-2.5 px-3 text-right">Total Balance</th>
                       <th className="py-2.5 px-3 text-right">Paid Amount</th>
-                      <th className="py-2.5 px-3 text-right">Remaining Balance</th>
-                      <th className="py-2.5 px-3 text-center w-12" title="Order Status">Status</th>
+                      <th className="py-2.5 px-3 text-right font-mono">Remaining Balance</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -842,58 +842,21 @@ function OrderPage() {
                               ₹ {nf(remainingBalance)}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 text-center">
-                            {isConfirmed ? (
-                              <span title="Order Confirmed & Sent to Workflow" className="inline-flex p-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 className="h-4 w-4" />
-                              </span>
-                            ) : (
-                              <span title="Pending Confirmation" className="inline-flex p-1.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                <Clock className="h-4 w-4" />
-                              </span>
-                            )}
-                          </td>
                           <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              {isConfirmed && (
-                                <Button
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
-                                  onClick={() => {
-                                    const existing = workOrders.find((w: any) =>
-                                      workOrderBelongsTo(w, item),
-                                    );
-                                    if (!existing) {
-                                      const wo = generateWorkOrder(item.id);
-                                      if (wo) {
-                                        saveWorkOrder(wo);
-                                        updateInvoiceStatus(item.id, "work_order_generated");
-                                      }
-                                    }
-                                    navigate({ to: "/work-order", search: { woId: item.id } });
-                                  }}
-                                  title="View in Work Order Workflow"
-                                >
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-
-                              {!isConfirmed && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
-                                  onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    setShowForm(true);
-                                    toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
-                                  }}
-                                  title="Edit Proforma Invoice"
-                                >
-                                  <Edit3 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  setShowForm(true);
+                                  toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
+                                }}
+                                title="Edit Proforma Invoice"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </Button>
 
                               <Button
                                 variant="outline"
@@ -1206,23 +1169,11 @@ function OrderPage() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 shadow-sm"
-                onClick={() => {
-                  if (saveInvoice()) {
-                    toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
-                  }
-                }}
-              >
-                <Save className="h-4 w-4" /> Save Invoice
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 shadow-sm"
+                className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 shadow-md"
                 onClick={handleConfirmOrder}
                 disabled={isWorkflowLocked}
               >
-                <CheckCircle2 className="h-4 w-4" /> Confirm Order & Send to Workflow
+                <Save className="h-4 w-4" /> Save Invoice
               </Button>
             </div>
           </div>
