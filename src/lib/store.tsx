@@ -163,6 +163,7 @@ type Ctx = {
   toggleWhatsAppSent: (id: string) => void;
   confirmPreProforma: (id: string) => any;
   updateInvoiceStatus: (id: string, status: WorkflowStatus) => void;
+  markAsDelivered: (id: string) => void;
   confirmOrder: (
     bookingId: string,
     paymentDetails?: {
@@ -861,6 +862,29 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.sheetUrl]);
 
+  const markAsDelivered = useCallback((id: string) => {
+    let updatedRecord: any = null;
+    setInvoices((prev) => {
+      const next = prev.map((x) => {
+        if (x.id === id && !x.delivered) {
+          updatedRecord = {
+            ...x,
+            delivered: true,
+            deliveredAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return updatedRecord;
+        }
+        return x;
+      });
+      LS.set("invoices", next);
+      return next;
+    });
+    if (settings.sheetUrl && updatedRecord) {
+      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+    }
+  }, [settings.sheetUrl]);
+
   const savePayment = useCallback((pay: any) => {
     const rec = {
       ...pay,
@@ -1181,6 +1205,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     toggleWhatsAppSent,
     confirmPreProforma,
     updateInvoiceStatus,
+    markAsDelivered,
     confirmOrder,
     generateWorkOrder,
     getBookingsByStatus,

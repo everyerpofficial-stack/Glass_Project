@@ -32,6 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
@@ -413,6 +421,7 @@ function OrderPage() {
     generateWorkOrder,
     saveWorkOrder,
     updateInvoiceStatus,
+    markAsDelivered,
     deleteInvoice,
     hydrated,
   } = useGQ();
@@ -426,6 +435,7 @@ function OrderPage() {
   const [targetConfirmInvoice, setTargetConfirmInvoice] = useState<any>(null);
   const [detailInvoice, setDetailInvoice] = useState<any | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deliveryConfirmTarget, setDeliveryConfirmTarget] = useState<any | null>(null);
 
   useEffect(() => {
     if (searchParams?.id) {
@@ -783,15 +793,15 @@ function OrderPage() {
                 <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "1050px" }}>
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">Invoice / PI No</th>
-                      <th className="py-2.5 px-3">Order ID</th>
+                      <th className="py-2.5 px-3">PI No</th>
+                      <th className="py-2.5 px-3">Invoice No</th>
                       <th className="py-2.5 px-3">Date & Payment Due</th>
                       <th className="py-2.5 px-3">Customer / M/S Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
-                      <th className="py-2.5 px-3 text-center">Items</th>
-                      <th className="py-2.5 px-3 text-right">Total Balance</th>
-                      <th className="py-2.5 px-3 text-right">Paid Amount</th>
-                      <th className="py-2.5 px-3 text-right font-mono">Remaining Balance</th>
+                      <th className="py-2.5 px-3 text-center">Delivered</th>
+                      <th className="py-2.5 px-3 text-right">Total Amount</th>
+                      <th className="py-2.5 px-3 text-right">Recivied Amount</th>
+                      <th className="py-2.5 px-3 text-right font-mono">Due Amount</th>
                       <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -804,6 +814,8 @@ function OrderPage() {
                       const remainingBalance = Math.max(0, grandTotal - paidAmount);
                       const rawOrder = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
                       const orderId = formatOrderId(rawOrder);
+
+                      const isDelivered = Boolean(item.delivered);
 
                       return (
                         <tr
@@ -840,7 +852,21 @@ function OrderPage() {
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
                             {item.cust?.phone || "—"}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            {isDelivered ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
+                                <CheckCircle2 className="h-3 w-3" /> Yes
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDeliveryConfirmTarget(item)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/40 shadow-2xs transition-all cursor-pointer"
+                              >
+                                <XCircle className="h-3 w-3" /> No
+                              </button>
+                            )}
+                          </td>
                           <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
                             ₹ {nf(grandTotal)}
                           </td>
@@ -1319,6 +1345,46 @@ function OrderPage() {
           setShowForm(true);
         }}
       />
+
+      {/* ── DELIVERY STATUS CONFIRMATION DIALOG ───────────────── */}
+      <Dialog open={Boolean(deliveryConfirmTarget)} onOpenChange={(open) => !open && setDeliveryConfirmTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 border border-emerald-500/30">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">Confirm Order Delivery</DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground pt-1">
+              Are you sure Proforma Invoice <span className="font-mono font-bold text-foreground">#{deliveryConfirmTarget?.no}</span> (Customer: <span className="font-semibold text-foreground">{deliveryConfirmTarget?.cust?.name || "Customer"}</span>) has been <span className="font-bold text-emerald-600">Delivered</span>?
+              <br /><br />
+              <span className="text-rose-600 font-semibold dark:text-rose-400">⚠️ Once confirmed as Delivered, this status cannot be changed or reverted.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex sm:justify-center gap-2 pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-4 text-xs font-semibold"
+              onClick={() => setDeliveryConfirmTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 px-5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md gap-1.5"
+              onClick={() => {
+                if (deliveryConfirmTarget) {
+                  markAsDelivered(deliveryConfirmTarget.id);
+                  toast.success(`Invoice #${deliveryConfirmTarget.no} marked as Delivered!`);
+                  setDeliveryConfirmTarget(null);
+                }
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Yes, Confirm Delivery
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
