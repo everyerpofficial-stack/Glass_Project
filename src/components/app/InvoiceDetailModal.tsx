@@ -205,7 +205,7 @@ export function InvoiceDetailModal({
         </DialogTitle>
 
         {/* ════ HEADER ROW 1: Invoice Info + Actions ════ */}
-        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 border-b border-slate-800/60 shrink-0 flex items-center justify-between gap-4">
+        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 border-b border-slate-800/60 shrink-0 flex items-center justify-between gap-4 print:hidden">
           {/* Left: Invoice identity */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow shrink-0">
@@ -273,7 +273,7 @@ export function InvoiceDetailModal({
         </div>
 
         {/* ════ HEADER ROW 2: Tab Navigation ════ */}
-        <div className="bg-slate-950 px-5 py-1.5 border-b border-slate-800 shrink-0 flex items-center gap-1.5 overflow-x-auto">
+        <div className="bg-slate-950 px-5 py-1.5 border-b border-slate-800 shrink-0 flex items-center gap-1.5 overflow-x-auto print:hidden">
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${

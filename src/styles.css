@@ -231,11 +231,39 @@
 /* ── Print / PDF ─────────────────────────────────────────────────────────── */
 #printroot { display: none; }
 @media print {
-  @page { size: A4 portrait; margin: 10mm 8mm; }
-  body { background: #fff; color: #000; font-size: 9pt; }
-  .app-shell > header, nav, button, .print\:hidden, aside { display: none !important; }
-  main { padding: 0 !important; margin: 0 !important; }
-  .doc-preview { padding: 0 !important; }
+  @page { size: A4 portrait; margin: 8mm 6mm; }
+  body { background: #fff !important; color: #000 !important; font-size: 9pt; }
+  
+  /* Hide all app shell navigation, sidebars, buttons, overlays, and print:hidden items */
+  .app-shell > header, 
+  nav, 
+  button, 
+  aside, 
+  .print\:hidden,
+  [data-slot="dialog-overlay"],
+  .fixed.inset-0 {
+    display: none !important;
+  }
+
+  /* Flatten Radix Dialog container for printing */
+  [role="dialog"],
+  div[data-state="open"] {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  main { padding: 0 !important; margin: 0 !important; background: #fff !important; }
+  .doc-preview { padding: 0 !important; background: #fff !important; }
   #printroot { display: block; }
 
   /* Work Order print */
@@ -244,15 +272,19 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   /* Sticker Labels print */
   .sticker-print-area {
     padding: 0 !important;
   }
-  .sticker-print-area .sticker-label {
-    border-radius: 0 !important;
-    border: 1px dashed #999 !important;
+  .sticker-print-area .sticker-label,
+  .sticker-label {
+    border-radius: 4px !important;
+    border: 1.5px solid #000 !important;
     page-break-inside: avoid;
     break-inside: avoid;
   }
