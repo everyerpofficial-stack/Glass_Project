@@ -676,27 +676,6 @@ function OrderPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
                 </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
-                  onClick={() => {
-                    if (saveInvoice()) {
-                      toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
-                    }
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save Invoice
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
-                  onClick={handleConfirmOrder}
-                  disabled={isWorkflowLocked}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Confirm Order & Send to Workflow
-                </Button>
               </>
             ) : (
               /* RIGHT BUTTON: New Invoice */
@@ -1343,31 +1322,6 @@ function OrderPage() {
                 <div className="flex justify-between py-2 text-sm mt-1 border-t-2 border-border">
                   <span className="text-red-500 font-bold">Grand Total</span>
                   <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">{nf(totals.grandTotal ?? 0)}</span>
-                </div>
-
-                {/* Sidebar Action Buttons */}
-                <div className="pt-3 border-t border-border space-y-2 mt-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="w-full h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
-                    onClick={() => {
-                      if (saveInvoice()) {
-                        toast.success(`Proforma Invoice ${inv.orderNo || inv.no} saved successfully!`);
-                      }
-                    }}
-                  >
-                    <Save className="h-4 w-4" /> Save Invoice
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="w-full h-9 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
-                    onClick={handleConfirmOrder}
-                    disabled={isWorkflowLocked}
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Confirm Order & Send to Workflow
-                  </Button>
                 </div>
 
 
