@@ -209,18 +209,19 @@ export function InvoiceDetailModal({
      approach copied the element's HTML into a blank second window that had no
      stylesheet at all, so the sticker's colour, grid and type sizes were all
      dropped and it printed as plain text. */
-  const printActive = (orientation: "portrait" | "landscape") => {
-    if (!printElement(printRef.current, { orientation })) {
+  const printActive = (orientation: "portrait" | "landscape", margin = "6mm 4mm") => {
+    if (!printElement(printRef.current, { orientation, margin })) {
       toast.error("Nothing to print on this tab yet.");
     }
   };
 
-  const handlePrintProforma = () => printActive("portrait");
-  /* The cut sheet's table is far wider than it is tall. */
-  const handlePrintCutSheet = () => printActive("landscape");
-  const handlePrintStickers = () => printActive("portrait");
+  const handlePrintProforma = () => printActive("portrait", "6mm 4mm");
+  /* The cut sheet's table is far wider than it is tall — print in landscape */
+  const handlePrintCutSheet = () => printActive("landscape", "6mm 4mm");
+  const handlePrintStickers = () => printActive("portrait", "5mm");
 
-  const handlePrintActive = () => printActive(activeTab === "cutsheet" ? "landscape" : "portrait");
+  const handlePrintActive = () =>
+    printActive(activeTab === "cutsheet" ? "landscape" : "portrait", activeTab === "stickers" ? "5mm" : "6mm 4mm");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -581,10 +582,10 @@ export function InvoiceDetailModal({
                 </Button>
               </div>
 
-              <div className="bg-white text-black border border-slate-700 rounded-xl p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto">
+              <div className="bg-white text-black border border-slate-700 rounded-xl p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
                 <div
                   ref={printRef}
-                  className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0"
+                  className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
                   dangerouslySetInnerHTML={{ __html: proformaHTML || "" }}
                 />
               </div>
@@ -609,7 +610,7 @@ export function InvoiceDetailModal({
               ) : (
                 <div
                   ref={printRef}
-                  className="wo-print-area bg-white text-black rounded-xl border border-slate-700 p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto"
+                  className="wo-print-area bg-white text-black rounded-xl border border-slate-700 p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0"
                 >
                   {/* WO Header */}
                   <div className="border-b-2 border-black pb-3 mb-3">
