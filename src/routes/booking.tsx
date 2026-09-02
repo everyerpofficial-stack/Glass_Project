@@ -886,11 +886,14 @@ function BookingPage() {
                           </td>
                           <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
-                              {/* Confirm & Convert Symbol Button */}
+                              {/* Confirm & Convert Action Button */}
                               <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                size="sm"
+                                className={`h-7 px-2 text-[11px] font-bold gap-1 transition-all ${
+                                  isConfirmed
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                }`}
                                 onClick={() => {
                                   const targetPI = confirmPreProforma(item.id);
                                   if (targetPI && targetPI.id) {
@@ -898,9 +901,10 @@ function BookingPage() {
                                     navigate({ to: "/order", search: { view: "form", id: targetPI.id } as any });
                                   }
                                 }}
-                                title="Confirm Order Booking & Open Proforma Invoice"
+                                title={isConfirmed ? "Order Booking Confirmed - Click to open Proforma Invoice" : "Confirm Order Booking & Open Proforma Invoice"}
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
+                                <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
                               </Button>
 
                               {/* Edit Symbol Button */}
