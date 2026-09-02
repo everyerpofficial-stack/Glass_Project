@@ -115,39 +115,46 @@ export function InvoiceDetailModal({
   const { workOrders, settings, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } = useGQ();
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(initialTab);
   const [labelsPerRow, setLabelsPerRow] = useState<number>(4);
+  const [activeWO, setActiveWO] = useState<any>(null);
 
+  /* Unconditional hook: Find existing Work Order for this invoice */
+  const existingWO = useMemo(
+    () => (invoice ? workOrders.find((w: any) => workOrderBelongsTo(w, invoice)) : null),
+    [workOrders, invoice]
+  );
+
+  /* Unconditional hook: Compute totals & proforma HTML */
+  const totals = useMemo(() => (invoice ? computeTotals(settings, invoice) : null), [settings, invoice]);
+  const proformaHTML = useMemo(() => (invoice && totals ? buildPrintHTML(settings, invoice, totals) : ""), [settings, invoice, totals]);
+
+  /* Unconditional hook: Synchronize tab and active work order side-effects safely */
   useEffect(() => {
-    if (open) {
-      setActiveTab(initialTab);
+    if (!open || !invoice) {
+      setActiveWO(null);
+      return;
     }
-  }, [open, initialTab]);
+    setActiveTab(initialTab);
+    if (existingWO) {
+      setActiveWO(existingWO);
+    } else if (invoice.id) {
+      const generated = generateWorkOrder(invoice.id);
+      if (generated) {
+        saveWorkOrder(generated);
+        updateInvoiceStatus(invoice.id, "work_order_generated");
+        setActiveWO(generated);
+      }
+    }
+  }, [open, invoice?.id, existingWO, initialTab, generateWorkOrder, saveWorkOrder, updateInvoiceStatus]);
 
-  if (!invoice) return null;
+  if (!open || !invoice) return null;
 
-  const grandTotal = Number(invoice.totals?.grandTotal || 0);
+  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
   const paidAmount = Number(invoice.paidAmount || 0);
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
   const docTypeLabel = isPre ? "Order Booking" : "Proforma Invoice";
   const dueInfo = getPaymentDueDateInfo(invoice);
-
-  /* Find or generate Work Order for this invoice */
-  const activeWO = useMemo(() => {
-    let wo = workOrders.find((w: any) => workOrderBelongsTo(w, invoice));
-    if (!wo && open && invoice.id) {
-      wo = generateWorkOrder(invoice.id);
-      if (wo) {
-        saveWorkOrder(wo);
-        updateInvoiceStatus(invoice.id, "work_order_generated");
-      }
-    }
-    return wo;
-  }, [workOrders, invoice, open, generateWorkOrder, saveWorkOrder, updateInvoiceStatus]);
-
-  /* Build Printable Proforma HTML */
-  const totals = useMemo(() => computeTotals(settings, invoice), [settings, invoice]);
-  const proformaHTML = useMemo(() => buildPrintHTML(settings, invoice, totals), [settings, invoice, totals]);
 
   /* Product-Grouped Pieces for Work Order Cut Sheet */
   const woProductGroups = useMemo(() => {
