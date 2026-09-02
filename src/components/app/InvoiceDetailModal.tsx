@@ -115,46 +115,28 @@ export function InvoiceDetailModal({
   const { workOrders, settings, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } = useGQ();
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(initialTab);
   const [labelsPerRow, setLabelsPerRow] = useState<number>(4);
-  const [activeWO, setActiveWO] = useState<any>(null);
 
-  /* Unconditional hook: Find existing Work Order for this invoice */
-  const existingWO = useMemo(
-    () => (invoice ? workOrders.find((w: any) => workOrderBelongsTo(w, invoice)) : null),
+  /* Reset tab when modal opens */
+  const invoiceId = invoice?.id;
+  useEffect(() => {
+    if (open) setActiveTab(initialTab);
+  }, [open, invoiceId, initialTab]);
+
+  /* Find existing Work Order (pure lookup, no side effects) */
+  const activeWO = useMemo(
+    () => (invoice ? workOrders.find((w: any) => workOrderBelongsTo(w, invoice)) ?? null : null),
     [workOrders, invoice]
   );
 
-  /* Unconditional hook: Compute totals & proforma HTML */
-  const totals = useMemo(() => (invoice ? computeTotals(settings, invoice) : null), [settings, invoice]);
-  const proformaHTML = useMemo(() => (invoice && totals ? buildPrintHTML(settings, invoice, totals) : ""), [settings, invoice, totals]);
-
-  /* Unconditional hook: Synchronize tab and active work order side-effects safely */
-  useEffect(() => {
-    if (!open || !invoice) {
-      setActiveWO(null);
-      return;
-    }
-    setActiveTab(initialTab);
-    if (existingWO) {
-      setActiveWO(existingWO);
-    } else if (invoice.id) {
-      const generated = generateWorkOrder(invoice.id);
-      if (generated) {
-        saveWorkOrder(generated);
-        updateInvoiceStatus(invoice.id, "work_order_generated");
-        setActiveWO(generated);
-      }
-    }
-  }, [open, invoice?.id, existingWO, initialTab, generateWorkOrder, saveWorkOrder, updateInvoiceStatus]);
-
-  if (!open || !invoice) return null;
-
-  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
-  const paidAmount = Number(invoice.paidAmount || 0);
-  const pendingAmount = Math.max(0, grandTotal - paidAmount);
-  const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
-  const isPre = invoice.docType === "pre_proforma";
-  const docTypeLabel = isPre ? "Order Booking" : "Proforma Invoice";
-  const dueInfo = getPaymentDueDateInfo(invoice);
+  /* Compute totals & proforma HTML */
+  const totals = useMemo(
+    () => (invoice && settings ? computeTotals(settings, invoice) : null),
+    [settings, invoice]
+  );
+  const proformaHTML = useMemo(
+    () => (invoice && totals && settings ? buildPrintHTML(settings, invoice, totals) : ""),
+    [settings, invoice, totals]
+  );
 
   /* Product-Grouped Pieces for Work Order Cut Sheet */
   const woProductGroups = useMemo(() => {
@@ -175,19 +157,41 @@ export function InvoiceDetailModal({
   const stickerLabels = useMemo(() => {
     if (!activeWO || !activeWO.pieces) return [];
     return activeWO.pieces.map((piece: any, idx: number) => ({
-      customer: activeWO.customer || invoice.cust?.name || "Customer",
-      piNo: activeWO.piNo || invoice.no,
-      woNo: activeWO.woNo?.replace("WO-", "") || invoice.orderNo || invoice.no,
+      customer: activeWO.customer || invoice?.cust?.name || "Customer",
+      piNo: activeWO.piNo || invoice?.no,
+      woNo: activeWO.woNo?.replace("WO-", "") || invoice?.orderNo || invoice?.no,
       size: `${piece.heightMM} X ${piece.widthMM}`,
       sn: piece.sr,
       glassType: activeWO.glassDesc || `${activeWO.thickness || 5}mm ${activeWO.productName || "Glass"}`,
       pieceOf: piece.pieceOf || `1 of ${activeWO.pieces.length}`,
       shape: piece.shape || "BLOCK",
       code: `${idx + 1} ${piece.shape === "BLOCK" ? "W1" : "SD1"}`,
-      partyWO: activeWO.orderNo || invoice.orderNo,
+      partyWO: activeWO.orderNo || invoice?.orderNo,
       barcode: piece.barcode || `000${idx + 1}`,
     }));
   }, [activeWO, invoice]);
+
+  /* Early return AFTER all hooks */
+  if (!open || !invoice) return null;
+
+  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
+  const paidAmount = Number(invoice.paidAmount || 0);
+  const pendingAmount = Math.max(0, grandTotal - paidAmount);
+  const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
+  const isPre = invoice.docType === "pre_proforma";
+  const docTypeLabel = isPre ? "Order Booking" : "Proforma Invoice";
+  const dueInfo = getPaymentDueDateInfo(invoice);
+
+  /* Ensure work order exists (called lazily when switching to cut sheet / stickers tab) */
+  const ensureWorkOrder = () => {
+    if (activeWO) return;
+    if (!invoice.id) return;
+    const wo = generateWorkOrder(invoice.id);
+    if (wo) {
+      saveWorkOrder(wo);
+      updateInvoiceStatus(invoice.id, "work_order_generated");
+    }
+  };
 
   const handlePrintActive = () => {
     window.print();
@@ -263,7 +267,7 @@ export function InvoiceDetailModal({
             </button>
 
             <button
-              onClick={() => setActiveTab("cutsheet")}
+              onClick={() => { ensureWorkOrder(); setActiveTab("cutsheet"); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
                 activeTab === "cutsheet"
                   ? "bg-amber-600 text-white shadow-sm"
@@ -275,7 +279,7 @@ export function InvoiceDetailModal({
             </button>
 
             <button
-              onClick={() => setActiveTab("stickers")}
+              onClick={() => { ensureWorkOrder(); setActiveTab("stickers"); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
                 activeTab === "stickers"
                   ? "bg-yellow-500 text-black shadow-sm"
