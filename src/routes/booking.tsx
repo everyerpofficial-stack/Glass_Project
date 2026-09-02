@@ -38,7 +38,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct } from "@/lib/gq";
+import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct, formatOrderId } from "@/lib/gq";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
 const BASE_GLASS_PRODUCTS = [
@@ -854,7 +854,7 @@ function BookingPage() {
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
                             <span className="hover:underline font-bold">
-                              {item.no}
+                              {formatOrderId(item.no)}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>

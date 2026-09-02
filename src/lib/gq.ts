@@ -1043,6 +1043,15 @@ export async function pushAllInChunks(
   return out;
 }
 
+/* Strip OB- prefix to format order numbers cleanly (numbers only) */
+export function formatOrderId(idOrNo: string | undefined | null): string {
+  if (!idOrNo) return "—";
+  const str = String(idOrNo).trim();
+  if (str === "—" || str === "N/A" || str === "" || str === "0") return "—";
+  const clean = str.replace(/^OB-?/i, "").trim();
+  return clean || "—";
+}
+
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
 export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const t = TOT,
@@ -1270,8 +1279,10 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
   const isPre = INV.docType === "pre_proforma";
   const docTitle = isPre ? "ORDER BOOKING" : (S.title || "PROFORMA INVOICE");
-  const noLabel = "Proforma No.";
-  const displayOrderNo = (isPre || INV.status === "draft" || INV.status === "pi_sent" || !INV.orderNo || (isPre && INV.orderNo === INV.no)) ? "—" : INV.orderNo;
+  const noLabel = isPre ? "Order Booking No." : "Proforma No.";
+  const displayNo = isPre ? formatOrderId(INV.no) : (INV.no || "—");
+  const rawOrderNo = INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
+  const displayOrderNo = formatOrderId(rawOrderNo);
 
   return `
     <div class="pdoc">
@@ -1296,7 +1307,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
         <table class="meta" style="border:1px solid #000; border-top:0">
           <tr>
             <td style="width:50%; border:1px solid #000; padding:4px">
-              <b>${noLabel} : ${esc(INV.no)}</b><br>
+              <b>${noLabel} : ${esc(displayNo)}</b><br>
               Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
               Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(displayOrderNo)}
             </td>

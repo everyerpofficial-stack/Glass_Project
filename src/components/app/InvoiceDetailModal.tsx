@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { dmy, nf, getPaymentDueDateInfo, workOrderBelongsTo, buildPrintHTML, computeTotals } from "@/lib/gq";
+import { dmy, nf, getPaymentDueDateInfo, workOrderBelongsTo, buildPrintHTML, computeTotals, formatOrderId } from "@/lib/gq";
 import { useGQ } from "@/lib/store";
 import { printElement } from "@/lib/print";
 import {
@@ -483,7 +483,7 @@ export function InvoiceDetailModal({
                         Booking Reference
                       </div>
                       <div className="font-mono text-foreground mt-0.5">
-                        {invoice.preProformaNo || invoice.orderNo || "—"}
+                        {formatOrderId(invoice.preProformaNo || invoice.orderNo)}
                       </div>
                     </div>
                     <div>

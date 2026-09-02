@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
 import { ListSkeleton } from "@/components/app/DataSkeleton";
-import { nf, dmy, liveWorkOrders, workOrderBelongsTo } from "@/lib/gq";
+import { nf, dmy, liveWorkOrders, workOrderBelongsTo, formatOrderId } from "@/lib/gq";
 import { printElement } from "@/lib/print";
 import { toast } from "sonner";
 
@@ -626,7 +626,7 @@ function WorkOrderPage() {
                 <div className="text-right">
                   <div className="text-lg font-black tracking-wide text-black">WORK ORDER</div>
                   <div className="text-[11px] mt-1 space-y-0.5">
-                    <div><span className="font-bold">Order No :</span> <span className="font-mono text-sm font-bold">{activeWO.orderNo}</span></div>
+                    <div><span className="font-bold">Order No :</span> <span className="font-mono text-sm font-bold">{formatOrderId(activeWO.orderNo)}</span></div>
                     <div><span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}</div>
                     <div><span className="font-bold">Del Date :</span> —</div>
                   </div>

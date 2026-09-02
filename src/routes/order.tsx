@@ -35,7 +35,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid, workOrderBelongsTo } from "@/lib/gq";
+import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid, workOrderBelongsTo, formatOrderId } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -467,7 +467,8 @@ function OrderPage() {
           item.orderNo?.toLowerCase().includes(query) ||
           item.cust?.name?.toLowerCase().includes(query) ||
           item.cust?.phone?.toLowerCase().includes(query) ||
-          item.cust?.gstin?.toLowerCase().includes(query)
+          item.cust?.gstin?.toLowerCase().includes(query) ||
+          formatOrderId(item.preProformaNo).toLowerCase().includes(query)
         );
       }),
     [proformaInvoices, savedSearch]
@@ -801,7 +802,8 @@ function OrderPage() {
                       const grandTotal = Number(item.totals?.grandTotal || 0);
                       const paidAmount = Number(item.paidAmount || 0);
                       const remainingBalance = Math.max(0, grandTotal - paidAmount);
-                      const orderId = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined) || "—";
+                      const rawOrder = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
+                      const orderId = formatOrderId(rawOrder);
 
                       return (
                         <tr
@@ -925,7 +927,7 @@ function OrderPage() {
                 </div>
                 <div>
                   <FieldLabel>Order Booking Ref</FieldLabel>
-                  <Input className="h-8 text-xs font-mono bg-muted/30" value={inv.preProformaNo || "N/A"} readOnly />
+                  <Input className="h-8 text-xs font-mono bg-muted/30" value={formatOrderId(inv.preProformaNo || inv.orderNo)} readOnly />
                 </div>
                 <div>
                   <FieldLabel>P.O. No.</FieldLabel>
