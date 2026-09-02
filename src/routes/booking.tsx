@@ -836,18 +836,18 @@ function BookingPage() {
                       const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
 
                       return (
-                        <tr key={item.id} className="hover:bg-muted/15 transition-colors">
+                        <tr
+                          key={item.id}
+                          className="hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setDetailInvoice(item);
+                            setDetailOpen(true);
+                          }}
+                        >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <button
-                              onClick={() => {
-                                setDetailInvoice(item);
-                                setDetailOpen(true);
-                              }}
-                              className="hover:underline text-left cursor-pointer font-bold"
-                              title="Click to view total details & pending balance"
-                            >
+                            <span className="hover:underline font-bold">
                               {item.no}
-                            </button>
+                            </span>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
                           <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
@@ -858,9 +858,10 @@ function BookingPage() {
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
                             ₹ {nf(item.totals?.grandTotal || 0)}
                           </td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 toggleWhatsAppSent(item.id);
                               }}
                               className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
@@ -883,7 +884,7 @@ function BookingPage() {
                               )}
                             </button>
                           </td>
-                          <td className="py-2.5 px-3 text-right">
+                          <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               {/* Confirm & Convert Symbol Button */}
                               <Button

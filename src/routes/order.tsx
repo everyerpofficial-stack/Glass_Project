@@ -796,18 +796,18 @@ function OrderPage() {
                       const orderId = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined) || "—";
 
                       return (
-                        <tr key={item.id} className="hover:bg-muted/15 transition-colors">
+                        <tr
+                          key={item.id}
+                          className="hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setDetailInvoice(item);
+                            setDetailOpen(true);
+                          }}
+                        >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <button
-                              onClick={() => {
-                                setDetailInvoice(item);
-                                setDetailOpen(true);
-                              }}
-                              className="hover:underline text-left cursor-pointer font-bold"
-                              title="Click to view total details & pending balance"
-                            >
+                            <span className="hover:underline font-bold">
                               {item.no}
-                            </button>
+                            </span>
                           </td>
                           <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
                             {orderId !== "—" ? (
@@ -853,7 +853,7 @@ function OrderPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-right">
+                          <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               {isConfirmed && (
                                 <Button
