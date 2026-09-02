@@ -225,41 +225,41 @@ export function InvoiceDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[98vw] h-[94vh] max-h-[94vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-slate-700/80 shadow-2xl bg-background [&>button.absolute]:hidden">
+      <DialogContent className="max-w-7xl w-[98vw] h-[94vh] max-h-[94vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 shadow-2xl bg-background [&>button.absolute]:hidden">
         <DialogTitle className="sr-only">
           {docTypeLabel} {invoice.no} Details
         </DialogTitle>
 
         {/* ════ HEADER ROW 1: Invoice Info + Actions ════ */}
-        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 border-b border-slate-800/60 shrink-0 flex items-center justify-between gap-4 print:hidden">
+        <div className="bg-card text-card-foreground px-5 py-3 border-b border-border shrink-0 flex items-center justify-between gap-4 print:hidden">
           {/* Left: Invoice identity */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-xs shrink-0">
               <FileText className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-mono font-bold text-emerald-400">
+                <span className="text-sm font-mono font-bold text-primary">
                   #{invoice.no}
                 </span>
-                <span className="text-sm font-bold text-slate-100 truncate max-w-[200px]">
+                <span className="text-sm font-bold text-foreground truncate max-w-[220px]">
                   {invoice.cust?.name || "Customer"}
                 </span>
                 {isPaidFull ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 whitespace-nowrap">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                     ✓ Paid Full
                   </span>
                 ) : paidAmount > 0 ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 whitespace-nowrap">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap">
                     Partial Paid
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap">
                     Credit / Pending
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+              <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
                 Date: {dmy(invoice.date)} &nbsp;•&nbsp; Grand Total: ₹ {nf(grandTotal)}
               </div>
             </div>
@@ -270,7 +270,7 @@ export function InvoiceDetailModal({
             {onEdit && (
               <Button
                 size="sm"
-                className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm"
+                className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs"
                 onClick={() => {
                   onOpenChange(false);
                   onEdit(invoice);
@@ -290,7 +290,7 @@ export function InvoiceDetailModal({
             </Button>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center transition-colors text-xs font-bold"
+              className="w-7 h-7 rounded-lg bg-muted hover:bg-rose-600 text-muted-foreground hover:text-white flex items-center justify-center transition-colors text-xs font-bold"
               title="Close"
             >
               ✕
@@ -299,13 +299,13 @@ export function InvoiceDetailModal({
         </div>
 
         {/* ════ HEADER ROW 2: Tab Navigation ════ */}
-        <div className="bg-slate-950 px-5 py-1.5 border-b border-slate-800 shrink-0 flex items-center gap-1.5 overflow-x-auto print:hidden">
+        <div className="bg-muted/40 px-5 py-1.5 border-b border-border shrink-0 flex items-center gap-1.5 overflow-x-auto print:hidden">
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === "overview"
-                ? "bg-emerald-600 text-white shadow-md"
-                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <BarChart3 className="h-3.5 w-3.5" />
@@ -316,8 +316,8 @@ export function InvoiceDetailModal({
             onClick={() => setActiveTab("proforma")}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === "proforma"
-                ? "bg-blue-600 text-white shadow-md"
-                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <Printer className="h-3.5 w-3.5" />
@@ -328,8 +328,8 @@ export function InvoiceDetailModal({
             onClick={() => { ensureWorkOrder(); setActiveTab("cutsheet"); }}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === "cutsheet"
-                ? "bg-amber-600 text-white shadow-md"
-                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <Factory className="h-3.5 w-3.5" />
@@ -340,8 +340,8 @@ export function InvoiceDetailModal({
             onClick={() => { ensureWorkOrder(); setActiveTab("stickers"); }}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === "stickers"
-                ? "bg-yellow-500 text-black shadow-md"
-                : "text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                ? "bg-yellow-500 text-slate-950 font-bold shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <Tag className="h-3.5 w-3.5" />
@@ -350,7 +350,7 @@ export function InvoiceDetailModal({
         </div>
 
         {/* ════ MAIN MODAL BODY AREA (SCROLLABLE EDGE-TO-EDGE) ════ */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900/30">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20">
 
           {/* ─── TAB 1: OVERVIEW & DETAILS ─── */}
           {activeTab === "overview" && (
@@ -582,7 +582,7 @@ export function InvoiceDetailModal({
                 </Button>
               </div>
 
-              <div className="bg-white text-black border border-slate-700 rounded-xl p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
+              <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-4 sm:p-6 shadow-md max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
                 <div
                   ref={printRef}
                   className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
@@ -610,7 +610,7 @@ export function InvoiceDetailModal({
               ) : (
                 <div
                   ref={printRef}
-                  className="wo-print-area bg-white text-black rounded-xl border border-slate-700 p-4 sm:p-6 shadow-xl max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0"
+                  className="wo-print-area bg-white text-black rounded-xl border border-border/80 p-4 sm:p-6 shadow-md max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0"
                 >
                   {/* WO Header */}
                   <div className="border-b-2 border-black pb-3 mb-3">
