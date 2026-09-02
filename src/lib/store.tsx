@@ -20,6 +20,7 @@ import {
   deletePaymentFromSheet,
   fetchSheetSnapshot,
   nextSeqForPrefix,
+  getNextProformaNo,
   setStorageFailureHandler,
   syncAllToSheet,
   uid,
@@ -390,12 +391,21 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const newInvoice = useCallback((docType: string = "pre_proforma") => {
     /* blankInvoice stamps `<prefix><nextNo>`, so the sequence has to come from
        the numbers already issued for that prefix — see nextSeqForPrefix. */
-    const prefix = docType === "proforma" ? "PI-" : "OB-";
+    if (docType === "proforma") {
+      const piNo = getNextProformaNo(invoices);
+      const blank = blankInvoice(settings, docType);
+      blank.no = piNo;
+      blank.orderNo = piNo;
+      setInvState(blank);
+      toast(`Started new Proforma Invoice (${blank.no})`);
+      return;
+    }
+    const prefix = "OB-";
     const nextNum = nextSeqForPrefix(invoices, prefix);
     const customSettings = { ...settings, nextNo: nextNum };
     const blank = blankInvoice(customSettings, docType);
     setInvState(blank);
-    toast(`Started new ${docType === "proforma" ? "Proforma Invoice" : "Order Booking"} (${blank.no})`);
+    toast(`Started new Order Booking (${blank.no})`);
   }, [invoices, settings]);
 
   const syncOne = useCallback(
@@ -481,6 +491,16 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     const rec = buildRecord(inv, totals);
     rec.status = inv.status || "draft";
     rec.docType = inv.docType || "pre_proforma";
+
+    if (rec.docType === "proforma") {
+      const isYearFormat = /^\d{4}-\d{3,}$/.test(String(rec.no || "").trim());
+      if (!isYearFormat) {
+        const uniqueNo = getNextProformaNo(invoices);
+        rec.no = uniqueNo;
+        rec.orderNo = uniqueNo;
+      }
+    }
+
     /* Until syncOne confirms the write, this edit exists only here. Marking it
        `local` keeps a concurrent background merge from purging it. */
     rec.sync = "local";
@@ -506,7 +526,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       saveCustomer(rec.cust);
     }
 
-    toast.success("Booking " + rec.no + " saved");
+    toast.success((rec.docType === "proforma" ? "Proforma Invoice " : "Booking ") + rec.no + " saved");
     if (settings.sheetUrl) syncOne(rec);
     return true;
   }, [inv, totals, invoices, settings, syncOne, saveCustomer]);
@@ -613,8 +633,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         duplicateOf = already.no || "";
         return prev;
       }
-      const nextSeq = nextSeqForPrefix(prev, "PI-");
-      const piNo = `PI-${nextSeq}`;
+      const piNo = getNextProformaNo(prev);
       newProforma = {
         ...JSON.parse(JSON.stringify(sourceBooking)),
         id: uid("inv-pi"),
@@ -629,7 +648,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      const next = [newProforma, ...prev];
+      const updatedPrev = prev.map((x) => {
+        if (x.id === id) {
+          return {
+            ...x,
+            docType: "proforma_converted",
+            status: "order_confirmed",
+            sync: "local",
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return x;
+      });
+      const next = [newProforma, ...updatedPrev];
       LS.set("invoices", next);
       return next;
     });
@@ -641,11 +672,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       toast.error("Order Booking not found");
       return;
     }
-    toast.success(`Generated new Proforma Invoice ${newProforma.no}!`);
+    toast.success(`Generated new Proforma Invoice ${newProforma.no} from ${newProforma.preProformaNo || "booking"}!`);
     if (settings.sheetUrl) {
       postInvoice(settings.sheetUrl, newProforma).catch(() => {});
+      const sourceBooking = invoices.find((x) => x.id === id);
+      if (sourceBooking) {
+        postInvoice(settings.sheetUrl, {
+          ...sourceBooking,
+          docType: "proforma_converted",
+          status: "order_confirmed",
+        }).catch(() => {});
+      }
     }
-  }, [settings.sheetUrl]);
+  }, [invoices, settings.sheetUrl]);
 
   const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
     let updatedRecord: any = null;

@@ -257,6 +257,26 @@ export function nextSeqForPrefix(records: any[], prefix: string, start = 1001): 
   return max + 1;
 }
 
+export function getNextProformaNo(records: any[], year?: string): string {
+  const y = year || new Date().getFullYear().toString();
+  const prefix = `${y}-`;
+  let max = 0;
+  (records || []).forEach((r: any) => {
+    const no = String((r && (r.no || r.orderNo)) || "");
+    if (no.includes(prefix)) {
+      const parts = no.split(prefix);
+      const suffix = parts[parts.length - 1] || "";
+      const digits = suffix.replace(/\D/g, "");
+      if (digits) {
+        const n = parseInt(digits, 10);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+    }
+  });
+  const nextSeq = max + 1;
+  return `${prefix}${String(nextSeq).padStart(3, "0")}`;
+}
+
 export function loadSettings(): any {
   return Object.assign({}, BASE_SETTINGS, G.DEFAULTS, G.PRESETS.anand, LS.get("settings", {}));
 }

@@ -13,9 +13,6 @@ import {
   Send,
   Printer,
   BarChart3,
-  Mail,
-  MessageSquare,
-  Database,
   Globe,
   Search,
   Edit3,
@@ -330,7 +327,13 @@ function BookingPage() {
   };
 
   const preProformaInvoices = useMemo(
-    () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
+    () =>
+      invoices.filter(
+        (x: any) =>
+          (!x.docType || x.docType === "pre_proforma") &&
+          x.docType !== "proforma_converted" &&
+          x.status !== "order_confirmed"
+      ),
     [invoices]
   );
 
@@ -587,9 +590,8 @@ function BookingPage() {
   const handleAcceptAndMove = () => {
     if (!saveInvoice()) return;
     if (!inv.id) return;
-    updateInvoiceStatus(inv.id, "pi_sent");
-    toast.success("Order Booking generated & sent to customer! Moving to Proforma Invoice.");
-    navigate({ to: "/order", search: { view: undefined } });
+    confirmPreProforma(inv.id);
+    setShowForm(false);
   };
 
   return (
@@ -648,7 +650,6 @@ function BookingPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {showForm ? (
-              <>
                 <Button
                   variant="outline"
                   size="sm"
@@ -658,20 +659,6 @@ function BookingPage() {
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
                 </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-                  onClick={() => {
-                    const ok = saveInvoice();
-                    if (ok) {
-                      setShowForm(false);
-                      toast.success("Order Booking saved successfully!");
-                    }
-                  }}
-                >
-                  <Save className="h-3.5 w-3.5" /> Save
-                </Button>
-              </>
             ) : (
               /* RIGHT BUTTON: New Order Booking */
               <Button
@@ -828,7 +815,6 @@ function BookingPage() {
                                 className="h-7 text-xs px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                                 onClick={() => {
                                   confirmPreProforma(item.id);
-                                  navigate({ to: "/order", search: { view: "list" } });
                                 }}
                                 title="Confirm Order Booking & Send to Proforma Invoice"
                               >
@@ -1666,36 +1652,6 @@ function BookingPage() {
                 </div>
               </div>
             </div>
-
-            {/* Quick Actions Row */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[11px] gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/5 font-semibold"
-                onClick={() => {
-                  const ok = saveInvoice();
-                  if (ok && inv.id) {
-                    toast.success(`Opening PDF view for ${inv.no}...`);
-                    navigate({ to: "/invoice", search: { id: inv.id } });
-                  }
-                }}
-              >
-                <Printer className="h-3 w-3" /> Print / PDF Invoice
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <Mail className="h-3 w-3" /> Email
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <MessageSquare className="h-3 w-3" /> Send SMS
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <FileSpreadsheet className="h-3 w-3" /> Export to Excel
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] gap-1.5 border-sky-500/30 text-sky-600 hover:bg-sky-500/5">
-                <Database className="h-3 w-3" /> Backup
-              </Button>
-            </div>
           </div>
 
           {/* ════ RIGHT COLUMN: Totals Panel ════ */}
@@ -1790,9 +1746,8 @@ function BookingPage() {
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
                     onClick={() => {
                       const ok = saveInvoice();
-                      if (ok) {
-                        setShowForm(false);
-                        toast.success("Order Booking saved successfully!");
+                      if (ok && inv.id) {
+                        navigate({ to: "/invoice", search: { id: inv.id } });
                       }
                     }}
                   >

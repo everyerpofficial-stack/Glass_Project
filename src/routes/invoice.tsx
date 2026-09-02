@@ -2,11 +2,8 @@ import { createFileRoute, useSearch, useNavigate, Link } from "@tanstack/react-r
 import {
   Printer,
   Edit,
-  Copy,
-  FileSpreadsheet,
   ArrowLeft,
   CheckCircle2,
-  Share2,
   MoveHorizontal,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -14,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useGQ } from "@/lib/store";
-import { buildPrintHTML, computeTotals, cur, dmy } from "@/lib/gq";
-import { toast } from "sonner";
+import { buildPrintHTML, computeTotals, dmy } from "@/lib/gq";
 
 export const Route = createFileRoute("/invoice")({
   /* Three routes deep-link here with ?id=. Declaring the schema keeps the param
@@ -30,7 +26,7 @@ export const Route = createFileRoute("/invoice")({
 export function InvoiceViewPage() {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false }) as { id?: string };
-  const { invoices, inv: activeInv, settings, loadInvoice, syncOne } = useGQ();
+  const { invoices, inv: activeInv, settings, loadInvoice } = useGQ();
 
   // Selected invoice record (either from URL search query ?id=... or active inv in state)
   /* A link to ?id=<deleted record> used to fall through to whatever draft was
@@ -55,18 +51,6 @@ export function InvoiceViewPage() {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleCopySummary = () => {
-    const text = `PROFORMA INVOICE: ${targetInv.no}\nCustomer: ${targetInv.cust?.name}\nDate: ${targetInv.date}\nGrand Total: ${cur(totals.grandTotal, settings.currency)}`;
-    /* The Clipboard API rejects on an insecure origin (this app is often opened
-       over http:// on the office LAN) and when permission is denied. The success
-       toast used to fire either way. */
-    Promise.resolve(navigator.clipboard?.writeText(text))
-      .then(() => toast.success("Invoice summary copied to clipboard"))
-      .catch(() =>
-        toast.error("This browser blocked clipboard access — select the invoice text to copy it."),
-      );
   };
 
   return (
@@ -108,11 +92,7 @@ export function InvoiceViewPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopySummary} className="h-9 text-xs">
-            <Share2 className="h-3.5 w-3.5 mr-1" /> Copy Summary
-          </Button>
-
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -125,25 +105,7 @@ export function InvoiceViewPage() {
             <Edit className="h-3.5 w-3.5 mr-1" /> Edit
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              loadInvoice(targetInv.id, true);
-              navigate({ to: isProforma ? "/order" : "/booking", search: { view: "form" } });
-            }}
-            className="h-9 text-xs"
-          >
-            <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
-          </Button>
-
-          {settings.sheetUrl && (
-            <Button variant="outline" size="sm" onClick={() => syncOne(targetInv)} className="h-9 text-xs">
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-emerald-500" /> Sync Sheet
-            </Button>
-          )}
-
-          <Button size="sm" onClick={handlePrint} className="col-span-2 sm:col-span-1 h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground">
+          <Button size="sm" onClick={handlePrint} className="h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground">
             <Printer className="h-4 w-4 mr-1.5" /> Print / Save PDF
           </Button>
         </div>

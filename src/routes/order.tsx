@@ -35,7 +35,7 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, uid } from "@/lib/gq";
+import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -499,7 +499,7 @@ function OrderPage() {
     /* Was `"PI-" + booking.no`, which turned booking OB-1001 into "PI-OB-1001"
        while the Confirm button on the booking list produced "PI-1004" for the
        same operation. Both now draw from the same sequence. */
-    copy.orderNo = "PI-" + nextSeqForPrefix(invoices, "PI-");
+    copy.orderNo = getNextProformaNo(invoices);
     copy.no = copy.orderNo;
     copy.sync = "local";
     copy.date = new Date().toISOString().slice(0, 10);
