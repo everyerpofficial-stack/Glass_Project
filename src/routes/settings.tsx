@@ -14,7 +14,10 @@ import {
   Download,
   Upload,
   Database,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
+import { ConfirmDelete } from "@/components/app/ConfirmDelete";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +51,7 @@ function SettingsPage() {
     customers,
     workOrders,
     payments,
+    clearAllData,
   } = useGQ();
   const [form, setForm] = useState<any>(() => ({ ...settings }));
   const [pinging, setPinging] = useState(false);
@@ -144,6 +148,12 @@ function SettingsPage() {
             >
               <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-emerald-500" />{" "}
               Sheet Sync
+            </TabsTrigger>
+            <TabsTrigger
+              value="reset"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg text-rose-600 font-bold"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-rose-600" /> Clear & Reset Data
             </TabsTrigger>
           </TabsList>
 
@@ -572,6 +582,131 @@ function SettingsPage() {
                         <span className="text-muted-foreground">Payments:</span>
                         <span className="font-mono font-semibold">{payments.length}</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ---------- Tab 5: Clear & Reset Data ---------- */}
+          <TabsContent value="reset" className="space-y-6">
+            <Card className="border-rose-200 dark:border-rose-900/50 shadow-sm">
+              <CardHeader className="bg-rose-50/50 dark:bg-rose-950/20 border-b border-rose-100 dark:border-rose-900/40">
+                <CardTitle className="text-base font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-rose-600" /> Total Data Clear & Database Reset
+                </CardTitle>
+                <CardDescription className="text-xs text-rose-600/80">
+                  Wipe all stored invoices, quotes, customers, work orders, and payment history from the website local storage and Google Sheet database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Option 1: Clear Local Only */}
+                  <div className="rounded-xl border border-border p-4 bg-background space-y-3 flex flex-col justify-between shadow-2xs">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+                        <Trash2 className="h-4 w-4" /> 1. Clear Website Local Data
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Deletes all records stored locally in your browser (localStorage). Does not touch your connected Google Sheet.
+                      </p>
+                    </div>
+                    <ConfirmDelete
+                      title="Clear Website Local Data?"
+                      description="Are you sure you want to delete all invoices, customers, work orders, and payment records saved locally in this browser? This action cannot be undone."
+                      confirmLabel="Clear Local Data"
+                      onConfirm={() => clearAllData({ clearLocal: true, clearSheet: false })}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs font-bold text-amber-600 border-amber-300 hover:bg-amber-50 gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Clear Website Local Data
+                      </Button>
+                    </ConfirmDelete>
+                  </div>
+
+                  {/* Option 2: Clear Sheet Only */}
+                  <div className="rounded-xl border border-border p-4 bg-background space-y-3 flex flex-col justify-between shadow-2xs">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                        <Database className="h-4 w-4" /> 2. Clear Google Sheet Database
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Wipes all data rows across your Google Sheet tables (Invoices, Customers, WorkOrders, Payments).
+                      </p>
+                    </div>
+                    <ConfirmDelete
+                      title="Clear Google Sheet Database?"
+                      description="Are you sure you want to erase all data rows from your connected Google Sheet database? Header rows will be preserved."
+                      confirmLabel="Wipe Sheet Database"
+                      onConfirm={() => clearAllData({ clearLocal: false, clearSheet: true })}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs font-bold text-rose-600 border-rose-300 hover:bg-rose-50 gap-1.5"
+                        disabled={!form.sheetUrl || sheetSyncing}
+                      >
+                        <Database className="h-3.5 w-3.5" /> Clear Sheet Database
+                      </Button>
+                    </ConfirmDelete>
+                  </div>
+
+                  {/* Option 3: Total Master Clear */}
+                  <div className="rounded-xl border-2 border-rose-500/40 p-4 bg-rose-500/5 space-y-3 flex flex-col justify-between shadow-xs">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-extrabold text-sm">
+                        <AlertTriangle className="h-4 w-4 text-rose-600" /> 3. Total Master Clear
+                      </div>
+                      <p className="text-xs text-rose-700/80 dark:text-rose-300/80 font-medium leading-relaxed">
+                        Wipes EVERYTHING: erases all data from both your local website browser storage AND your connected Google Sheet database.
+                      </p>
+                    </div>
+                    <ConfirmDelete
+                      title="⚠️ TOTAL MASTER CLEAR (Website + Database)?"
+                      description="DANGER: This will permanently delete ALL invoices, proforma quotes, customers, work orders, and payment records from BOTH the local website AND the Google Sheet database. This action is completely irreversible."
+                      confirmLabel="TOTAL CLEAR EVERYTHING"
+                      onConfirm={() => clearAllData({ clearLocal: true, clearSheet: true })}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white gap-1.5 shadow-sm"
+                        disabled={sheetSyncing}
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" /> TOTAL CLEAR (Website + Database)
+                      </Button>
+                    </ConfirmDelete>
+                  </div>
+                </div>
+
+                {/* Data Counter Card */}
+                <div className="rounded-xl bg-muted/40 border border-border p-4 space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                    <span>Current Database Record Count</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">Real-time store snapshot</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                    <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">Invoices & PIs:</span>
+                      <span className="font-mono font-bold text-foreground text-sm">{invoices.length}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">Customers:</span>
+                      <span className="font-mono font-bold text-foreground text-sm">{customers.length}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">Work Orders:</span>
+                      <span className="font-mono font-bold text-foreground text-sm">{workOrders.length}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">Payments:</span>
+                      <span className="font-mono font-bold text-foreground text-sm">{payments.length}</span>
                     </div>
                   </div>
                 </div>

@@ -113,7 +113,7 @@ var WORKORDER_HEADERS = [
   "totalSqm",
   "totalSqft",
   "weightKg",
-  "createdAt",
+  "createdAt",m
   "fullJSON",
 ];
 
@@ -231,6 +231,9 @@ function doPost(e) {
         break;
       case "syncAll":
         result = handleSyncAll_(body);
+        break;
+      case "clearAll":
+        result = handleClearAll_();
         break;
       default:
         result = { success: false, message: "Unknown POST action: " + action };
@@ -513,6 +516,26 @@ function handleDeletePayment_(id) {
     return { success: true, id: id, action: "deleted" };
   }
   return { success: false, message: "Payment not found: " + id };
+}
+
+/* ---------- Clear All Database Records ---------- */
+function handleClearAll_() {
+  var sheets = [
+    { name: SHEET_INVOICES, headers: INVOICE_HEADERS },
+    { name: SHEET_CUSTOMERS, headers: CUSTOMER_HEADERS },
+    { name: SHEET_WORKORDERS, headers: WORKORDER_HEADERS },
+    { name: SHEET_PAYMENTS, headers: PAYMENT_HEADERS },
+  ];
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = getOrCreateSheet_(sheets[i].name, sheets[i].headers);
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.deleteRows(2, lastRow - 1);
+      invalidateRowIndex_(sheet);
+    }
+  }
+  return { success: true, action: "clearAll", message: "All database sheets wiped clean" };
 }
 
 /* ---------- Save Customer ---------- */

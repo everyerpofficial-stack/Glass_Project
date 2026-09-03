@@ -20,6 +20,7 @@ import {
   computeTotals,
   loadSettings,
   postInvoice,
+  clearAllSheetData,
   postCustomer,
   postWorkOrder,
   postPayment,
@@ -186,6 +187,7 @@ type Ctx = {
   payments: any[];
   savePayment: (p: any) => void;
   deletePayment: (id: string) => void;
+  clearAllData: (options?: { clearLocal?: boolean; clearSheet?: boolean }) => Promise<void>;
 };
 
 const GQ = createContext<Ctx | null>(null);
@@ -1239,6 +1241,66 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.sheetUrl, invoices, customers, workOrders, payments]);
 
+  const clearAllData = useCallback(
+    async (options: { clearLocal?: boolean; clearSheet?: boolean } = { clearLocal: true, clearSheet: true }) => {
+      const doLocal = options.clearLocal !== false;
+      const doSheet = options.clearSheet !== false;
+
+      setSheetSyncing(true);
+      let sheetSuccess = false;
+      let sheetErr = "";
+
+      if (doSheet && settings.sheetUrl) {
+        try {
+          await clearAllSheetData(settings.sheetUrl);
+          sheetSuccess = true;
+        } catch (err: any) {
+          sheetErr = err?.message || String(err);
+        }
+      }
+
+      if (doLocal) {
+        setInvoices([]);
+        setCustomers([]);
+        setWorkOrders([]);
+        setPayments([]);
+        tombstones.current = {};
+        invoicesRef.current = [];
+
+        LS.set("invoices", []);
+        LS.set("customers", []);
+        LS.set("workOrders", []);
+        LS.set("payments", []);
+        LS.set("tombstones", {});
+        LS.remove("gq_draft_v1");
+
+        const freshInv = blankInvoice(settings);
+        setInvState(freshInv);
+      }
+
+      setSheetSyncing(false);
+
+      if (doLocal && doSheet) {
+        if (sheetSuccess) {
+          toast.success("Total Clear Complete! Both local website data and Google Sheet database have been wiped clean.");
+        } else if (settings.sheetUrl) {
+          toast.error(`Local website data cleared, but Google Sheet clear failed: ${sheetErr}`);
+        } else {
+          toast.success("Local website data cleared clean!");
+        }
+      } else if (doLocal) {
+        toast.success("Local website data cleared clean!");
+      } else if (doSheet) {
+        if (sheetSuccess) {
+          toast.success("Google Sheet database wiped clean!");
+        } else {
+          toast.error(`Failed to clear Google Sheet: ${sheetErr}`);
+        }
+      }
+    },
+    [settings],
+  );
+
   const value: Ctx = {
     hydrated,
     settings,
@@ -1276,6 +1338,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     generateWorkOrder,
     getBookingsByStatus,
     saveWorkOrder,
+    clearAllData,
   };
 
   return <GQ.Provider value={value}>{children}</GQ.Provider>;

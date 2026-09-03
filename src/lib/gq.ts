@@ -318,6 +318,18 @@ export const LS = {
       return false;
     }
   },
+  del(k: string) {
+    try {
+      localStorage.removeItem("gq." + k);
+      localStorage.removeItem(k);
+    } catch {}
+  },
+  remove(k: string) {
+    try {
+      localStorage.removeItem("gq." + k);
+      localStorage.removeItem(k);
+    } catch {}
+  },
 };
 
 /* Next sequence number for a document prefix.
@@ -963,6 +975,10 @@ function sheetPost(
    `oversized` flag instead of just knowing that "it saved". */
 export function postInvoice(sheetUrl: string, rec: any): Promise<any> {
   return sheetPost(sheetUrl, { action: "saveInvoice", invoice: rec });
+}
+
+export function clearAllSheetData(sheetUrl: string): Promise<any> {
+  return sheetPost(sheetUrl, { action: "clearAll" });
 }
 
 /* A delete the sheet answers with "not found" has already happened — that is a
