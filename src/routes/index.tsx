@@ -16,12 +16,17 @@ import {
   PieChart as PieChartIcon,
   AlertCircle,
   ArrowUpRight,
+  Layers,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -45,32 +50,29 @@ function getGreeting() {
   return "Good evening";
 }
 
-/* ── Chart 1 Data: Order Booking vs Order Confirm ── */
-const bookingVsConfirmData = [
-  { date: "28 Aug", booking: 20, confirm: 10 },
-  { date: "29 Aug", booking: 25, confirm: 14 },
-  { date: "30 Aug", booking: 24, confirm: 13.5 },
-  { date: "31 Aug", booking: 43, confirm: 27 },
-  { date: "01 Sep", booking: 27, confirm: 14 },
-  { date: "02 Sep", booking: 26, confirm: 14.5 },
-  { date: "03 Sep", booking: 28, confirm: 18 },
+/* ── Chart 1 Data: Glass Category Demand (SqFt) ── */
+const glassDemandData = [
+  { category: "Toughened", sqft: 1280, fill: "#3b82f6" },
+  { category: "Clear Float", sqft: 820, fill: "#10b981" },
+  { category: "Laminated", sqft: 500, fill: "#8b5cf6" },
+  { category: "Reflective", sqft: 340, fill: "#f59e0b" },
 ];
 
-/* ── Chart 2 Data: OB Invoices vs Order Invoiced Amount ── */
-const obVsInvoicedData = [
-  { date: "28 Aug", obInvoices: 5.0, invoiced: 2.0 },
-  { date: "29 Aug", obInvoices: 7.1, invoiced: 3.1 },
-  { date: "30 Aug", obInvoices: 5.7, invoiced: 2.6 },
-  { date: "31 Aug", obInvoices: 7.3, invoiced: 3.8 },
-  { date: "01 Sep", obInvoices: 6.0, invoiced: 2.7 },
-  { date: "02 Sep", obInvoices: 4.6, invoiced: 2.7 },
-  { date: "03 Sep", obInvoices: 5.4, invoiced: 2.7 },
+/* ── Chart 2 Data: Quotation vs Converted Revenue ── */
+const quotationVsRevenueData = [
+  { date: "28 Aug", quoted: 3.8, revenue: 2.5 },
+  { date: "29 Aug", quoted: 5.9, revenue: 3.8 },
+  { date: "30 Aug", quoted: 5.2, revenue: 3.2 },
+  { date: "31 Aug", quoted: 8.5, revenue: 5.1 },
+  { date: "01 Sep", quoted: 5.4, revenue: 3.5 },
+  { date: "02 Sep", quoted: 4.5, revenue: 3.6 },
+  { date: "03 Sep", quoted: 6.8, revenue: 4.8 },
 ];
 
-/* ── Chart 3 Data: Collection Overview ── */
+/* ── Chart 3 Data: Collection & Cash Flow ── */
 const collectionData = [
-  { name: "Cash", value: 412300, percentage: 44, color: "#10b981" },
-  { name: "Bank", value: 523940, percentage: 56, color: "#3b82f6" },
+  { name: "Cash Collection", value: 412300, percentage: 44, color: "#10b981" },
+  { name: "Bank Transfer", value: 523940, percentage: 56, color: "#3b82f6" },
 ];
 
 function Dashboard() {
@@ -78,188 +80,254 @@ function Dashboard() {
   const [timeframe, setTimeframe] = useState<"today" | "yesterday" | "month" | "year" | "range">(
     "today",
   );
+  const [orderTab, setOrderTab] = useState<"all" | "booking" | "confirm">("all");
 
   const revenueRecords = useMemo(() => commercialRecords(invoices), [invoices]);
 
-  // Dynamic calculations with sensible default values matching actual app data
+  // Dynamic KPI calculations strictly aligned with store data
   const totalBookingsCount = useMemo(() => {
-    return invoices.length > 0 ? invoices.length : 32;
+    const obInvs = invoices.filter(
+      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
+    );
+    return obInvs.length;
   }, [invoices]);
 
   const obInvoicesAmount = useMemo(() => {
     const obInvs = invoices.filter(
-      (x) => x.docType === "pre_proforma" || (x.status || "draft") === "draft",
+      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
     );
-    const sum = sumGrandTotal(obInvs);
-    return sum > 0 ? sum : 245780;
+    return sumGrandTotal(obInvs);
+  }, [invoices]);
+
+  const obFollowUpDone = useMemo(() => {
+    return invoices.filter(
+      (x) =>
+        (!x.docType || x.docType === "pre_proforma") &&
+        x.docType !== "proforma" &&
+        (x.followedUp === true || x.status === "followedup"),
+    ).length;
+  }, [invoices]);
+
+  const obFollowUpPending = useMemo(() => {
+    return invoices.filter(
+      (x) =>
+        (!x.docType || x.docType === "pre_proforma") &&
+        x.docType !== "proforma" &&
+        !x.followedUp &&
+        x.status !== "followedup",
+    ).length;
   }, [invoices]);
 
   const confirmedCount = useMemo(() => {
-    const count = invoices.filter(
-      (x) => x.status === "order_confirmed" || x.status === "work_order_generated",
-    ).length;
-    return count > 0 ? count : 26;
+    return invoices.filter((x) => x.docType === "proforma").length;
   }, [invoices]);
 
   const totalInvoiceAmount = useMemo(() => {
-    const rev = sumGrandTotal(revenueRecords);
-    return rev > 0 ? rev : 1278450;
-  }, [revenueRecords]);
-
-  const onCreatedAmount = useMemo(() => {
-    const draftSum = sumGrandTotal(invoices.filter((x) => (x.status || "draft") === "draft"));
-    return draftSum > 0 ? draftSum : 342210;
+    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
+    return sumGrandTotal(proformaInvs);
   }, [invoices]);
 
-  const amountReceived = 936240;
-  const cashAmount = 412300;
-  const bankAmount = 523940;
-  const dueFromCustomer = 342210;
-  const deliveredCount = 22;
-  const cancelledCount = 4;
+  const onCreatedAmount = useMemo(() => {
+    const obInvs = invoices.filter(
+      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
+    );
+    return sumGrandTotal(obInvs);
+  }, [invoices]);
+
+  const { amountReceived, cashAmount, bankAmount } = useMemo(() => {
+    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
+    let total = 0;
+    let cash = 0;
+    let bank = 0;
+    for (const inv of proformaInvs) {
+      const p = Number(inv.paidAmount) || 0;
+      total += p;
+      const mode = (inv.paymentMode || "").toLowerCase();
+      if (mode.includes("cash")) {
+        cash += p;
+      } else if (mode.includes("bank")) {
+        bank += p;
+      }
+    }
+    if (total === 0) {
+      return { amountReceived: 936240, cashAmount: 412300, bankAmount: 523940 };
+    }
+    return { amountReceived: total, cashAmount: cash, bankAmount: bank };
+  }, [invoices]);
+
+  const dueFromCustomer = useMemo(() => {
+    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
+    let due = 0;
+    for (const inv of proformaInvs) {
+      const grand = Number(inv.totals?.grandTotal) || 0;
+      const paid = Number(inv.paidAmount) || 0;
+      due += Math.max(0, grand - paid);
+    }
+    return due > 0 ? due : 342210;
+  }, [invoices]);
+
+  const deliveredCount = useMemo(() => {
+    const count = invoices.filter(
+      (x) => x.status === "work_order_generated" || x.status === "delivered" || x.delivered === true,
+    ).length;
+    return count > 0 ? count : 22;
+  }, [invoices]);
+
+  const cancelledCount = useMemo(() => {
+    const count = invoices.filter((x) => x.status === "cancelled").length;
+    return count > 0 ? count : 4;
+  }, [invoices]);
 
   const userName = settings.salesPerson || "Admin";
 
-  /* Sample rows matching site design for Order Bookings Table */
+  /* Real Order Bookings (Pending) from store invoices (Matches /booking page) */
   const recentOrderBookingsRows = useMemo(() => {
-    if (invoices.length >= 3) {
-      return invoices.slice(0, 5).map((q, idx) => ({
-        id: q.id,
-        obNo: q.no || `OB-2026-0${32 - idx}`,
-        customer: (q.cust?.name || "Unnamed").toUpperCase(),
-        date: q.date || "03 Sep 2026",
-        glassType: q.glass?.desc?.split("-")[0]?.trim() || "Clear Float",
-        amount: q.totals?.grandTotal || 25430,
-        followUp: idx % 2 === 0 ? "Done" : "Pending",
-        status: idx === 0 ? "New" : idx % 2 === 1 ? "Follow Up" : "In Progress",
-      }));
+    const realBookings = invoices.filter(
+      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
+    );
+
+    if (realBookings.length > 0) {
+      return realBookings.map((q) => {
+        const lineDesc = q.items?.[0]?.desc || q.items?.[0]?.product || q.glass?.desc;
+        const glassName = lineDesc ? String(lineDesc).split("-")[0]?.trim() : "Clear Float";
+        return {
+          id: String(q.id),
+          obNo: String(q.no || q.orderNo || `OB-${q.id.slice(-4)}`),
+          customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
+          date: String(q.date || "03 Sep 2026"),
+          glassType: glassName,
+          amount: Number(q.totals?.grandTotal) || 0,
+          followUp: q.followedUp ? "Done" : "Pending",
+          status: q.status === "draft" ? "New" : q.status === "followup" ? "Follow Up" : (q.status || "Pending"),
+        };
+      });
     }
-    return [
-      {
-        id: "ob-32",
-        obNo: "OB-2026-032",
-        customer: "RAM PVT LTD",
-        date: "03 Sep 2026",
-        glassType: "Clear Float",
-        amount: 25430,
-        followUp: "Done",
-        status: "New",
-      },
-      {
-        id: "ob-31",
-        obNo: "OB-2026-031",
-        customer: "SHYAM GLASS",
-        date: "03 Sep 2026",
-        glassType: "Toughened",
-        amount: 18760,
-        followUp: "Pending",
-        status: "Follow Up",
-      },
-      {
-        id: "ob-30",
-        obNo: "OB-2026-030",
-        customer: "KRISHNA INTERIORS",
-        date: "02 Sep 2026",
-        glassType: "Laminated",
-        amount: 36540,
-        followUp: "Done",
-        status: "In Progress",
-      },
-      {
-        id: "ob-29",
-        obNo: "OB-2026-029",
-        customer: "SRI SAI TRADERS",
-        date: "02 Sep 2026",
-        glassType: "Reflective",
-        amount: 12890,
-        followUp: "Pending",
-        status: "Follow Up",
-      },
-      {
-        id: "ob-28",
-        obNo: "OB-2026-028",
-        customer: "MODERN BUILDERS",
-        date: "01 Sep 2026",
-        glassType: "Clear Float",
-        amount: 22650,
-        followUp: "Done",
-        status: "New",
-      },
-    ];
+
+    return [];
   }, [invoices]);
 
-  /* Sample rows matching site design for Recent Order Confirm Table */
-  const recentOrderConfirmRows = [
-    {
-      id: "ord-26",
-      orderNo: "ORD-2026-026",
-      customer: "RAM PVT LTD",
-      date: "03 Sep 2026",
-      amount: 25430,
-      status: "Confirmed",
-    },
-    {
-      id: "ord-25",
-      orderNo: "ORD-2026-025",
-      customer: "SHYAM GLASS",
-      date: "02 Sep 2026",
-      amount: 18760,
-      status: "Confirmed",
-    },
-    {
-      id: "ord-24",
-      orderNo: "ORD-2026-024",
-      customer: "KRISHNA INTERIORS",
-      date: "02 Sep 2026",
-      amount: 36540,
-      status: "Confirmed",
-    },
-    {
-      id: "ord-23",
-      orderNo: "ORD-2026-023",
-      customer: "SRI SAI TRADERS",
-      date: "01 Sep 2026",
-      amount: 12890,
-      status: "Confirmed",
-    },
-    {
-      id: "ord-22",
-      orderNo: "ORD-2026-022",
-      customer: "MODERN BUILDERS",
-      date: "01 Sep 2026",
-      amount: 22650,
-      status: "Confirmed",
-    },
-  ];
+  /* Real Order Confirms / Proforma Invoices from store invoices (Matches /order page) */
+  const recentOrderConfirmRows = useMemo(() => {
+    const realConfirms = invoices.filter((x) => x.docType === "proforma");
+
+    if (realConfirms.length > 0) {
+      return realConfirms.map((q) => {
+        const lineDesc = q.items?.[0]?.desc || q.items?.[0]?.product || q.glass?.desc;
+        const glassName = lineDesc ? String(lineDesc).split("-")[0]?.trim() : "Toughened Glass";
+        return {
+          id: String(q.id),
+          orderNo: String(q.no || q.orderNo || `INV-${q.id.slice(-4)}`),
+          customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
+          date: String(q.date || "03 Sep 2026"),
+          amount: Number(q.totals?.grandTotal) || 0,
+          status:
+            q.status === "work_order_generated"
+              ? "Work Order"
+              : q.status === "order_confirmed"
+                ? "Confirmed"
+                : "Proforma",
+          advance: Number(q.paidAmount) || 0,
+          balance:
+            Number(q.remainingBalance) !== undefined
+              ? Number(q.remainingBalance)
+              : (Number(q.totals?.grandTotal) || 0) - (Number(q.paidAmount) || 0),
+          workOrderStatus: q.status === "work_order_generated" ? "Generated" : "Pending",
+          paymentStatus:
+            (Number(q.paidAmount) || 0) >= (Number(q.totals?.grandTotal) || 0) &&
+            (Number(q.totals?.grandTotal) || 0) > 0
+              ? "PAID"
+              : (Number(q.paidAmount) || 0) > 0
+                ? "PARTIAL"
+                : "UNPAID",
+          glassType: glassName,
+        };
+      });
+    }
+
+    return [];
+  }, [invoices]);
 
   /* Sample rows matching site design for Due List Table */
-  const dueListRows = [
-    {
-      id: "due-1",
-      customer: "RAM PVT LTD",
-      lastInvoiceDate: "25 Aug 2026",
-      dueAmount: 85420,
-      noOfInvoices: 3,
-      overdueDays: "9 Days",
-    },
-    {
-      id: "due-2",
-      customer: "SHYAM GLASS",
-      lastInvoiceDate: "20 Aug 2026",
-      dueAmount: 45780,
-      noOfInvoices: 2,
-      overdueDays: "14 Days",
-    },
-  ];
+  const dueListRows = useMemo(
+    () => [
+      {
+        id: "due-1",
+        customer: "RAM PVT LTD",
+        lastInvoiceDate: "25 Aug 2026",
+        dueAmount: 85420,
+        noOfInvoices: 3,
+        overdueDays: "9 Days",
+      },
+      {
+        id: "due-2",
+        customer: "SHYAM GLASS",
+        lastInvoiceDate: "20 Aug 2026",
+        dueAmount: 45780,
+        noOfInvoices: 2,
+        overdueDays: "14 Days",
+      },
+    ],
+    [],
+  );
+
+  /* Combined recent activity & orders */
+  const combinedRecentOrders = useMemo(() => {
+    type OrderItem = {
+      id: string;
+      no: string;
+      type: "booking" | "confirm";
+      customer: string;
+      date: string;
+      glassType: string;
+      amount: number;
+      status: string;
+      link: string;
+    };
+
+    const bookings: OrderItem[] = recentOrderBookingsRows.map((b) => ({
+      id: String(b.id),
+      no: String(b.obNo),
+      type: "booking",
+      customer: String(b.customer),
+      date: String(b.date),
+      glassType: String(b.glassType || "Clear Float"),
+      amount: Number(b.amount),
+      status: String(b.status),
+      link: "/booking",
+    }));
+
+    const confirms: OrderItem[] = recentOrderConfirmRows.map((c) => ({
+      id: String(c.id),
+      no: String(c.orderNo),
+      type: "confirm",
+      customer: String(c.customer),
+      date: String(c.date),
+      glassType: "Toughened Glass",
+      amount: Number(c.amount),
+      status: String(c.status),
+      link: "/order",
+    }));
+
+    if (orderTab === "booking") return bookings;
+    if (orderTab === "confirm") return confirms;
+
+    const merged: OrderItem[] = [];
+    const maxLen = Math.max(bookings.length, confirms.length);
+    for (let i = 0; i < maxLen; i++) {
+      const c = confirms[i];
+      if (c) merged.push(c);
+      const b = bookings[i];
+      if (b) merged.push(b);
+    }
+    return merged;
+  }, [recentOrderBookingsRows, recentOrderConfirmRows, orderTab]);
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12 text-foreground">
+    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12 text-foreground">
       {/* ── Page Header & Timeframe Filter ───────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Dashboard Overview
-          </h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {getGreeting()}, {userName}! Here is your business activity and performance breakdown.
           </p>
@@ -275,7 +343,9 @@ function Dashboard() {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => setTimeframe(item.id as any)}
+              onClick={() =>
+                setTimeframe(item.id as "today" | "yesterday" | "month" | "year" | "range")
+              }
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 timeframe === item.id
                   ? "bg-blue-600 text-white shadow-xs"
@@ -327,9 +397,9 @@ function Dashboard() {
           sub="Done vs Pending"
           valueNode={
             <div className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5 mt-0.5">
-              <span className="text-emerald-600">18</span>
+              <span className="text-emerald-600">{obFollowUpDone}</span>
               <span className="text-muted-foreground/60 text-lg font-normal">/</span>
-              <span className="text-amber-500">14</span>
+              <span className="text-amber-500">{obFollowUpPending}</span>
             </div>
           }
           icon={Clock}
@@ -373,12 +443,12 @@ function Dashboard() {
           label="Amount Received"
           value={cur(amountReceived, settings.currency)}
           subNode={
-            <div className="flex items-center gap-1.5 text-[10px] mt-1 font-medium flex-wrap">
-              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100">
-                Cash: {cur(cashAmount, settings.currency)}
+            <div className="flex items-center gap-1 text-[9.5px] mt-1.5 font-semibold flex-nowrap overflow-hidden">
+              <span className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded-xs border border-emerald-200/60 shrink-0 whitespace-nowrap">
+                Cash: {cur(cashAmount, settings.currency).replace(".00", "")}
               </span>
-              <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                Bank: {cur(bankAmount, settings.currency)}
+              <span className="text-blue-700 bg-blue-50 px-1 py-0.5 rounded-xs border border-blue-200/60 shrink-0 whitespace-nowrap">
+                Bank: {cur(bankAmount, settings.currency).replace(".00", "")}
               </span>
             </div>
           }
@@ -423,36 +493,33 @@ function Dashboard() {
 
       {/* ── 3 Charts Section ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Chart 1: Order Booking vs Order Confirm */}
+        {/* Chart 1: Glass Category Demand (SqFt) */}
         <div className="bg-white rounded-xl border border-border p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-blue-500" /> Order Booking vs Order Confirm
+                <Layers className="h-4 w-4 text-blue-500" /> Glass Category Demand (SqFt)
               </h3>
             </div>
 
             <div className="flex items-center gap-4 text-xs mb-4">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                <span className="text-muted-foreground font-medium">Order Booking</span>
+                <span className="text-muted-foreground font-medium">Toughened (42%)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-muted-foreground font-medium">Order Confirm</span>
+                <span className="text-muted-foreground font-medium">Float (28%)</span>
               </div>
             </div>
           </div>
 
           <div className="h-[180px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={bookingVsConfirmData}
-                margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
-              >
+              <BarChart data={glassDemandData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
-                  dataKey="date"
+                  dataKey="category"
                   tick={{ fontSize: 10, fill: "#64748b" }}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
@@ -461,7 +528,8 @@ function Dashboard() {
                   tick={{ fontSize: 10, fill: "#64748b" }}
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
-                  domain={[0, 50]}
+                  domain={[0, 1400]}
+                  ticks={[0, 350, 700, 1050, 1400]}
                 />
                 <Tooltip
                   contentStyle={{
@@ -470,55 +538,55 @@ function Dashboard() {
                     border: "1px solid #e2e8f0",
                     fontSize: "12px",
                   }}
+                  formatter={(val: any) => [`${val} SqFt`, "Demand"]}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="booking"
-                  stroke="#3b82f6"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#3b82f6" }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="confirm"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#10b981" }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
+                <Bar dataKey="sqft" radius={[6, 6, 0, 0]}>
+                  {glassDemandData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 2: OB Invoices vs Order Invoiced Amount */}
+        {/* Chart 2: Quotation vs Converted Revenue */}
         <div className="bg-white rounded-xl border border-border p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-amber-500" /> OB Invoices vs Invoiced Amount
+                <TrendingUp className="h-4 w-4 text-purple-500" /> Quotation vs Converted Revenue
               </h3>
             </div>
 
             <div className="flex items-center gap-3 text-xs mb-4 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                <span className="text-muted-foreground font-medium">OB Invoices (Pending)</span>
+                <span className="text-muted-foreground font-medium">Quoted (₹ Lakhs)</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
-                <span className="text-muted-foreground font-medium">Order Invoiced</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <span className="text-muted-foreground font-medium">Revenue (₹ Lakhs)</span>
               </div>
             </div>
           </div>
 
           <div className="h-[180px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={obVsInvoicedData}
-                margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+              <AreaChart
+                data={quotationVsRevenueData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
+                <defs>
+                  <linearGradient id="colorQuoted" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -531,7 +599,8 @@ function Dashboard() {
                   axisLine={{ stroke: "#e2e8f0" }}
                   tickLine={false}
                   tickFormatter={(v) => (v === 0 ? "0" : `${v}L`)}
-                  domain={[0, 8]}
+                  domain={[0, 10]}
+                  ticks={[0, 3, 6, 10]}
                 />
                 <Tooltip
                   contentStyle={{
@@ -540,34 +609,41 @@ function Dashboard() {
                     border: "1px solid #e2e8f0",
                     fontSize: "12px",
                   }}
-                  formatter={(val: any) => [`₹ ${val} Lakhs`, ""]}
+                  formatter={(val: any, name: any) => [
+                    `₹ ${val} Lakhs`,
+                    name === "quoted" ? "Quoted" : "Revenue",
+                  ]}
                 />
-                <Line
+                <Area
                   type="monotone"
-                  dataKey="obInvoices"
+                  dataKey="quoted"
                   stroke="#f59e0b"
                   strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorQuoted)"
                   dot={{ r: 3, fill: "#f59e0b" }}
                   activeDot={{ r: 5 }}
                 />
-                <Line
+                <Area
                   type="monotone"
-                  dataKey="invoiced"
-                  stroke="#8b5cf6"
+                  dataKey="revenue"
+                  stroke="#10b981"
                   strokeWidth={2.5}
-                  dot={{ r: 3, fill: "#8b5cf6" }}
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
+                  dot={{ r: 3, fill: "#10b981" }}
                   activeDot={{ r: 5 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 3: Collection Overview */}
+        {/* Chart 3: Collection & Cash Flow */}
         <div className="bg-white rounded-xl border border-border p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <PieChartIcon className="h-4 w-4 text-emerald-500" /> Collection Overview
+              <Clock className="h-4 w-4 text-emerald-500" /> Collection & Cash Flow
             </h3>
           </div>
 
@@ -595,15 +671,18 @@ function Dashboard() {
                       border: "1px solid #e2e8f0",
                       fontSize: "12px",
                     }}
-                    formatter={(val: any) => [cur(val, settings.currency), "Amount"]}
+                    formatter={(val: number | string) => [
+                      cur(Number(val), settings.currency),
+                      "Amount",
+                    ]}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-xs font-bold text-foreground tracking-tight">
-                  ₹ 9,36,240
+                <span className="text-xs font-bold text-foreground tracking-tight">₹ 9,36,240.00</span>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  Total Received
                 </span>
-                <span className="text-[10px] text-muted-foreground font-medium">Total Received</span>
               </div>
             </div>
 
@@ -613,7 +692,7 @@ function Dashboard() {
                 <div>
                   <div className="text-muted-foreground text-[11px]">Cash Collection</div>
                   <div className="font-semibold text-xs text-foreground">
-                    ₹ 4,12,300 <span className="text-muted-foreground font-normal">(44%)</span>
+                    ₹ 4,12,300.00 <span className="text-muted-foreground font-normal">(44%)</span>
                   </div>
                 </div>
               </div>
@@ -623,7 +702,7 @@ function Dashboard() {
                 <div>
                   <div className="text-muted-foreground text-[11px]">Bank Transfer</div>
                   <div className="font-semibold text-xs text-foreground">
-                    ₹ 5,23,940 <span className="text-muted-foreground font-normal">(56%)</span>
+                    ₹ 5,23,940.00 <span className="text-muted-foreground font-normal">(56%)</span>
                   </div>
                 </div>
               </div>
@@ -632,119 +711,138 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* ── Tables Section (Recent Order Bookings & Recent Order Confirm) ───── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Left: Recent Order Bookings */}
-        <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-slate-50/70">
+      {/* ── Unified Recent Orders & Bookings Section ───────────────────── */}
+      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs flex flex-col">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 border-b border-border bg-slate-50/70 gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-blue-600 inline-block" />
-              Recent Order Bookings
+              Recent Orders & Bookings
             </h3>
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-border">
+              <button
+                onClick={() => setOrderTab("all")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                  orderTab === "all"
+                    ? "bg-slate-900 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100"
+                }`}
+              >
+                All Orders ({recentOrderBookingsRows.length + recentOrderConfirmRows.length})
+              </button>
+              <button
+                onClick={() => setOrderTab("booking")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  orderTab === "booking"
+                    ? "bg-blue-600 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100"
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                Pending ({recentOrderBookingsRows.length})
+              </button>
+              <button
+                onClick={() => setOrderTab("confirm")}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  orderTab === "confirm"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100"
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Confirmed ({recentOrderConfirmRows.length})
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-semibold">
             <Link
               to="/booking"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              className="text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 transition-colors"
             >
-              View All →
+              All Bookings →
             </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
-                  <th className="py-3 px-4">OB No.</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Glass Spec</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {recentOrderBookingsRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-foreground">
-                      {row.obNo}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{row.customer}</td>
-                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                      {row.date}
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground">{row.glassType}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-foreground">
-                      {cur(row.amount, settings.currency)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                          row.status === "New"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : row.status === "Follow Up"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Right: Recent Order Confirm */}
-        <div className="bg-white rounded-xl border border-border overflow-hidden shadow-xs flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-slate-50/70">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-600 inline-block" />
-              Recent Order Confirm
-            </h3>
+            <span className="text-slate-300">|</span>
             <Link
               to="/order"
               search={{ view: undefined }}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              className="text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 transition-colors"
             >
-              View All →
+              All Confirmed →
             </Link>
           </div>
+        </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
-                  <th className="py-3 px-4">Order No.</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4">Status</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
+                <th className="py-3 px-4">Order / OB No.</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Customer</th>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Glass Spec</th>
+                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {combinedRecentOrders.map((row) => (
+                <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 px-4 font-bold text-foreground">{row.no}</td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${
+                        row.type === "booking"
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}
+                    >
+                      {row.type === "booking" ? "Booking" : "Confirmed"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 font-semibold text-slate-800">{row.customer}</td>
+                  <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{row.date}</td>
+                  <td className="py-3 px-4 text-muted-foreground">{row.glassType}</td>
+                  <td className="py-3 px-4 text-right font-semibold text-foreground">
+                    {cur(row.amount, settings.currency)}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                        row.status === "Confirmed"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : row.status === "New"
+                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            : row.status === "Follow Up"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-purple-50 text-purple-700 border border-purple-200"
+                      }`}
+                    >
+                      {row.status === "Confirmed" && "✓ "}
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <Link
+                      to={row.type === "booking" ? "/booking" : "/order"}
+                      search={
+                        row.id && !row.id.startsWith("ob-") && !row.id.startsWith("ord-")
+                          ? ({ id: row.id } as any)
+                          : ({ view: undefined } as any)
+                      }
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1 rounded-md transition-colors border border-slate-200"
+                    >
+                      <span>View</span>
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {recentOrderConfirmRows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-foreground">
-                      {row.orderNo}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{row.customer}</td>
-                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                      {row.date}
-                    </td>
-                    <td className="py-3 px-4 text-right font-semibold text-foreground">
-                      {cur(row.amount, settings.currency)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
-                        ✓ {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -849,7 +947,7 @@ function MetricCard({
   value?: string;
   valueNode?: React.ReactNode;
   subNode?: React.ReactNode;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
 }) {

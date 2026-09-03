@@ -95,7 +95,7 @@ function SettingsPage() {
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
       {/* ---------- Top Header ---------- */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

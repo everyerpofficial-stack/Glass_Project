@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import {
   Plus,
   Trash2,
+  Ban,
   Save,
   RefreshCw,
   Copy,
@@ -1012,19 +1013,23 @@ function BookingPage() {
                                 <Printer className="h-3.5 w-3.5" />
                               </Button>
 
-                              {/* Delete Symbol Button */}
+                              {/* Cancel Booking Button */}
                               <ConfirmDelete
-                                title={`Delete Order Booking ${item.no}?`}
-                                description={`This permanently removes ${item.no} (${item.cust?.name || "no customer"}) from this device and from your Google Sheet, along with any work order generated from it. This cannot be undone.`}
-                                onConfirm={() => deleteInvoice(item.id)}
+                                title={`Cancel Order Booking ${item.no}?`}
+                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? The booking status will be changed to Cancelled.`}
+                                confirmLabel="Cancel Booking"
+                                onConfirm={() => {
+                                  updateInvoiceStatus(item.id, "cancelled" as any);
+                                  toast.info(`Order Booking ${item.no} set to Cancelled`);
+                                }}
                               >
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                                  title="Delete"
+                                  className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                  title="Cancel Booking"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Ban className="h-3.5 w-3.5" />
                                 </Button>
                               </ConfirmDelete>
                             </div>
