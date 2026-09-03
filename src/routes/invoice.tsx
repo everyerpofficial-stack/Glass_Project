@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useGQ } from "@/lib/store";
-import { buildPrintHTML, computeTotals, dmy } from "@/lib/gq";
+import { buildPrintHTML, computeTotals, dmy, formatPiNo } from "@/lib/gq";
 import { printElement } from "@/lib/print";
 
 export const Route = createFileRoute("/invoice")({
@@ -65,14 +65,14 @@ export function InvoiceViewPage() {
             <Link to={isProforma ? "/order" : "/booking"}>
               <ArrowLeft className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">
-                {isProforma ? "Back to Proforma Invoices" : "Back to Order Bookings"}
+                {isProforma ? "Back to Order Confirms" : "Back to Proforma Invoices"}
               </span>
             </Link>
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground truncate">
-                {isProforma ? "Proforma Invoice" : "Order Booking"} #{targetInv.no}
+                {isProforma ? "Order Confirm" : "Proforma Invoice"} #{formatPiNo(targetInv.no)}
               </h1>
               {targetInv.sync === "synced" ? (
                 <Badge

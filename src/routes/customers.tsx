@@ -55,7 +55,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankInvoice, commercialRecords, dmy, nf, today } from "@/lib/gq";
+import { blankInvoice, commercialRecords, dmy, isCancelled, nf, today } from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customers")({
@@ -202,7 +202,7 @@ function CustomersPage() {
       ...blankInvoice(settings),
       cust: { ...c },
     }));
-    toast.success(`Started Order Booking for ${c.name}`);
+    toast.success(`Started Proforma Invoice for ${c.name}`);
     navigate({ to: "/booking" });
   };
 
@@ -227,8 +227,15 @@ function CustomersPage() {
     );
   }, [payments, viewCust]);
 
+  /* The list above still shows cancelled documents — that is the point of
+     cancelling rather than deleting — but they must not be billed for. Without
+     this a cancelled order kept inflating Total Invoiced, and the Due Balance
+     underneath (Total Invoiced minus Total Paid) inherited it, so the customer
+     appeared to owe money for an order that was called off. */
   const totalInvoicedForViewCust = useMemo(() => {
-    return customerInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0);
+    return customerInvoices
+      .filter((item) => !isCancelled(item))
+      .reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0);
   }, [customerInvoices]);
 
   const totalPaidForViewCust = useMemo(() => {
@@ -1073,7 +1080,7 @@ function CustomersPage() {
                       <Edit3 className="h-3.5 w-3.5 mr-1" /> Edit Customer Info
                     </Button>
                     <Button size="sm" onClick={() => createQuoteForCust(viewCust)}>
-                      <PlusCircle className="h-3.5 w-3.5 mr-1" /> Create Order Booking
+                      <PlusCircle className="h-3.5 w-3.5 mr-1" /> Create Proforma Invoice
                     </Button>
                   </div>
                 </TabsContent>
@@ -1106,8 +1113,8 @@ function CustomersPage() {
                               <td className="p-2.5 font-sans">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
                                   {inv.docType === "proforma"
-                                    ? "Proforma Invoice"
-                                    : "Order Booking"}
+                                    ? "Order Confirm"
+                                    : "Proforma Invoice"}
                                 </span>
                               </td>
                               <td className="p-2.5 text-center font-sans">
@@ -1117,14 +1124,22 @@ function CustomersPage() {
                                 ₹ {nf(inv.totals?.grandTotal || 0)}
                               </td>
                               <td className="p-2.5 text-center font-sans">
+                                {/* Cancelled rows stay listed but no longer feed
+                                    Total Invoiced, so they have to look
+                                    different or the ledger looks like it lost
+                                    money. */}
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    inv.status === "order_confirmed"
-                                      ? "bg-emerald-500/10 text-emerald-600"
-                                      : "bg-amber-500/10 text-amber-600"
+                                    isCancelled(inv)
+                                      ? "bg-rose-500/10 text-rose-600"
+                                      : inv.status === "order_confirmed"
+                                        ? "bg-emerald-500/10 text-emerald-600"
+                                        : "bg-amber-500/10 text-amber-600"
                                   }`}
                                 >
-                                  {inv.status || "Draft"}
+                                  {isCancelled(inv)
+                                    ? "Cancelled (not billed)"
+                                    : inv.status || "Draft"}
                                 </span>
                               </td>
                               <td className="p-2.5 text-right font-sans">

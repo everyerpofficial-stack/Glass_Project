@@ -28,7 +28,6 @@ import {
   deleteWorkOrderFromSheet,
   deletePaymentFromSheet,
   fetchSheetSnapshot,
-  nextSeqForPrefix,
   getNextProformaNo,
   getNextOrderNo,
   hasEnteredRateForInvoice,
@@ -40,7 +39,11 @@ import {
 import type { SheetTabResult } from "./gq";
 
 /* ── Workflow status types ────────────────────────────────────────────── */
-export type WorkflowStatus = "draft" | "pi_sent" | "order_confirmed" | "work_order_generated";
+/* `cancelled` was being passed through `as any` at every call site because it
+   was missing here, which is also why nothing downstream — revenue, dues,
+   reports — ever learned to exclude it. */
+export type WorkflowStatus =
+  "draft" | "pi_sent" | "order_confirmed" | "work_order_generated" | "cancelled";
 
 /* How often the background poll looks for edits made on another device, and the
    floor between any two syncs (focus/visibility/interval all share it). */
@@ -200,6 +203,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const syncInFlight = useRef(false);
+  /* See patchInvoice: a cursor over `invoices` that also moves within a single
+     handler, so two workflow mutations in the same tick cannot undo each other. */
+  const invoicesRef = useRef<any[]>([]);
   const lastSyncAttempt = useRef(0);
   /* Deletions the sheet has not confirmed yet. Held in a ref because the merge
      runs inside setState updaters, which must see the latest value rather than
@@ -284,17 +290,6 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     const samplePreProforma = buildRecord(
       { ...SAMPLE_INVOICE_07321, docType: "pre_proforma" },
-      computeTotals(s, SAMPLE_INVOICE_07321),
-    );
-    const sampleProforma = buildRecord(
-      {
-        ...SAMPLE_INVOICE_07321,
-        id: "inv-pi-07321",
-        no: "PI-07321",
-        orderNo: "PI-07321",
-        docType: "proforma",
-        delivery: { paymentType: "Paid" },
-      },
       computeTotals(s, SAMPLE_INVOICE_07321),
     );
     const savedInvoices = LS.get<any[] | null>("invoices", null);
@@ -512,7 +507,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       blank.orderNo = "";
       blank.preProformaNo = "";
       setInvState(blank);
-      const typeLabel = docType === "proforma" ? "Proforma Invoice" : "Order Booking";
+      const typeLabel = docType === "proforma" ? "Order Confirm" : "Proforma Invoice";
       toast(`Started new ${typeLabel} (${blank.no})`);
     },
     [invoices, settings],
@@ -657,7 +652,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
 
     toast.success(
-      (rec.docType === "proforma" ? "Proforma Invoice " : "Booking ") + rec.no + " saved",
+      (rec.docType === "proforma" ? "Order Confirm " : "Proforma Invoice ") + rec.no + " saved",
     );
     if (settings.sheetUrl) syncOne(rec);
     return true;
@@ -765,154 +760,192 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     );
   }, [invoices, syncOne]);
 
-  /* ── Workflow helpers ────────────────────────────────────────────── */
+  /* ── Workflow helpers ──────────────────────────────────────────────
 
-  const toggleWhatsAppSent = useCallback((id: string) => {
-    let nextState = false;
-    setInvoices((prev) => {
-      const next = prev.map((x) => {
-        if (x.id === id) {
-          nextState = !x.whatsappSent;
-          return { ...x, whatsappSent: nextState };
-        }
-        return x;
-      });
-      LS.set("invoices", next);
-      return next;
-    });
-    if (nextState) {
-      toast.success("Follow Up status set to Yes ✓");
-    } else {
-      toast.info("Follow Up status set to No");
-    }
-  }, []);
+     Every helper below follows the same shape, and it is not incidental.
 
-  const confirmPreProforma = useCallback(
-    (id: string) => {
-      let newProforma: any = null;
-      let duplicateOf: any = null;
+     They each used to assign the record they had just changed to a variable
+     declared *inside* a `setInvoices` updater, then read that variable on the
+     next line to decide what to send to the sheet. A state updater does not run
+     on the line that schedules it — React defers it to render — so the variable
+     was still `null` and the `if (… && record)` guard silently skipped the
+     write. React does compute an updater eagerly when the component has no
+     other update pending, which is why this worked *most* of the time and
+     failed exactly when a second state change had already been queued in the
+     same handler: the confirm-order flow, where the work-order status flip
+     follows the payment write.
+
+     The damage was invisible and permanent. The change landed in state and in
+     localStorage but never reached Google Sheets, and because
+     mergeSheetCollection treats a row the sheet returns as authoritative, the
+     next 30-second background poll pulled the old row back and reverted it. The
+     live sheet still shows the fingerprints: 10 invoices carry a work order but
+     not one is marked `work_order_generated`, no invoice has a non-zero
+     `paidAmount` despite a recorded payment, and that payment row was written
+     with `custName: "Customer"` and the record *id* in place of the invoice
+     number — the exact fallbacks taken when the variable was null.
+
+     So: read the record first, apply a patch through the updater (so it lands
+     on the freshest row even if state moved underneath), and push the record we
+     actually built. `sync: "local"` on the patch is what stops a concurrent
+     merge from reverting the change before the write lands. */
+
+  /* Persist one invoice row and settle its sync flag. Routing every workflow
+     mutation through here is what keeps a change from being left marked
+     `local` forever after a failed write. */
+  const pushInvoice = useCallback(
+    (rec: any) => {
+      if (!settings.sheetUrl || !rec?.id) return;
+      postInvoice(settings.sheetUrl, rec)
+        .then(() => markSynced(setInvoices, "invoices", rec.id))
+        .catch(() => markPending(setInvoices, "invoices", rec.id));
+    },
+    [settings.sheetUrl],
+  );
+
+  /* The list the workflow helpers read from. It tracks `invoices` on every
+     render and is also moved forward by each patch, so a second mutation in the
+     same handler sees the first. Re-assigning on render is safe under
+     StrictMode's double invocation: it writes the same value twice. */
+  invoicesRef.current = invoices;
+
+  const findInvoice = useCallback(
+    (id: string) => invoicesRef.current.find((x) => String(x.id) === String(id)) || null,
+    [],
+  );
+
+  /* Apply a patch to one invoice, persist it, and push it to the sheet.
+
+     Reads through `invoicesRef` rather than the `invoices` render snapshot
+     because two workflow mutations can run in the same handler. Confirming an
+     order does exactly that: confirmOrder writes the payment, then
+     updateInvoiceStatus flips the record to `work_order_generated`. Off the
+     render snapshot the second call cannot see the first, so it would push a
+     record still carrying the old zero `paidAmount` — and being the later
+     write, it would land last and undo the payment on the sheet. That is the
+     very failure this pass exists to remove, so the cursor has to move with
+     each patch, not once per render. */
+  const patchInvoice = useCallback(
+    (id: string, patch: Record<string, any>, base?: any) => {
+      const target = base || findInvoice(id);
+      if (!target) return null;
+      const full = { ...patch, sync: "local", updatedAt: new Date().toISOString() };
+      const apply = (rows: any[]) => rows.map((x) => (x.id === id ? { ...x, ...full } : x));
+      invoicesRef.current = apply(invoicesRef.current);
       setInvoices((prev) => {
-        const sourceBooking = prev.find((x) => x.id === id);
-        if (!sourceBooking) return prev;
-        const bookingNo = String(sourceBooking.no || "");
-        const already = prev.find(
-          (x) =>
-            x.docType === "proforma" &&
-            bookingNo &&
-            (String(x.no || "") === bookingNo || String(x.preProformaNo || "") === bookingNo),
-        );
-        if (already) {
-          duplicateOf = already;
-          return prev;
-        }
-
-        const newOrderNo = getNextOrderNo(prev);
-        const piNo = sourceBooking.no || getNextProformaNo(prev);
-
-        newProforma = {
-          ...JSON.parse(JSON.stringify(sourceBooking)),
-          id: uid("inv-pi"),
-          docType: "proforma",
-          no: piNo,
-          orderNo: newOrderNo,
-          preProformaNo: newOrderNo,
-          status: "order_confirmed",
-          sync: "local",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const updatedPrev = prev.map((x) => {
-          if (x.id === id) {
-            return {
-              ...x,
-              docType: "proforma_converted",
-              status: "order_confirmed",
-              orderNo: newOrderNo,
-              preProformaNo: newOrderNo,
-              sync: "local",
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return x;
-        });
-        const next = [newProforma, ...updatedPrev];
+        const next = apply(prev);
         LS.set("invoices", next);
         return next;
       });
-      if (duplicateOf) {
-        toast.info(
-          `Opening existing Proforma Invoice ${duplicateOf.no || duplicateOf} for this booking.`,
-        );
-        return duplicateOf;
+      const updated = { ...target, ...full };
+      pushInvoice(updated);
+      return updated;
+    },
+    [findInvoice, pushInvoice],
+  );
+
+  const toggleWhatsAppSent = useCallback(
+    (id: string) => {
+      const target = findInvoice(id);
+      if (!target) return;
+      const nextState = !target.whatsappSent;
+      patchInvoice(id, { whatsappSent: nextState }, target);
+      if (nextState) {
+        toast.success("Follow Up status set to Yes ✓");
+      } else {
+        toast.info("Follow Up status set to No");
       }
-      if (!newProforma) {
-        toast.error("Order Booking not found");
+    },
+    [findInvoice, patchInvoice],
+  );
+
+  const confirmPreProforma = useCallback(
+    (id: string) => {
+      /* Decided before the updater runs, so the caller gets a real record back.
+         Previously the whole decision lived inside the updater and every branch
+         below read a variable that was still null, so the button reported
+         "not found" and returned null even on the conversions that succeeded —
+         which is why /booking never navigated to the new document. */
+      const sourceBooking = findInvoice(id);
+      if (!sourceBooking) {
+        toast.error("Proforma Invoice not found");
         return null;
       }
+
+      const bookingNo = String(sourceBooking.no || "");
+      const duplicateOf = invoicesRef.current.find(
+        (x) =>
+          x.docType === "proforma" &&
+          bookingNo &&
+          (String(x.no || "") === bookingNo || String(x.preProformaNo || "") === bookingNo),
+      );
+      if (duplicateOf) {
+        toast.info(`Opening existing Order Confirm ${duplicateOf.no} for this Proforma Invoice.`);
+        return duplicateOf;
+      }
+
+      const newOrderNo = getNextOrderNo(invoicesRef.current);
+      const piNo = sourceBooking.no || getNextProformaNo(invoicesRef.current);
+      const stamp = new Date().toISOString();
+
+      const newProforma = {
+        ...JSON.parse(JSON.stringify(sourceBooking)),
+        id: uid("inv-pi"),
+        docType: "proforma",
+        no: piNo,
+        orderNo: newOrderNo,
+        preProformaNo: newOrderNo,
+        status: "order_confirmed",
+        sync: "local",
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      const sourcePatch = {
+        docType: "proforma_converted",
+        status: "order_confirmed" as WorkflowStatus,
+        orderNo: newOrderNo,
+        preProformaNo: newOrderNo,
+        sync: "local",
+        updatedAt: stamp,
+      };
+
+      const apply = (rows: any[]) => [
+        newProforma,
+        ...rows.map((x) => (x.id === id ? { ...x, ...sourcePatch } : x)),
+      ];
+      invoicesRef.current = apply(invoicesRef.current);
+      setInvoices((prev) => {
+        const next = apply(prev);
+        LS.set("invoices", next);
+        return next;
+      });
+
       toast.success(
         `Confirmed! Assigned Order No. ${newProforma.orderNo} for PI ${newProforma.no}`,
       );
-      if (settings.sheetUrl) {
-        postInvoice(settings.sheetUrl, newProforma).catch(() => {});
-        const sourceBooking = invoices.find((x) => x.id === id);
-        if (sourceBooking) {
-          postInvoice(settings.sheetUrl, {
-            ...sourceBooking,
-            docType: "proforma_converted",
-            status: "order_confirmed",
-          }).catch(() => {});
-        }
-      }
+      pushInvoice(newProforma);
+      /* The booking's own row has to go up too — it now says "converted", and a
+         sheet that still calls it a live booking double-counts the order. */
+      pushInvoice({ ...sourceBooking, ...sourcePatch });
       return newProforma;
     },
-    [invoices, settings.sheetUrl],
+    [findInvoice, pushInvoice],
   );
 
   const updateInvoiceStatus = useCallback(
     (id: string, status: WorkflowStatus) => {
-      let updatedRecord: any = null;
-      setInvoices((prev) => {
-        const next = prev.map((x) => {
-          if (x.id === id) {
-            updatedRecord = { ...x, status };
-            return updatedRecord;
-          }
-          return x;
-        });
-        LS.set("invoices", next);
-        return next;
-      });
-      if (settings.sheetUrl && updatedRecord) {
-        postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
-      }
+      patchInvoice(id, { status });
     },
-    [settings.sheetUrl],
+    [patchInvoice],
   );
 
   const markAsDelivered = useCallback(
     (id: string) => {
-      let updatedRecord: any = null;
-      setInvoices((prev) => {
-        const next = prev.map((x) => {
-          if (x.id === id && !x.delivered) {
-            updatedRecord = {
-              ...x,
-              delivered: true,
-              deliveredAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            return updatedRecord;
-          }
-          return x;
-        });
-        LS.set("invoices", next);
-        return next;
-      });
-      if (settings.sheetUrl && updatedRecord) {
-        postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
-      }
+      const target = findInvoice(id);
+      if (!target || target.delivered) return;
+      patchInvoice(id, { delivered: true, deliveredAt: new Date().toISOString() }, target);
     },
-    [settings.sheetUrl],
+    [findInvoice, patchInvoice],
   );
 
   const savePayment = useCallback(
@@ -956,55 +989,53 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         dueDate?: string;
       },
     ) => {
-      let targetRecord: any = null;
+      /* This is the flow the live sheet caught red-handed. The record was built
+         inside the updater, so the payment row below was written with the
+         "Customer" / record-id fallbacks and the sheet write at the end was
+         skipped outright — the confirmed amount never left the device, and the
+         next background merge pulled the unpaid row back over it. */
+      const target = findInvoice(bookingId);
+      if (!target) {
+        toast.error("Order Confirm record not found");
+        return;
+      }
 
-      setInvoices((prev) => {
-        const next = prev.map((x) => {
-          if (x.id === bookingId) {
-            const grandTotal = Number(x.totals?.grandTotal) || 0;
-            const paidAmount = Number(paymentDetails?.paidAmount ?? x.paidAmount ?? 0);
-            const remainingBalance = Math.max(0, grandTotal - paidAmount);
-            let paymentStatus = "Credit";
-            if (paidAmount >= grandTotal && grandTotal > 0) {
-              paymentStatus = "Paid";
-            } else if (paidAmount > 0) {
-              paymentStatus = "Partially Paid";
-            }
-            const paymentType = paymentDetails?.paymentType || x.delivery?.paymentType || "Credit";
+      const grandTotal = Number(target.totals?.grandTotal) || 0;
+      const paidAmount = Number(paymentDetails?.paidAmount ?? target.paidAmount ?? 0);
+      const remainingBalance = Math.max(0, grandTotal - paidAmount);
+      let paymentStatus = "Credit";
+      if (paidAmount >= grandTotal && grandTotal > 0) {
+        paymentStatus = "Paid";
+      } else if (paidAmount > 0) {
+        paymentStatus = "Partially Paid";
+      }
+      const paymentType = paymentDetails?.paymentType || target.delivery?.paymentType || "Credit";
 
-            const updatedDelivery = {
-              ...(x.delivery || {}),
-              paymentType,
-              paymentTerm: paymentType,
-            };
-
-            const updated = {
-              ...x,
-              docType: "proforma",
-              status: "order_confirmed" as WorkflowStatus,
-              delivery: updatedDelivery,
-              paidAmount,
-              remainingBalance,
-              paymentStatus,
-              paymentRef: paymentDetails?.refNo !== undefined ? paymentDetails.refNo : x.paymentRef,
-              paymentNotes:
-                paymentDetails?.notes !== undefined ? paymentDetails.notes : x.paymentNotes,
-              dueDate: paymentDetails?.dueDate !== undefined ? paymentDetails.dueDate : x.dueDate,
-            };
-            targetRecord = updated;
-            return updated;
-          }
-          return x;
-        });
-        LS.set("invoices", next);
-        return next;
-      });
+      const updated = patchInvoice(
+        bookingId,
+        {
+          docType: "proforma",
+          status: "order_confirmed" as WorkflowStatus,
+          delivery: { ...(target.delivery || {}), paymentType, paymentTerm: paymentType },
+          paidAmount,
+          remainingBalance,
+          paymentStatus,
+          paymentRef:
+            paymentDetails?.refNo !== undefined ? paymentDetails.refNo : target.paymentRef,
+          paymentNotes:
+            paymentDetails?.notes !== undefined ? paymentDetails.notes : target.paymentNotes,
+          dueDate: paymentDetails?.dueDate !== undefined ? paymentDetails.dueDate : target.dueDate,
+        },
+        target,
+      );
 
       if (paymentDetails && Number(paymentDetails.paidAmount) > 0) {
         savePayment({
           id: uid("pay"),
-          custName: targetRecord?.cust?.name || "Customer",
-          invoiceNo: targetRecord?.no || bookingId,
+          custName: updated?.cust?.name || target.cust?.name || "Customer",
+          /* The document number, not the record id. The one payment on the live
+             sheet carries an id here because this read the null variable. */
+          invoiceNo: updated?.no || target.no || bookingId,
           date: new Date().toISOString().slice(0, 10),
           amount: Number(paymentDetails.paidAmount),
           mode: paymentDetails.paymentType || "Credit",
@@ -1015,11 +1046,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
 
       toast.success("Order confirmed & payment details saved!");
-      if (settings.sheetUrl && targetRecord) {
-        postInvoice(settings.sheetUrl, targetRecord).catch(() => {});
-      }
     },
-    [savePayment, settings.sheetUrl],
+    [findInvoice, patchInvoice, savePayment],
   );
 
   const generateWorkOrder = useCallback(

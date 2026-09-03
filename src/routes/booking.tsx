@@ -196,68 +196,22 @@ function PRow({
 
 /* ─── Remark Selector Cell ────────────────────────────────────────── */
 function RemarkCell({ value, onChange }: { value: string; onChange: (val: string) => void }) {
-  const PRESETS = ["BLOCK", "DESIGN", "DRAWING"];
-  const isPreset = PRESETS.includes(value) || value === "";
-  const [isCustomMode, setIsCustomMode] = useState(!isPreset && Boolean(value));
-
-  useEffect(() => {
-    if (!PRESETS.includes(value) && value !== "") {
-      setIsCustomMode(true);
-    }
-  }, [value]);
-
-  if (isCustomMode) {
-    return (
-      <div className="flex items-center gap-1 min-w-[110px]">
-        <Input
-          type="text"
-          autoFocus
-          className="h-8 text-xs w-full bg-background font-medium"
-          value={value}
-          placeholder="Enter custom remark..."
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-          title="Select from dropdown"
-          onClick={() => {
-            setIsCustomMode(false);
-            onChange("BLOCK");
-          }}
-        >
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <Select
-      value={value || "BLOCK"}
-      onValueChange={(val) => {
-        if (val === "__custom__") {
-          setIsCustomMode(true);
-          onChange("");
-        } else {
-          onChange(val);
-        }
-      }}
-    >
-      <SelectTrigger className="h-8 text-xs w-full min-w-[110px] bg-background border-border font-medium">
-        <SelectValue placeholder="Select Remark" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="BLOCK">BLOCK</SelectItem>
-        <SelectItem value="DESIGN">DESIGN</SelectItem>
-        <SelectItem value="DRAWING">DRAWING</SelectItem>
-        <SelectItem value="__custom__" className="font-semibold text-primary">
-          + Custom Remark...
-        </SelectItem>
-      </SelectContent>
-    </Select>
+    <>
+      <Input
+        type="text"
+        list="remark-presets"
+        className="h-8 text-xs min-w-[110px] w-full bg-background font-medium"
+        value={value || ""}
+        placeholder="Enter custom remark..."
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <datalist id="remark-presets">
+        <option value="BLOCK" />
+        <option value="DESIGN" />
+        <option value="DRAWING" />
+      </datalist>
+    </>
   );
 }
 
@@ -687,7 +641,7 @@ function BookingPage() {
   const handleSendPI = () => {
     if (!saveInvoice()) return;
     if (inv.id) updateInvoiceStatus(inv.id, "pi_sent");
-    toast.success("Order Booking saved & sent to customer for confirmation");
+    toast.success("Proforma Invoice saved & sent to customer for confirmation");
   };
 
   const handleAcceptAndMove = () => {
@@ -709,14 +663,14 @@ function BookingPage() {
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          1. Order Booking
+          1. Proforma Invoice
         </Link>
         <Link
           to="/order"
           search={{ view: undefined }}
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
         >
-          2. Proforma Invoice
+          2. Order Confirm
         </Link>
       </div>
 
@@ -734,16 +688,16 @@ function BookingPage() {
                   onClick={() => setShowForm(false)}
                   className="hover:text-foreground transition-colors"
                 >
-                  Order Booking
+                  Proforma Invoice
                 </button>
               ) : (
-                <span className="text-primary font-semibold">Order Booking</span>
+                <span className="text-primary font-semibold">Proforma Invoice</span>
               )}
               {showForm && (
                 <>
                   {" / "}
                   <span className="text-primary font-semibold">
-                    {inv._saved ? `Edit (${inv.no})` : "New Order Booking"}
+                    {inv._saved ? `Edit (${inv.no})` : "New Proforma Invoice"}
                   </span>
                 </>
               )}
@@ -752,9 +706,9 @@ function BookingPage() {
               <FileText className="h-5 w-5 text-primary" />
               {showForm
                 ? inv._saved
-                  ? "Edit Order Booking"
-                  : "New Order Booking"
-                : "Order Booking Management"}
+                  ? "Edit Proforma Invoice"
+                  : "New Proforma Invoice"
+                : "Proforma Invoice Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -774,7 +728,7 @@ function BookingPage() {
                 Back to Saved List
               </Button>
             ) : (
-              /* RIGHT BUTTON: New Order Booking */
+              /* RIGHT BUTTON: New Proforma Invoice */
               <Button
                 size="sm"
                 className="h-9 px-4 text-xs gap-1.5 bg-primary text-primary-foreground font-bold shadow-md hover:bg-primary/90"
@@ -784,7 +738,7 @@ function BookingPage() {
                 }}
               >
                 <Plus className="h-4 w-4" />
-                New Order Booking
+                New Proforma Invoice
               </Button>
             )}
           </div>
@@ -825,17 +779,17 @@ function BookingPage() {
       </div>
 
       {!showForm ? (
-        /* ── ALL SAVED ORDER BOOKINGS TABLE (TOP DEFAULT VIEW) ────────── */
+        /* ── ALL SAVED PROFORMA INVOICES TABLE (TOP DEFAULT VIEW) ────────── */
         <div className="p-3 sm:p-4 bg-muted/20 border-b border-border">
           <Section
-            title="All Saved Order Bookings"
+            title="All Saved Proforma Invoices"
             headerRight={
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
                   <Input
                     className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
-                    placeholder="Search saved order booking..."
+                    placeholder="Search saved proforma invoice..."
                     value={savedSearch}
                     onChange={(e) => setSavedSearch(e.target.value)}
                   />
@@ -853,8 +807,8 @@ function BookingPage() {
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
                 <p>
                   {savedSearch
-                    ? "No matching Order Bookings found."
-                    : "No saved Order Bookings found."}
+                    ? "No matching Proforma Invoices found."
+                    : "No saved Proforma Invoices found."}
                 </p>
                 <Button
                   size="sm"
@@ -864,7 +818,7 @@ function BookingPage() {
                     setShowForm(true);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5" /> New Order Booking
+                  <Plus className="h-3.5 w-3.5" /> New Proforma Invoice
                 </Button>
               </div>
             ) : (
@@ -889,6 +843,7 @@ function BookingPage() {
                     {filteredSavedInvoices.map((item: any) => {
                       const isConfirmed =
                         item.status === "order_confirmed" || item.status === "work_order_generated";
+                      const isCancelled = item.status === "cancelled";
 
                       return (
                         <tr
@@ -900,7 +855,22 @@ function BookingPage() {
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <span className="hover:underline font-bold">{formatPiNo(item.no)}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={
+                                  isCancelled
+                                    ? "line-through text-rose-600 dark:text-rose-400 font-bold"
+                                    : "hover:underline font-bold"
+                                }
+                              >
+                                {formatPiNo(item.no)}
+                              </span>
+                              {isCancelled && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
+                                  Cancelled
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-muted-foreground font-mono">
                             {dmy(item.date)}
@@ -956,32 +926,34 @@ function BookingPage() {
                           >
                             <div className="flex items-center justify-end gap-1">
                               {/* Confirm & Convert Action Button */}
-                              <Button
-                                size="sm"
-                                className={`h-7 px-2 text-[11px] font-bold gap-1 transition-all ${
-                                  isConfirmed
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
-                                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                                }`}
-                                onClick={() => {
-                                  const targetPI = confirmPreProforma(item.id);
-                                  if (targetPI && targetPI.id) {
-                                    loadInvoice(targetPI.id, false);
-                                    navigate({
-                                      to: "/order",
-                                      search: { view: "form", id: targetPI.id } as any,
-                                    });
+                              {!isCancelled && (
+                                <Button
+                                  size="sm"
+                                  className={`h-7 px-2 text-[11px] font-bold gap-1 transition-all ${
+                                    isConfirmed
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                  }`}
+                                  onClick={() => {
+                                    const targetPI = confirmPreProforma(item.id);
+                                    if (targetPI && targetPI.id) {
+                                      loadInvoice(targetPI.id, false);
+                                      navigate({
+                                        to: "/order",
+                                        search: { view: "form", id: targetPI.id } as any,
+                                      });
+                                    }
+                                  }}
+                                  title={
+                                    isConfirmed
+                                      ? "Proforma Invoice Confirmed - Click to open Order Confirm"
+                                      : "Confirm Proforma Invoice & Open Order Confirm"
                                   }
-                                }}
-                                title={
-                                  isConfirmed
-                                    ? "Order Booking Confirmed - Click to open Proforma Invoice"
-                                    : "Confirm Order Booking & Open Proforma Invoice"
-                                }
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
-                              </Button>
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
+                                </Button>
+                              )}
 
                               {/* Edit Symbol Button */}
                               <Button
@@ -991,9 +963,9 @@ function BookingPage() {
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   setShowForm(true);
-                                  toast.success(`Loaded Order Booking ${item.no} for editing`);
+                                  toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
                                 }}
-                                title="Edit Order Booking"
+                                title="Edit Proforma Invoice"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </Button>
@@ -1005,7 +977,9 @@ function BookingPage() {
                                 className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
-                                  toast.success(`Generating PDF for Order Booking ${item.no}...`);
+                                  toast.success(
+                                    `Generating PDF for Proforma Invoice ${item.no}...`,
+                                  );
                                   navigate({ to: "/invoice", search: { id: item.id } });
                                 }}
                                 title="Print / Generate PDF"
@@ -1014,24 +988,30 @@ function BookingPage() {
                               </Button>
 
                               {/* Cancel Booking Button */}
-                              <ConfirmDelete
-                                title={`Cancel Order Booking ${item.no}?`}
-                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? The booking status will be changed to Cancelled.`}
-                                confirmLabel="Cancel Booking"
-                                onConfirm={() => {
-                                  updateInvoiceStatus(item.id, "cancelled" as any);
-                                  toast.info(`Order Booking ${item.no} set to Cancelled`);
-                                }}
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-                                  title="Cancel Booking"
+                              {isCancelled ? (
+                                <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                  Cancelled
+                                </span>
+                              ) : (
+                                <ConfirmDelete
+                                  title={`Cancel Proforma Invoice ${item.no}?`}
+                                  description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                  confirmLabel="Cancel Proforma Invoice"
+                                  onConfirm={() => {
+                                    updateInvoiceStatus(item.id, "cancelled");
+                                    toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
+                                  }}
                                 >
-                                  <Ban className="h-3.5 w-3.5" />
-                                </Button>
-                              </ConfirmDelete>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                    title="Cancel Proforma Invoice"
+                                  >
+                                    <Ban className="h-3.5 w-3.5" />
+                                  </Button>
+                                </ConfirmDelete>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1044,14 +1024,14 @@ function BookingPage() {
           </Section>
         </div>
       ) : (
-        /* ── ORDER BOOKING CREATION / EDITING FORM SECTION ─────────────── */
+        /* ── PROFORMA INVOICE CREATION / EDITING FORM SECTION ─────────────── */
         <div id="order-booking-form" className="p-3 sm:p-4 w-full">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
             {/* ════ LEFT COLUMN ════ */}
             <div className="space-y-4 min-w-0">
-              {/* 1. Customer & Order Booking Details */}
+              {/* 1. Customer & Proforma Invoice Details */}
               <Section
-                title="Customer & Order Booking Details"
+                title="Customer & Proforma Invoice Details"
                 headerRight={
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     <div className="relative">
@@ -2300,7 +2280,7 @@ function BookingPage() {
                         }
                       }}
                     >
-                      <Save className="h-4 w-4" /> Save Order Booking
+                      <Save className="h-4 w-4" /> Save Proforma Invoice
                     </Button>
                   </div>
                 </div>

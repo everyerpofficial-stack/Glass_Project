@@ -28,8 +28,8 @@ import { GlobalSearch } from "./GlobalSearch";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/booking", label: "Order Booking", icon: ClipboardList },
-  { to: "/order", label: "Proforma Invoice", icon: ShoppingCart },
+  { to: "/booking", label: "Proforma Invoice", icon: ClipboardList },
+  { to: "/order", label: "Order Confirm", icon: ShoppingCart },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -37,8 +37,8 @@ const NAV = [
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/booking": "Order Booking",
-  "/order": "Proforma Invoice",
+  "/booking": "Proforma Invoice",
+  "/order": "Order Confirm",
   "/work-order": "Work Order & Stickers",
   "/stickers": "Work Order & Stickers",
   "/customers": "Customers",

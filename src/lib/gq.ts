@@ -448,11 +448,32 @@ export function liveWorkOrders(workOrders: any[], invoices: any[]): any[] {
   );
 }
 
-/* The de-duplicated set to use for any money total or record count. */
+/* One row per commercial order, superseded bookings removed. This is the set to
+   list documents from — it still includes cancelled ones, which have to stay
+   visible in a customer's history and in the document tables. */
 export function commercialRecords(invoices: any[]): any[] {
   const all = invoices || [];
   const superseded = supersededBookingNos(all);
   return all.filter((rec) => !isSupersededBooking(rec, superseded));
+}
+
+/* ---------- Cancellation ----------
+   Cancelling replaced deleting so the audit trail survives a withdrawn order.
+   That only works if a cancelled document stops counting as business: it was
+   being listed *and* summed, so a cancelled order kept its full value in
+   revenue, in the dashboard's Due From Customer, and in the customer's due
+   balance — permanently, with no way to take it back out short of deleting the
+   row the cancel feature exists to preserve.
+
+   Hence two sets. `commercialRecords` is what you list; `activeRecords` is what
+   you add up. */
+export function isCancelled(rec: any): boolean {
+  return String(rec?.status || "").toLowerCase() === "cancelled";
+}
+
+/* The set to use for any money total or live record count. */
+export function activeRecords(invoices: any[]): any[] {
+  return commercialRecords(invoices).filter((rec) => !isCancelled(rec));
 }
 
 export function sumGrandTotal(records: any[]): number {
@@ -1384,6 +1405,14 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (t.igst) summary.push(fr("IGST " + nf(o.igstPercent || 18) + " %", nf(t.igst)));
   summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
 
+  const isPre = INV.docType === "pre_proforma";
+  const docTitle = isPre ? "PROFORMA INVOICE" : S.title || "ORDER CONFIRM";
+  const noLabel = isPre ? "Proforma Invoice No." : "Order Confirm No.";
+  const displayNo = formatPiNo(INV.no);
+  const rawOrderNo =
+    INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
+  const displayOrderNo = formatOrderId(rawOrderNo);
+
   const grandTotalVal = Number(t.grandTotal || 0);
   const paidVal = Number(INV.paidAmount || 0);
   const dueVal = Math.max(0, grandTotalVal - paidVal);
@@ -1395,33 +1424,27 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       : "UNPAID / CREDIT";
   const payTypeLabel = INV.delivery?.paymentType || INV.delivery?.paymentTerm || "Credit";
 
-  summary.push(
-    `<tr class="pay-row pay-paid" style="border-top:1.5px solid #000; font-weight:bold; background:#f0fdf4; color:#15803d"><td style="padding:3px 6px">Amount Paid</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(paidVal)}</td></tr>`,
-  );
-  summary.push(
-    `<tr class="pay-row pay-due" style="font-weight:bold; background:${dueVal > 0 ? "#fffbeb" : "#f0fdf4"}; color:${dueVal > 0 ? "#b45309" : "#15803d"}"><td style="padding:3px 6px">Balance Due</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(dueVal)}</td></tr>`,
-  );
-  summary.push(
-    `<tr class="pay-row pay-status" style="background:#f8fafc; font-size:8pt"><td style="padding:3px 6px">Payment Status</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right; color:${isPaidFull ? "#15803d" : paidVal > 0 ? "#2563eb" : "#b45309"}">${payStatusText}</td></tr>`,
-  );
-  if (payTypeLabel) {
+  if (!isPre) {
     summary.push(
-      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Mode</td><td class="n" style="padding:2px 6px; text-align:right">${esc(payTypeLabel)}</td></tr>`,
+      `<tr class="pay-row pay-paid" style="border-top:1.5px solid #000; font-weight:bold; background:#f0fdf4; color:#15803d"><td style="padding:3px 6px">Amount Paid</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(paidVal)}</td></tr>`,
     );
-  }
-  if (INV.dueDate && !isPaidFull) {
     summary.push(
-      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Due Date</td><td class="n" style="padding:2px 6px; text-align:right">${dmy(INV.dueDate)}</td></tr>`,
+      `<tr class="pay-row pay-due" style="font-weight:bold; background:${dueVal > 0 ? "#fffbeb" : "#f0fdf4"}; color:${dueVal > 0 ? "#b45309" : "#15803d"}"><td style="padding:3px 6px">Balance Due</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(dueVal)}</td></tr>`,
     );
+    summary.push(
+      `<tr class="pay-row pay-status" style="background:#f8fafc; font-size:8pt"><td style="padding:3px 6px">Payment Status</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right; color:${isPaidFull ? "#15803d" : paidVal > 0 ? "#2563eb" : "#b45309"}">${payStatusText}</td></tr>`,
+    );
+    if (payTypeLabel) {
+      summary.push(
+        `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Mode</td><td class="n" style="padding:2px 6px; text-align:right">${esc(payTypeLabel)}</td></tr>`,
+      );
+    }
+    if (INV.dueDate && !isPaidFull) {
+      summary.push(
+        `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Due Date</td><td class="n" style="padding:2px 6px; text-align:right">${dmy(INV.dueDate)}</td></tr>`,
+      );
+    }
   }
-
-  const isPre = INV.docType === "pre_proforma";
-  const docTitle = isPre ? "ORDER BOOKING" : S.title || "PROFORMA INVOICE";
-  const noLabel = isPre ? "Order Booking No." : "Proforma No.";
-  const displayNo = formatPiNo(INV.no);
-  const rawOrderNo =
-    INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
-  const displayOrderNo = formatOrderId(rawOrderNo);
 
   return `
     <div class="pdoc">
@@ -1516,8 +1539,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       <!-- PAGE 2 -->
       <div style="page-break-before: always; margin-top: 28px" class="page page-2">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:8px; font-size:8.5pt; font-weight:bold">
-          <div>PI No : ${esc(INV.no)}</div>
-          <div>PROFORMA INVOICE</div>
+          <div>${noLabel} : ${esc(displayNo)}</div>
+          <div>${esc(docTitle)}</div>
           <div>Page : 2</div>
         </div>
 

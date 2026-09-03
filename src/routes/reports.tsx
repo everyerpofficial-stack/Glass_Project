@@ -25,7 +25,7 @@ import {
   Legend,
 } from "recharts";
 import { useGQ } from "@/lib/store";
-import { commercialRecords, cur, sumGrandTotal } from "@/lib/gq";
+import { activeRecords, cur, sumGrandTotal } from "@/lib/gq";
 
 export const Route = createFileRoute("/reports")({
   component: ReportsAnalyticsPage,
@@ -36,11 +36,14 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"
 function ReportsAnalyticsPage() {
   const { invoices, customers, settings } = useGQ();
 
-  /* One row per commercial order. A confirmed booking and the Proforma Invoice
-     generated from it both carry the same grandTotal, so summing `invoices`
-     directly reported roughly twice the revenue actually written. Applies to
-     the volume count and the monthly trend for the same reason. */
-  const revenueRecords = useMemo(() => commercialRecords(invoices), [invoices]);
+  /* One row per commercial order, cancelled orders removed. A confirmed booking
+     and the Proforma Invoice generated from it both carry the same grandTotal,
+     so summing `invoices` directly reported roughly twice the revenue actually
+     written. Applies to the volume count and the monthly trend for the same
+     reason. Cancelled orders kept their full value in here too, which is the
+     other half of the same overstatement — cancelling is what the delete button
+     became, so it has to subtract from revenue as well as preserve the row. */
+  const revenueRecords = useMemo(() => activeRecords(invoices), [invoices]);
 
   const totalRevenue = useMemo(() => sumGrandTotal(revenueRecords), [revenueRecords]);
 

@@ -16,8 +16,8 @@ import { dmy, nf } from "@/lib/gq";
    somewhere other than where they claimed. */
 const PAGES = [
   { label: "Dashboard", to: "/" },
-  { label: "Order Booking", to: "/booking" },
-  { label: "Proforma Invoice", to: "/order" },
+  { label: "Proforma Invoice", to: "/booking" },
+  { label: "Order Confirm", to: "/order" },
   { label: "Work Order & Stickers", to: "/work-order" },
   { label: "Customers", to: "/customers" },
   { label: "Reports", to: "/reports" },

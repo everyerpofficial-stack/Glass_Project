@@ -258,7 +258,7 @@ export function InvoiceDetailModal({
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
-  const docTypeLabel = isPre ? "Order Booking" : "Proforma Invoice";
+  const docTypeLabel = isPre ? "Proforma Invoice" : "Order Confirm";
   const dueInfo = getPaymentDueDateInfo(invoice);
 
   /* Ensure work order exists (called lazily when switching to cut sheet / stickers tab) */

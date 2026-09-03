@@ -214,7 +214,9 @@ function ConfirmPaymentModalBody({
               Order Confirmation & Payment
             </div>
             <h3 className="text-sm font-bold text-white mt-0.5">
-              {hasPaidAmount ? `Record Payment (${paymentType})` : "Confirm Order (Credit / ₹0 Paid)"}
+              {hasPaidAmount
+                ? `Record Payment (${paymentType})`
+                : "Confirm Order (Credit / ₹0 Paid)"}
             </h3>
             <div className="text-[11px] text-slate-300 font-mono mt-0.5 flex items-center gap-1.5">
               <span>
@@ -233,7 +235,10 @@ function ConfirmPaymentModalBody({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-3.5 space-y-2.5 text-xs overflow-y-auto max-h-[calc(90vh-60px)]">
+        <form
+          onSubmit={handleSubmit}
+          className="p-3.5 space-y-2.5 text-xs overflow-y-auto max-h-[calc(90vh-60px)]"
+        >
           {/* Main Calculation Summary Card */}
           <div className="bg-slate-50 dark:bg-slate-800/40 border border-border rounded-lg p-2.5 space-y-2">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
@@ -633,7 +638,9 @@ function OrderPage() {
     copy.delivery.paymentType = copy.delivery.paymentType || "Credit";
     setInv(copy);
     setShowForm(true);
-    toast.success(`✨ Auto-filled data from Order Booking ${booking.no} into Proforma Invoice`);
+    toast.success(
+      `✨ Auto-filled data from Proforma Invoice ${booking.no} into this Order Confirm`,
+    );
   };
 
   const handleOpenConfirmModal = (targetRecord?: any) => {
@@ -700,7 +707,7 @@ function OrderPage() {
           to="/booking"
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
         >
-          1. Order Booking
+          1. Proforma Invoice
         </Link>
         <Link
           to="/order"
@@ -708,7 +715,7 @@ function OrderPage() {
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          2. Proforma Invoice
+          2. Order Confirm
         </Link>
       </div>
 
@@ -718,8 +725,8 @@ function OrderPage() {
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 shrink-0 text-amber-600" />
             <span>
-              This Proforma Invoice has been sent to Work Order workflow. It is locked from further
-              editing.
+              This Order Confirm record has been sent to Work Order workflow. It is locked from
+              further editing.
             </span>
           </div>
           <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-bold uppercase">
@@ -742,16 +749,16 @@ function OrderPage() {
                   onClick={() => setShowForm(false)}
                   className="hover:text-foreground transition-colors"
                 >
-                  Proforma Invoice
+                  Order Confirm
                 </button>
               ) : (
-                <span className="text-primary font-semibold">Proforma Invoice</span>
+                <span className="text-primary font-semibold">Order Confirm</span>
               )}
               {showForm && (
                 <>
                   {" / "}
                   <span className="text-primary font-semibold">
-                    {inv._saved ? `Edit (${inv.no})` : "New Invoice"}
+                    {inv._saved ? `Edit (${inv.no})` : "New Order Confirm"}
                   </span>
                 </>
               )}
@@ -760,9 +767,9 @@ function OrderPage() {
               <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               {showForm
                 ? inv._saved
-                  ? "Edit Proforma Invoice"
-                  : "New Invoice"
-                : "Proforma Invoice Management"}
+                  ? "Edit Order Confirm"
+                  : "New Order Confirm"
+                : "Order Confirm Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -851,17 +858,17 @@ function OrderPage() {
       </div>
 
       {!showForm ? (
-        /* ── ALL SAVED PROFORMA INVOICES TABLE (TOP DEFAULT VIEW) ────────────────── */
+        /* ── ALL SAVED ORDER CONFIRMS TABLE (TOP DEFAULT VIEW) ────────────────── */
         <div className="p-3 sm:p-4 bg-muted/20 border-b border-border">
           <Section
-            title="All Proforma Invoices"
+            title="All Order Confirms"
             headerRight={
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
                   <Input
                     className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
-                    placeholder="Search proforma invoice..."
+                    placeholder="Search order confirm..."
                     value={savedSearch}
                     onChange={(e) => setSavedSearch(e.target.value)}
                   />
@@ -878,9 +885,7 @@ function OrderPage() {
             ) : filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
                 <p>
-                  {savedSearch
-                    ? "No matching Proforma Invoices found."
-                    : "No Proforma Invoices found."}
+                  {savedSearch ? "No matching Order Confirms found." : "No Order Confirms found."}
                 </p>
                 <Button
                   size="sm"
@@ -917,6 +922,7 @@ function OrderPage() {
                     {filteredSavedInvoices.map((item: any) => {
                       const isConfirmed =
                         item.status === "order_confirmed" || item.status === "work_order_generated";
+                      const isCancelled = item.status === "cancelled";
                       const dueInfo = getPaymentDueDateInfo(item);
                       const grandTotal = Number(item.totals?.grandTotal || 0);
                       const paidAmount = Number(item.paidAmount || 0);
@@ -937,7 +943,22 @@ function OrderPage() {
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <span className="hover:underline font-bold">{formatPiNo(item.no)}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={
+                                  isCancelled
+                                    ? "line-through text-rose-600 dark:text-rose-400 font-bold"
+                                    : "hover:underline font-bold"
+                                }
+                              >
+                                {formatPiNo(item.no)}
+                              </span>
+                              {isCancelled && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
+                                  Cancelled
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
                             {orderId !== "—" ? (
@@ -1011,9 +1032,9 @@ function OrderPage() {
                                 onClick={() => {
                                   loadInvoice(item.id, false);
                                   setShowForm(true);
-                                  toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
+                                  toast.success(`Loaded Order Confirm ${item.no} for editing`);
                                 }}
-                                title="Edit Proforma Invoice"
+                                title="Edit Order Confirm"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </Button>
@@ -1031,24 +1052,30 @@ function OrderPage() {
                                 <Printer className="h-3.5 w-3.5" />
                               </Button>
 
-                              <ConfirmDelete
-                                title={`Cancel Proforma Invoice ${item.no}?`}
-                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? The invoice status will be changed to Cancelled.`}
-                                confirmLabel="Cancel Invoice"
-                                onConfirm={() => {
-                                  updateInvoiceStatus(item.id, "cancelled" as any);
-                                  toast.info(`Invoice ${item.no} set to Cancelled`);
-                                }}
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-                                  title="Cancel Invoice"
+                              {isCancelled ? (
+                                <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                  Cancelled
+                                </span>
+                              ) : (
+                                <ConfirmDelete
+                                  title={`Cancel Order Confirm ${item.no}?`}
+                                  description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                  confirmLabel="Cancel Invoice"
+                                  onConfirm={() => {
+                                    updateInvoiceStatus(item.id, "cancelled");
+                                    toast.info(`Invoice ${item.no} set to Cancelled`);
+                                  }}
                                 >
-                                  <Ban className="h-3.5 w-3.5" />
-                                </Button>
-                              </ConfirmDelete>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                    title="Cancel Invoice"
+                                  >
+                                    <Ban className="h-3.5 w-3.5" />
+                                  </Button>
+                                </ConfirmDelete>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1061,13 +1088,13 @@ function OrderPage() {
           </Section>
         </div>
       ) : (
-        /* ── PROFORMA INVOICE CREATION / EDITING FORM SECTION ───────────── */
+        /* ── ORDER CONFIRM CREATION / EDITING FORM SECTION ───────────── */
         <div id="proforma-form" className="p-3 sm:p-4 w-full">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 w-full">
             {/* ════ LEFT COLUMN ════ */}
             <div className="space-y-4 min-w-0">
               {/* 1. Order Header */}
-              <Section title="Proforma Invoice Details" accent="bg-emerald-500/5">
+              <Section title="Order Confirm Details" accent="bg-emerald-500/5">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <FieldLabel>Order / Invoice No</FieldLabel>
@@ -1265,7 +1292,7 @@ function OrderPage() {
               </Section>
 
               {/* 3. Order Booking Items & Details */}
-              <Section title="Order Booking Items & Details">
+              <Section title="Proforma Invoice Items & Details">
                 <div className="overflow-x-auto -mx-3 sm:-mx-4">
                   <table
                     className="w-full text-[11px] border-collapse"
@@ -1275,7 +1302,7 @@ function OrderPage() {
                       <tr className="border-b border-border bg-muted/20">
                         {[
                           "Sr.",
-                          "Order Booking No",
+                          "Proforma Invoice No",
                           "Date",
                           "Product",
                           "Thick",

@@ -36,7 +36,18 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useGQ } from "@/lib/store";
-import { commercialRecords, cur, sumGrandTotal } from "@/lib/gq";
+import {
+  activeRecords,
+  commercialRecords,
+  computeTotals,
+  cur,
+  detectGlassTypeFromProduct,
+  dmy,
+  formatPiNo,
+  getPaymentDueDateInfo,
+  isCancelled,
+  sumGrandTotal,
+} from "@/lib/gq";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -50,224 +61,364 @@ function getGreeting() {
   return "Good evening";
 }
 
-/* ── Chart 1 Data: Glass Category Demand (SqFt) ── */
-const glassDemandData = [
-  { category: "Toughened", sqft: 1280, fill: "#3b82f6" },
-  { category: "Clear Float", sqft: 820, fill: "#10b981" },
-  { category: "Laminated", sqft: 500, fill: "#8b5cf6" },
-  { category: "Reflective", sqft: 340, fill: "#f59e0b" },
-];
+/* ── Timeframe ─────────────────────────────────────────────────────────
+   The Today / Yesterday / This Month / This Year pills used to be decoration:
+   they set state that nothing read, so every range rendered the same all-time
+   figures under a label claiming otherwise. */
+type Timeframe = "today" | "yesterday" | "month" | "year" | "all";
 
-/* ── Chart 2 Data: Quotation vs Converted Revenue ── */
-const quotationVsRevenueData = [
-  { date: "28 Aug", quoted: 3.8, revenue: 2.5 },
-  { date: "29 Aug", quoted: 5.9, revenue: 3.8 },
-  { date: "30 Aug", quoted: 5.2, revenue: 3.2 },
-  { date: "31 Aug", quoted: 8.5, revenue: 5.1 },
-  { date: "01 Sep", quoted: 5.4, revenue: 3.5 },
-  { date: "02 Sep", quoted: 4.5, revenue: 3.6 },
-  { date: "03 Sep", quoted: 6.8, revenue: 4.8 },
-];
+function timeframeRange(tf: Timeframe): { from: number; to: number } | null {
+  if (tf === "all") return null;
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY = 86400000;
+  if (tf === "today") return { from: midnight, to: midnight + DAY };
+  if (tf === "yesterday") return { from: midnight - DAY, to: midnight };
+  if (tf === "month") {
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
+    };
+  }
+  return {
+    from: new Date(now.getFullYear(), 0, 1).getTime(),
+    to: new Date(now.getFullYear() + 1, 0, 1).getTime(),
+  };
+}
 
-/* ── Chart 3 Data: Collection & Cash Flow ── */
-const collectionData = [
-  { name: "Cash Collection", value: 412300, percentage: 44, color: "#10b981" },
-  { name: "Bank Transfer", value: 523940, percentage: 56, color: "#3b82f6" },
-];
+/* A document is dated by its own `date`; `createdAt` is only a fallback for
+   rows rebuilt from the sheet's typed columns. */
+function recordTime(rec: any): number {
+  return Date.parse(rec?.date || "") || Date.parse(rec?.createdAt || "") || 0;
+}
 
+function withinRange(rec: any, range: { from: number; to: number } | null): boolean {
+  if (!range) return true;
+  const t = recordTime(rec);
+  return t >= range.from && t < range.to;
+}
+
+const isPreProforma = (x: any) => !x?.docType || x.docType === "pre_proforma";
+
+const DAY_LABEL: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short" };
+
+const CHART_FILLS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"];
+
+/* Rupee amounts on a chart axis, short enough to fit a 10px tick. */
+function compactAmount(v: number): string {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 10000000) return `${(n / 10000000).toFixed(1)}Cr`;
+  if (Math.abs(n) >= 100000) return `${(n / 100000).toFixed(1)}L`;
+  if (Math.abs(n) >= 1000) return `${Math.round(n / 1000)}k`;
+  return String(Math.round(n));
+}
+
+/* Every figure on this page is derived from live records. It used to fall back
+   to invented ones whenever a real total came out empty — ₹9,36,240 received,
+   ₹3,42,210 outstanding, 22 delivered, 4 cancelled, a two-row customer dues
+   table and three fully hard-coded charts. On the live dataset not one invoice
+   carries a non-zero `paidAmount`, so the Amount Received card was showing that
+   invented ₹9,36,240 in production. An invoicing system may render an empty
+   state; it may not make up money. */
 function Dashboard() {
-  const { invoices, customers, workOrders, settings } = useGQ();
-  const [timeframe, setTimeframe] = useState<"today" | "yesterday" | "month" | "year" | "range">(
-    "today",
-  );
+  const { invoices, payments, settings } = useGQ();
+  const [timeframe, setTimeframe] = useState<Timeframe>("month");
   const [orderTab, setOrderTab] = useState<"all" | "booking" | "confirm">("all");
 
-  const revenueRecords = useMemo(() => commercialRecords(invoices), [invoices]);
+  const range = useMemo(() => timeframeRange(timeframe), [timeframe]);
 
-  // Dynamic KPI calculations strictly aligned with store data
-  const totalBookingsCount = useMemo(() => {
-    const obInvs = invoices.filter(
-      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
-    );
-    return obInvs.length;
-  }, [invoices]);
+  /* Supersession and cancellation are resolved against the whole dataset before
+     the date filter runs. Filtering first would hide the Order Confirm that
+     supersedes a Proforma Invoice and let the superseded row count as a second
+     live order. */
+  const liveRecords = useMemo(() => activeRecords(invoices), [invoices]);
+  const scoped = useMemo(
+    () => liveRecords.filter((r) => withinRange(r, range)),
+    [liveRecords, range],
+  );
 
-  const obInvoicesAmount = useMemo(() => {
-    const obInvs = invoices.filter(
-      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
-    );
-    return sumGrandTotal(obInvs);
-  }, [invoices]);
+  const piRecords = useMemo(() => scoped.filter(isPreProforma), [scoped]);
+  const ocRecords = useMemo(() => scoped.filter((x) => x.docType === "proforma"), [scoped]);
 
-  const obFollowUpDone = useMemo(() => {
-    return invoices.filter(
-      (x) =>
-        (!x.docType || x.docType === "pre_proforma") &&
-        x.docType !== "proforma" &&
-        (x.followedUp === true || x.status === "followedup"),
-    ).length;
-  }, [invoices]);
+  const totalBookingsCount = piRecords.length;
+  const obInvoicesAmount = useMemo(() => sumGrandTotal(piRecords), [piRecords]);
+  const onCreatedAmount = obInvoicesAmount;
 
-  const obFollowUpPending = useMemo(() => {
-    return invoices.filter(
-      (x) =>
-        (!x.docType || x.docType === "pre_proforma") &&
-        x.docType !== "proforma" &&
-        !x.followedUp &&
-        x.status !== "followedup",
-    ).length;
-  }, [invoices]);
+  /* The store and /booking both write `whatsappSent`; this card read
+     `followedUp`, a field nothing in the app has ever written. It therefore
+     reported every Proforma Invoice as pending no matter how many had been
+     followed up — two of them on the live sheet. */
+  const obFollowUpDone = useMemo(
+    () => piRecords.filter((x) => Boolean(x.whatsappSent)).length,
+    [piRecords],
+  );
+  const obFollowUpPending = piRecords.length - obFollowUpDone;
 
-  const confirmedCount = useMemo(() => {
-    return invoices.filter((x) => x.docType === "proforma").length;
-  }, [invoices]);
-
-  const totalInvoiceAmount = useMemo(() => {
-    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
-    return sumGrandTotal(proformaInvs);
-  }, [invoices]);
-
-  const onCreatedAmount = useMemo(() => {
-    const obInvs = invoices.filter(
-      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
-    );
-    return sumGrandTotal(obInvs);
-  }, [invoices]);
+  const confirmedCount = ocRecords.length;
+  const totalInvoiceAmount = useMemo(() => sumGrandTotal(ocRecords), [ocRecords]);
 
   const { amountReceived, cashAmount, bankAmount } = useMemo(() => {
-    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
     let total = 0;
     let cash = 0;
     let bank = 0;
-    for (const inv of proformaInvs) {
+    for (const inv of ocRecords) {
       const p = Number(inv.paidAmount) || 0;
+      if (!p) continue;
       total += p;
-      const mode = (inv.paymentMode || "").toLowerCase();
-      if (mode.includes("cash")) {
-        cash += p;
-      } else if (mode.includes("bank")) {
-        bank += p;
-      }
-    }
-    if (total === 0) {
-      return { amountReceived: 936240, cashAmount: 412300, bankAmount: 523940 };
+      /* The split used to read `inv.paymentMode` — a field this app never
+         writes — so both halves stayed at ₹0 whatever had been received. The
+         method is recorded on `delivery.paymentType`. */
+      const mode = String(inv.delivery?.paymentType || inv.paymentMode || "").toLowerCase();
+      if (mode.includes("cash")) cash += p;
+      else if (mode) bank += p;
     }
     return { amountReceived: total, cashAmount: cash, bankAmount: bank };
-  }, [invoices]);
+  }, [ocRecords]);
 
-  const dueFromCustomer = useMemo(() => {
-    const proformaInvs = invoices.filter((x) => x.docType === "proforma");
-    let due = 0;
-    for (const inv of proformaInvs) {
-      const grand = Number(inv.totals?.grandTotal) || 0;
-      const paid = Number(inv.paidAmount) || 0;
-      due += Math.max(0, grand - paid);
-    }
-    return due > 0 ? due : 342210;
-  }, [invoices]);
+  const dueFromCustomer = useMemo(
+    () =>
+      ocRecords.reduce(
+        (acc, inv) =>
+          acc + Math.max(0, (Number(inv.totals?.grandTotal) || 0) - (Number(inv.paidAmount) || 0)),
+        0,
+      ),
+    [ocRecords],
+  );
 
-  const deliveredCount = useMemo(() => {
-    const count = invoices.filter(
-      (x) => x.status === "work_order_generated" || x.status === "delivered" || x.delivered === true,
-    ).length;
-    return count > 0 ? count : 22;
-  }, [invoices]);
+  /* A generated work order means production started, not that anything left the
+     building — counting it as a delivery overstated dispatches. `delivered` is
+     the flag the Delivered control actually sets. */
+  const deliveredCount = useMemo(
+    () => scoped.filter((x) => x.delivered === true || x.status === "delivered").length,
+    [scoped],
+  );
 
-  const cancelledCount = useMemo(() => {
-    const count = invoices.filter((x) => x.status === "cancelled").length;
-    return count > 0 ? count : 4;
-  }, [invoices]);
+  /* Cancelled rows are excluded from `liveRecords` by design, so this counts
+     them from the de-duplicated set instead. */
+  const cancelledCount = useMemo(
+    () => commercialRecords(invoices).filter((x) => isCancelled(x) && withinRange(x, range)).length,
+    [invoices, range],
+  );
 
   const userName = settings.salesPerson || "Admin";
 
-  /* Real Order Bookings (Pending) from store invoices (Matches /booking page) */
-  const recentOrderBookingsRows = useMemo(() => {
-    const realBookings = invoices.filter(
-      (x) => (!x.docType || x.docType === "pre_proforma") && x.docType !== "proforma",
-    );
+  /* ── Chart 1: glass category demand, by area actually quoted ──────────
+     Area per line comes from the calculation engine, and the glass type from
+     the layer that line belongs to — records carry their product on
+     `layers[].productName`, not on the empty top-level `productName`. */
+  const glassDemandData = useMemo(() => {
+    const bySqft = new Map<string, number>();
+    scoped.forEach((rec) => {
+      let totals: any;
+      try {
+        totals = computeTotals(settings, rec);
+      } catch {
+        return;
+      }
+      (totals?.lines || []).forEach((line: any) => {
+        if (!line?.ok) return;
+        const product = line.productName || line.glassName || line.desc || "";
+        const category = detectGlassTypeFromProduct(String(product));
+        bySqft.set(category, (bySqft.get(category) || 0) + (Number(line.totalSqft) || 0));
+      });
+    });
+    return Array.from(bySqft.entries())
+      .map(([category, sqft]) => ({ category, sqft: Math.round(sqft) }))
+      .filter((d) => d.sqft > 0)
+      .sort((a, b) => b.sqft - a.sqft)
+      .slice(0, 5)
+      .map((d, i) => ({ ...d, fill: CHART_FILLS[i % CHART_FILLS.length] as string }));
+  }, [scoped, settings]);
 
-    if (realBookings.length > 0) {
-      return realBookings.map((q) => {
+  const glassDemandTotal = useMemo(
+    () => glassDemandData.reduce((a, d) => a + d.sqft, 0),
+    [glassDemandData],
+  );
+
+  /* ── Chart 2: quoted vs converted over the last 7 days ────────────────
+     A rolling week, so it is deliberately independent of the pill selection. */
+  const quotationVsRevenueData = useMemo(() => {
+    const DAY = 86400000;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const from = midnight - (6 - i) * DAY;
+      return {
+        from,
+        to: from + DAY,
+        date: new Date(from).toLocaleDateString("en-IN", DAY_LABEL),
+        quoted: 0,
+        revenue: 0,
+      };
+    });
+    liveRecords.forEach((rec) => {
+      const t = recordTime(rec);
+      const bucket = days.find((d) => t >= d.from && t < d.to);
+      if (!bucket) return;
+      const amount = Number(rec.totals?.grandTotal) || 0;
+      if (isPreProforma(rec)) bucket.quoted += amount;
+      else bucket.revenue += amount;
+    });
+    return days.map(({ date, quoted, revenue }) => ({ date, quoted, revenue }));
+  }, [liveRecords]);
+
+  const weekHasActivity = useMemo(
+    () => quotationVsRevenueData.some((d) => d.quoted > 0 || d.revenue > 0),
+    [quotationVsRevenueData],
+  );
+
+  /* ── Chart 3: collection split, from the payments actually recorded ─── */
+  const collectionData = useMemo(() => {
+    let cash = 0;
+    let bank = 0;
+    payments.forEach((p: any) => {
+      if (!withinRange({ date: p.date, createdAt: p.createdAt }, range)) return;
+      const amount = Number(p.amount) || 0;
+      if (!amount) return;
+      if (
+        String(p.mode || "")
+          .toLowerCase()
+          .includes("cash")
+      )
+        cash += amount;
+      else bank += amount;
+    });
+    const out: { name: string; value: number; color: string }[] = [];
+    if (cash > 0) out.push({ name: "Cash Collection", value: cash, color: "#10b981" });
+    if (bank > 0) out.push({ name: "Bank Transfer", value: bank, color: "#3b82f6" });
+    return out;
+  }, [payments, range]);
+
+  const collectionTotal = useMemo(
+    () => collectionData.reduce((a, d) => a + d.value, 0),
+    [collectionData],
+  );
+
+  /* ── Customer dues, from the open balances that actually exist ────────
+     Overdue days come from getPaymentDueDateInfo, the same helper /order uses
+     for its due badge, so a customer's age here and the badge on their invoice
+     can never disagree. The two rows this replaced were fixtures: RAM PVT LTD
+     and SHYAM GLASS owing ₹85,420 and ₹45,780, printed whatever the books
+     actually said. */
+  const dueListRows = useMemo(() => {
+    type DueRow = {
+      id: string;
+      customer: string;
+      lastInvoiceDate: string;
+      last: number;
+      dueAmount: number;
+      noOfInvoices: number;
+      overdueDays: number;
+    };
+    const byCustomer = new Map<string, DueRow>();
+    ocRecords.forEach((inv) => {
+      const due = Math.max(
+        0,
+        (Number(inv.totals?.grandTotal) || 0) - (Number(inv.paidAmount) || 0),
+      );
+      if (due <= 0) return;
+      const name = String(inv.cust?.name || "Unnamed Customer").toUpperCase();
+      const t = recordTime(inv);
+      const info = getPaymentDueDateInfo(inv);
+      const overdue = info.status === "overdue" ? Math.abs(Number(info.daysLeft) || 0) : 0;
+      const row = byCustomer.get(name);
+      if (row) {
+        row.dueAmount += due;
+        row.noOfInvoices += 1;
+        row.overdueDays = Math.max(row.overdueDays, overdue);
+        if (t > row.last) {
+          row.last = t;
+          row.lastInvoiceDate = inv.date ? dmy(inv.date) : "—";
+        }
+      } else {
+        byCustomer.set(name, {
+          id: name,
+          customer: name,
+          lastInvoiceDate: inv.date ? dmy(inv.date) : "—",
+          last: t,
+          dueAmount: due,
+          noOfInvoices: 1,
+          overdueDays: overdue,
+        });
+      }
+    });
+    return Array.from(byCustomer.values())
+      .sort((a, b) => b.overdueDays - a.overdueDays || b.dueAmount - a.dueAmount)
+      .map((row) => ({
+        ...row,
+        overdueLabel:
+          row.overdueDays > 0
+            ? `${row.overdueDays} ${row.overdueDays === 1 ? "Day" : "Days"}`
+            : "Not yet due",
+      }));
+  }, [ocRecords]);
+
+  const overdueCount = useMemo(
+    () => dueListRows.filter((r) => r.overdueDays > 0).length,
+    [dueListRows],
+  );
+
+  /* Real Proforma Invoices from store invoices (Matches /booking page) */
+  const recentOrderBookingsRows = useMemo(
+    () =>
+      piRecords.map((q) => {
         const lineDesc = q.items?.[0]?.desc || q.items?.[0]?.product || q.glass?.desc;
-        const glassName = lineDesc ? String(lineDesc).split("-")[0]?.trim() : "Clear Float";
+        const glassName = lineDesc
+          ? String(lineDesc).split("-")[0]?.trim()
+          : q.layers?.[0]?.productName || "—";
         return {
           id: String(q.id),
-          obNo: String(q.no || q.orderNo || `OB-${q.id.slice(-4)}`),
+          obNo: formatPiNo(q.no || q.orderNo || q.id),
           customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
-          date: String(q.date || "03 Sep 2026"),
+          date: q.date ? dmy(q.date) : "—",
           glassType: glassName,
           amount: Number(q.totals?.grandTotal) || 0,
-          followUp: q.followedUp ? "Done" : "Pending",
-          status: q.status === "draft" ? "New" : q.status === "followup" ? "Follow Up" : (q.status || "Pending"),
+          followUp: q.whatsappSent ? "Done" : "Pending",
+          status:
+            q.status === "draft"
+              ? "New"
+              : q.status === "followup"
+                ? "Follow Up"
+                : q.status || "Pending",
         };
-      });
-    }
+      }),
+    [piRecords],
+  );
 
-    return [];
-  }, [invoices]);
-
-  /* Real Order Confirms / Proforma Invoices from store invoices (Matches /order page) */
-  const recentOrderConfirmRows = useMemo(() => {
-    const realConfirms = invoices.filter((x) => x.docType === "proforma");
-
-    if (realConfirms.length > 0) {
-      return realConfirms.map((q) => {
+  /* Real Order Confirms from store invoices (Matches /order page) */
+  const recentOrderConfirmRows = useMemo(
+    () =>
+      ocRecords.map((q) => {
         const lineDesc = q.items?.[0]?.desc || q.items?.[0]?.product || q.glass?.desc;
-        const glassName = lineDesc ? String(lineDesc).split("-")[0]?.trim() : "Toughened Glass";
+        const glassName = lineDesc
+          ? String(lineDesc).split("-")[0]?.trim()
+          : q.layers?.[0]?.productName || "—";
+        const grandTotal = Number(q.totals?.grandTotal) || 0;
+        const paid = Number(q.paidAmount) || 0;
+        /* `Number(x) !== undefined` is true for every x, NaN included, so a
+           record without an explicit remainingBalance produced NaN here. */
+        const stored = Number(q.remainingBalance);
         return {
           id: String(q.id),
-          orderNo: String(q.no || q.orderNo || `INV-${q.id.slice(-4)}`),
+          orderNo: formatPiNo(q.no || q.orderNo || q.id),
           customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
-          date: String(q.date || "03 Sep 2026"),
-          amount: Number(q.totals?.grandTotal) || 0,
+          date: q.date ? dmy(q.date) : "—",
+          amount: grandTotal,
           status:
             q.status === "work_order_generated"
               ? "Work Order"
               : q.status === "order_confirmed"
                 ? "Confirmed"
                 : "Proforma",
-          advance: Number(q.paidAmount) || 0,
-          balance:
-            Number(q.remainingBalance) !== undefined
-              ? Number(q.remainingBalance)
-              : (Number(q.totals?.grandTotal) || 0) - (Number(q.paidAmount) || 0),
+          advance: paid,
+          balance: Number.isFinite(stored) ? stored : Math.max(0, grandTotal - paid),
           workOrderStatus: q.status === "work_order_generated" ? "Generated" : "Pending",
           paymentStatus:
-            (Number(q.paidAmount) || 0) >= (Number(q.totals?.grandTotal) || 0) &&
-            (Number(q.totals?.grandTotal) || 0) > 0
-              ? "PAID"
-              : (Number(q.paidAmount) || 0) > 0
-                ? "PARTIAL"
-                : "UNPAID",
+            paid >= grandTotal && grandTotal > 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID",
           glassType: glassName,
         };
-      });
-    }
-
-    return [];
-  }, [invoices]);
-
-  /* Sample rows matching site design for Due List Table */
-  const dueListRows = useMemo(
-    () => [
-      {
-        id: "due-1",
-        customer: "RAM PVT LTD",
-        lastInvoiceDate: "25 Aug 2026",
-        dueAmount: 85420,
-        noOfInvoices: 3,
-        overdueDays: "9 Days",
-      },
-      {
-        id: "due-2",
-        customer: "SHYAM GLASS",
-        lastInvoiceDate: "20 Aug 2026",
-        dueAmount: 45780,
-        noOfInvoices: 2,
-        overdueDays: "14 Days",
-      },
-    ],
-    [],
+      }),
+    [ocRecords],
   );
 
   /* Combined recent activity & orders */
@@ -290,7 +441,7 @@ function Dashboard() {
       type: "booking",
       customer: String(b.customer),
       date: String(b.date),
-      glassType: String(b.glassType || "Clear Float"),
+      glassType: String(b.glassType || "—"),
       amount: Number(b.amount),
       status: String(b.status),
       link: "/booking",
@@ -302,7 +453,7 @@ function Dashboard() {
       type: "confirm",
       customer: String(c.customer),
       date: String(c.date),
-      glassType: "Toughened Glass",
+      glassType: String(c.glassType || "—"),
       amount: Number(c.amount),
       status: String(c.status),
       link: "/order",
@@ -343,9 +494,7 @@ function Dashboard() {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() =>
-                setTimeframe(item.id as "today" | "yesterday" | "month" | "year" | "range")
-              }
+              onClick={() => setTimeframe(item.id as Timeframe)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 timeframe === item.id
                   ? "bg-blue-600 text-white shadow-xs"
@@ -355,15 +504,17 @@ function Dashboard() {
               {item.label}
             </button>
           ))}
+          {/* Was a "Date Range" pill with no picker behind it. Until a custom
+              range is actually built, offering All Time is honest and useful. */}
           <button
-            onClick={() => setTimeframe("range")}
+            onClick={() => setTimeframe("all")}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              timeframe === "range"
+              timeframe === "all"
                 ? "bg-blue-600 text-white shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
           >
-            <span>Date Range</span>
+            <span>All Time</span>
             <CalendarIcon className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -371,9 +522,9 @@ function Dashboard() {
 
       {/* ── Metric Cards Grid (NO numbers 1..10) ────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Card 1: Order Booking Count */}
+        {/* Card 1: Proforma Invoice Count */}
         <MetricCard
-          label="Order Booking Count"
+          label="Proforma Invoice Count"
           value={String(totalBookingsCount)}
           sub="Total bookings received"
           icon={ClipboardList}
@@ -381,9 +532,9 @@ function Dashboard() {
           iconColor="text-blue-600"
         />
 
-        {/* Card 2: OB Invoices Amount */}
+        {/* Card 2: PI Amount */}
         <MetricCard
-          label="OB Invoices Amount"
+          label="PI Amount"
           sub="Pending order generation"
           value={cur(obInvoicesAmount, settings.currency)}
           icon={FileText}
@@ -391,9 +542,9 @@ function Dashboard() {
           iconColor="text-amber-600"
         />
 
-        {/* Card 3: OB Follow Up */}
+        {/* Card 3: PI Follow Up */}
         <MetricCard
-          label="OB Follow Up"
+          label="PI Follow Up"
           sub="Done vs Pending"
           valueNode={
             <div className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5 mt-0.5">
@@ -418,7 +569,18 @@ function Dashboard() {
           iconColor="text-emerald-600"
         />
 
-        {/* Card 5: Total Invoice Amount */}
+        {/* Card 5: Order Delivered */}
+        <MetricCard
+          label="Order Delivered"
+          value={String(deliveredCount)}
+          sub="Successfully dispatched"
+          subColor="text-emerald-600"
+          icon={Truck}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+        />
+
+        {/* Card 6: Total Invoice Amount */}
         <MetricCard
           label="Total Invoice Amount"
           value={cur(totalInvoiceAmount, settings.currency)}
@@ -428,7 +590,7 @@ function Dashboard() {
           iconColor="text-purple-600"
         />
 
-        {/* Card 6: On Created Amount */}
+        {/* Card 7: On Created Amount */}
         <MetricCard
           label="On Created Amount"
           value={cur(onCreatedAmount, settings.currency)}
@@ -438,7 +600,7 @@ function Dashboard() {
           iconColor="text-pink-600"
         />
 
-        {/* Card 7: Amount Received */}
+        {/* Card 8: Amount Received */}
         <MetricCard
           label="Amount Received"
           value={cur(amountReceived, settings.currency)}
@@ -457,7 +619,7 @@ function Dashboard() {
           iconColor="text-emerald-600"
         />
 
-        {/* Card 8: Due From Customer */}
+        {/* Card 9: Due From Customer */}
         <MetricCard
           label="Due From Customer"
           value={cur(dueFromCustomer, settings.currency)}
@@ -466,17 +628,6 @@ function Dashboard() {
           icon={ShoppingBag}
           iconBg="bg-amber-50"
           iconColor="text-amber-600"
-        />
-
-        {/* Card 9: Order Delivered */}
-        <MetricCard
-          label="Order Delivered"
-          value={String(deliveredCount)}
-          sub="Successfully dispatched"
-          subColor="text-emerald-600"
-          icon={Truck}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
         />
 
         {/* Card 10: Order Cancelled */}
@@ -502,51 +653,70 @@ function Dashboard() {
               </h3>
             </div>
 
-            <div className="flex items-center gap-4 text-xs mb-4">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                <span className="text-muted-foreground font-medium">Toughened (42%)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-muted-foreground font-medium">Float (28%)</span>
-              </div>
+            <div className="flex items-center gap-4 text-xs mb-4 flex-wrap">
+              {glassDemandData.slice(0, 2).map((d) => (
+                <div key={d.category} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
+                  <span className="text-muted-foreground font-medium">
+                    {d.category} (
+                    {glassDemandTotal ? Math.round((d.sqft / glassDemandTotal) * 100) : 0}%)
+                  </span>
+                </div>
+              ))}
+              {!glassDemandData.length && (
+                <span className="text-muted-foreground">No area quoted in this period</span>
+              )}
             </div>
           </div>
 
           <div className="h-[180px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={glassDemandData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="category"
-                  tick={{ fontSize: 10, fill: "#64748b" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "#64748b" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                  domain={[0, 1400]}
-                  ticks={[0, 350, 700, 1050, 1400]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#ffffff",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "12px",
-                  }}
-                  formatter={(val: any) => [`${val} SqFt`, "Demand"]}
-                />
-                <Bar dataKey="sqft" radius={[6, 6, 0, 0]}>
-                  {glassDemandData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {!glassDemandData.length ? (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-1">
+                <Layers className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-xs font-medium text-muted-foreground">No quoted area yet</p>
+                <p className="text-[11px] text-muted-foreground/70">
+                  Demand appears here once documents in this period carry sized items.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={glassDemandData}
+                  margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="category"
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  {/* Was pinned to [0, 1400] to frame the hard-coded numbers; a
+                    real dataset either flattened against the ceiling or vanished
+                    at the bottom of it. */}
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "12px",
+                    }}
+                    formatter={(val: any) => [`${val} SqFt`, "Demand"]}
+                  />
+                  <Bar dataKey="sqft" radius={[6, 6, 0, 0]}>
+                    {glassDemandData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -562,80 +732,94 @@ function Dashboard() {
             <div className="flex items-center gap-3 text-xs mb-4 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                <span className="text-muted-foreground font-medium">Quoted (₹ Lakhs)</span>
+                <span className="text-muted-foreground font-medium">Quoted</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-muted-foreground font-medium">Revenue (₹ Lakhs)</span>
+                <span className="text-muted-foreground font-medium">Converted</span>
               </div>
+              <span className="text-muted-foreground/70 text-[11px]">Last 7 days</span>
             </div>
           </div>
 
           <div className="h-[180px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={quotationVsRevenueData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorQuoted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: "#64748b" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "#64748b" }}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                  tickLine={false}
-                  tickFormatter={(v) => (v === 0 ? "0" : `${v}L`)}
-                  domain={[0, 10]}
-                  ticks={[0, 3, 6, 10]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#ffffff",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "12px",
-                  }}
-                  formatter={(val: any, name: any) => [
-                    `₹ ${val} Lakhs`,
-                    name === "quoted" ? "Quoted" : "Revenue",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="quoted"
-                  stroke="#f59e0b"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorQuoted)"
-                  dot={{ r: 3, fill: "#f59e0b" }}
-                  activeDot={{ r: 5 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                  dot={{ r: 3, fill: "#10b981" }}
-                  activeDot={{ r: 5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {!weekHasActivity ? (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-1">
+                <TrendingUp className="h-6 w-6 text-muted-foreground/40" />
+                <p className="text-xs font-medium text-muted-foreground">
+                  Nothing raised in the last 7 days
+                </p>
+                <p className="text-[11px] text-muted-foreground/70">
+                  Quoted and converted values plot here as documents are created.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={quotationVsRevenueData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorQuoted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  {/* The series carries rupees. The axis used to be fixed at
+                    [0, 10] and labelled in lakhs, so a real ₹7,802 day plotted
+                    780x off-scale and read as "₹ 7802 Lakhs" in the tooltip. */}
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                    tickFormatter={compactAmount}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "12px",
+                    }}
+                    formatter={(val: any, name: any) => [
+                      cur(Number(val), settings.currency),
+                      name === "quoted" ? "Quoted" : "Converted",
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="quoted"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorQuoted)"
+                    dot={{ r: 3, fill: "#f59e0b" }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    dot={{ r: 3, fill: "#10b981" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -647,67 +831,77 @@ function Dashboard() {
             </h3>
           </div>
 
-          <div className="flex items-center justify-around h-[180px] relative">
-            <div className="w-[150px] h-[150px] relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={collectionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={46}
-                    outerRadius={66}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {collectionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      fontSize: "12px",
-                    }}
-                    formatter={(val: number | string) => [
-                      cur(Number(val), settings.currency),
-                      "Amount",
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-xs font-bold text-foreground tracking-tight">₹ 9,36,240.00</span>
-                <span className="text-[10px] text-muted-foreground font-medium">
-                  Total Received
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-xs bg-emerald-500 shrink-0" />
-                <div>
-                  <div className="text-muted-foreground text-[11px]">Cash Collection</div>
-                  <div className="font-semibold text-xs text-foreground">
-                    ₹ 4,12,300.00 <span className="text-muted-foreground font-normal">(44%)</span>
-                  </div>
+          {collectionTotal > 0 ? (
+            <div className="flex items-center justify-around h-[180px] relative">
+              <div className="w-[150px] h-[150px] relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={collectionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={46}
+                      outerRadius={66}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {collectionData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} strokeWidth={0} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#ffffff",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        fontSize: "12px",
+                      }}
+                      formatter={(val: number | string) => [
+                        cur(Number(val), settings.currency),
+                        "Amount",
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <span className="text-xs font-bold text-foreground tracking-tight">
+                    {cur(collectionTotal, settings.currency)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Total Received
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-xs bg-blue-500 shrink-0" />
-                <div>
-                  <div className="text-muted-foreground text-[11px]">Bank Transfer</div>
-                  <div className="font-semibold text-xs text-foreground">
-                    ₹ 5,23,940.00 <span className="text-muted-foreground font-normal">(56%)</span>
+              <div className="space-y-3 text-xs">
+                {collectionData.map((entry) => (
+                  <div key={entry.name} className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-xs shrink-0"
+                      style={{ backgroundColor: entry.color }}
+                    />
+                    <div>
+                      <div className="text-muted-foreground text-[11px]">{entry.name}</div>
+                      <div className="font-semibold text-xs text-foreground">
+                        {cur(entry.value, settings.currency)}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({Math.round((entry.value / collectionTotal) * 100)}%)
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="h-[180px] flex flex-col items-center justify-center text-center gap-1">
+              <Wallet className="h-6 w-6 text-muted-foreground/40" />
+              <p className="text-xs font-medium text-muted-foreground">No payments recorded yet</p>
+              <p className="text-[11px] text-muted-foreground/70">
+                Collections appear here once a payment is recorded against an order.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -778,7 +972,13 @@ function Dashboard() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
-                <th className="py-3 px-4">Order / OB No.</th>
+                <th className="py-3 px-4">
+                  {orderTab === "confirm"
+                    ? "Invoice No."
+                    : orderTab === "booking"
+                      ? "PI No."
+                      : "PI / Invoice No."}
+                </th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">Customer</th>
                 <th className="py-3 px-4">Date</th>
@@ -789,9 +989,16 @@ function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
+              {!combinedRecentOrders.length && (
+                <tr>
+                  <td colSpan={8} className="py-10 px-4 text-center text-muted-foreground">
+                    No documents in this period.
+                  </td>
+                </tr>
+              )}
               {combinedRecentOrders.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4 font-bold text-foreground">{row.no}</td>
+                  <td className="py-3 px-4 font-bold text-foreground">{formatPiNo(row.no)}</td>
                   <td className="py-3 px-4">
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${
@@ -812,13 +1019,15 @@ function Dashboard() {
                   <td className="py-3 px-4">
                     <span
                       className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        row.status === "Confirmed"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : row.status === "New"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : row.status === "Follow Up"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-purple-50 text-purple-700 border border-purple-200"
+                        row.status === "Cancelled"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          : row.status === "Confirmed"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : row.status === "New"
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : row.status === "Follow Up"
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-purple-50 text-purple-700 border border-purple-200"
                       }`}
                     >
                       {row.status === "Confirmed" && "✓ "}
@@ -855,7 +1064,7 @@ function Dashboard() {
               <AlertCircle className="h-4 w-4 text-red-500" />
               Customer Dues Summary
               <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[11px] font-bold rounded-full ml-1">
-                2 Overdue
+                {overdueCount} Overdue
               </span>
             </h3>
           </div>
@@ -872,6 +1081,13 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
+                {!dueListRows.length && (
+                  <tr>
+                    <td colSpan={5} className="py-8 px-4 text-center text-muted-foreground">
+                      Nothing outstanding in this period.
+                    </td>
+                  </tr>
+                )}
                 {dueListRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="py-3 px-4 font-bold text-foreground">{row.customer}</td>
@@ -883,8 +1099,14 @@ function Dashboard() {
                       {row.noOfInvoices}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold text-[11px]">
-                        {row.overdueDays}
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full font-semibold text-[11px] border ${
+                          row.overdueDays > 0
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : "bg-slate-50 text-slate-600 border-slate-200"
+                        }`}
+                      >
+                        {row.overdueLabel}
                       </span>
                     </td>
                   </tr>
@@ -907,7 +1129,7 @@ function Dashboard() {
             </div>
 
             <div className="text-3xl font-extrabold text-red-600 tracking-tight">
-              {cur(342210, settings.currency)}
+              {cur(dueFromCustomer, settings.currency)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Pending collections across all active customer profiles.
