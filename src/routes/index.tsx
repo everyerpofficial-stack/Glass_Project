@@ -1093,11 +1093,7 @@ function Dashboard() {
                   <td className="py-3 px-4 text-center">
                     <Link
                       to={row.type === "booking" ? "/booking" : "/order"}
-                      search={
-                        row.id && !row.id.startsWith("ob-") && !row.id.startsWith("ord-")
-                          ? ({ id: row.id } as any)
-                          : ({ view: undefined } as any)
-                      }
+                      search={{ detailId: row.id } as any}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1 rounded-md transition-colors border border-slate-200"
                     >
                       <span>View</span>

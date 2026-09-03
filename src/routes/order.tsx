@@ -65,8 +65,18 @@ import {
 } from "@/components/app/ConfirmPaymentModal";
 
 export const Route = createFileRoute("/order")({
-  validateSearch: (search: Record<string, unknown>): { view?: string | undefined } => ({
+  validateSearch: (search: Record<string, unknown>): {
+    view?: string | undefined;
+    id?: string | undefined;
+    detailId?: string | undefined;
+    action?: string | undefined;
+    from?: string | undefined;
+  } => ({
     view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
+    id: typeof search["id"] === "string" ? (search["id"] as string) : undefined,
+    detailId: typeof search["detailId"] === "string" ? (search["detailId"] as string) : undefined,
+    action: typeof search["action"] === "string" ? (search["action"] as string) : undefined,
+    from: typeof search["from"] === "string" ? (search["from"] as string) : undefined,
   }),
   component: OrderPage,
 });
@@ -115,6 +125,7 @@ function OrderPage() {
   const searchParams = useSearch({ strict: false }) as {
     view?: string;
     id?: string;
+    detailId?: string;
     action?: string;
     from?: string;
   };
@@ -161,15 +172,37 @@ function OrderPage() {
   const [deliveryConfirmTarget, setDeliveryConfirmTarget] = useState<any | null>(null);
 
   useEffect(() => {
-    if (searchParams?.id) {
+    if (searchParams?.id && searchParams?.view === "form") {
       loadInvoice(searchParams.id, false);
       setShowForm(true);
+    } else if (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form")) {
+      const targetId = searchParams.detailId || searchParams.id;
+      if (targetId) {
+        const found = invoices.find(
+          (x: any) =>
+            String(x.id) === String(targetId) ||
+            String(x.no) === String(targetId) ||
+            String(x.orderNo) === String(targetId) ||
+            String(x.preProformaNo) === String(targetId) ||
+            formatPiNo(x.no) === targetId ||
+            formatPiNo(x.orderNo) === targetId ||
+            formatPiNo(x.preProformaNo) === targetId,
+        );
+        if (found) {
+          setDetailInvoice(found);
+          setDetailOpen(true);
+          setShowForm(false);
+        } else if (searchParams?.id) {
+          loadInvoice(searchParams.id, false);
+          setShowForm(true);
+        }
+      }
     } else if (searchParams?.view === "form") {
       setShowForm(true);
     } else if (searchParams?.view === "list") {
       setShowForm(false);
     }
-  }, [searchParams?.id, searchParams?.view, loadInvoice]);
+  }, [searchParams?.id, searchParams?.detailId, searchParams?.view, loadInvoice, invoices]);
 
   const proformaInvoices = useMemo(
     () => invoices.filter((x: any) => x.docType === "proforma"),
@@ -1401,10 +1434,16 @@ function OrderPage() {
       <InvoiceDetailModal
         invoice={detailInvoice}
         open={detailOpen}
-        onOpenChange={setDetailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open && (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))) {
+            navigate({ to: "/order", search: { view: undefined } as any, replace: true });
+          }
+        }}
         onEdit={(item) => {
           loadInvoice(item.id, false);
           setShowForm(true);
+          setDetailOpen(false);
         }}
       />
 

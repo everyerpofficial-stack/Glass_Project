@@ -113,13 +113,22 @@ function extractThicknessFromProductName(name: string): number | null {
   return null;
 }
 import { toast } from "sonner";
+import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
 export const Route = createFileRoute("/booking")({
   /* /order already accepted ?view=; /booking did not, so Edit and Duplicate
      links from the invoice preview and the global search landed on the list
      instead of the form they asked for. */
-  validateSearch: (search: Record<string, unknown>): { view?: string | undefined } => ({
+  validateSearch: (search: Record<string, unknown>): {
+    view?: string | undefined;
+    id?: string | undefined;
+    detailId?: string | undefined;
+    action?: string | undefined;
+  } => ({
     view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
+    id: typeof search["id"] === "string" ? (search["id"] as string) : undefined,
+    detailId: typeof search["detailId"] === "string" ? (search["detailId"] as string) : undefined,
+    action: typeof search["action"] === "string" ? (search["action"] as string) : undefined,
   }),
   component: BookingPage,
 });
@@ -403,7 +412,12 @@ function BookingPage() {
     hydrated,
   } = useGQ();
 
-  const searchParams = useSearch({ strict: false }) as { view?: string };
+  const searchParams = useSearch({ strict: false }) as {
+    view?: string;
+    id?: string;
+    detailId?: string;
+    action?: string;
+  };
 
   const [bulkOpenLayerIdx, setBulkOpenLayerIdx] = useState<number | null>(null);
   const [savedSearch, setSavedSearch] = useState("");
@@ -443,9 +457,37 @@ function BookingPage() {
     navigate({ to: "/order", search: { view: undefined } as any });
   };
   useEffect(() => {
-    if (searchParams?.view === "form") setShowForm(true);
-    else if (searchParams?.view === "list") setShowForm(false);
-  }, [searchParams?.view]);
+    if (searchParams?.id && searchParams?.view === "form") {
+      loadInvoice(searchParams.id, false);
+      setShowForm(true);
+    } else if (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form")) {
+      const targetId = searchParams.detailId || searchParams.id;
+      if (targetId) {
+        const found = invoices.find(
+          (x: any) =>
+            String(x.id) === String(targetId) ||
+            String(x.no) === String(targetId) ||
+            String(x.orderNo) === String(targetId) ||
+            String(x.preProformaNo) === String(targetId) ||
+            formatPiNo(x.no) === targetId ||
+            formatPiNo(x.orderNo) === targetId ||
+            formatPiNo(x.preProformaNo) === targetId,
+        );
+        if (found) {
+          setDetailInvoice(found);
+          setDetailOpen(true);
+          setShowForm(false);
+        } else if (searchParams?.id) {
+          loadInvoice(searchParams.id, false);
+          setShowForm(true);
+        }
+      }
+    } else if (searchParams?.view === "form") {
+      setShowForm(true);
+    } else if (searchParams?.view === "list") {
+      setShowForm(false);
+    }
+  }, [searchParams?.id, searchParams?.detailId, searchParams?.view, loadInvoice, invoices]);
 
   const inputUnit = inv.inputUnit || "inch";
   const isFreqOn = inputUnit !== "mm" && Boolean(inv.frequencyEnabled);
@@ -992,12 +1034,8 @@ function BookingPage() {
                           key={item.id}
                           className="hover:bg-muted/30 transition-colors cursor-pointer"
                           onClick={() => {
-                            if (isCancelled) {
-                              toast.error("Cancelled proforma invoice cannot be edited");
-                              return;
-                            }
-                            loadInvoice(item.id, false);
-                            setShowForm(true);
+                            setDetailInvoice(item);
+                            setDetailOpen(true);
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
@@ -2494,6 +2532,23 @@ function BookingPage() {
         invoice={targetConfirmInvoice}
         onClose={() => setConfirmModalOpen(false)}
         onConfirm={handleConfirmPaymentAndMove}
+      />
+
+      {/* ── INVOICE DETAIL POPUP MODAL ───────────────────── */}
+      <InvoiceDetailModal
+        invoice={detailInvoice}
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open && (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))) {
+            navigate({ to: "/booking", search: { view: undefined } as any, replace: true });
+          }
+        }}
+        onEdit={(item) => {
+          loadInvoice(item.id, false);
+          setShowForm(true);
+          setDetailOpen(false);
+        }}
       />
     </div>
   );
