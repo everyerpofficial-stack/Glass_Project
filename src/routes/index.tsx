@@ -163,7 +163,9 @@ function Dashboard() {
 
     // Helper to check if a payment belongs to a cancelled invoice
     const isPaymentForCancelledInv = (p: any) => {
-      const invNo = String(p.invoiceNo || "").trim().toLowerCase();
+      const invNo = String(p.invoiceNo || "")
+        .trim()
+        .toLowerCase();
       const invId = p.invoiceId ? String(p.invoiceId) : "";
       if (!invNo && !invId) return false;
       const inv = invoices.find(
@@ -171,8 +173,8 @@ function Dashboard() {
           (invId && String(x.id) === invId) ||
           (invNo &&
             (String(x.no || "").toLowerCase() === invNo ||
-             String(x.orderNo || "").toLowerCase() === invNo ||
-             String(x.preProformaNo || "").toLowerCase() === invNo)),
+              String(x.orderNo || "").toLowerCase() === invNo ||
+              String(x.preProformaNo || "").toLowerCase() === invNo)),
       );
       return Boolean(inv && isCancelled(inv));
     };

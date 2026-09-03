@@ -119,7 +119,9 @@ export const Route = createFileRoute("/booking")({
   /* /order already accepted ?view=; /booking did not, so Edit and Duplicate
      links from the invoice preview and the global search landed on the list
      instead of the form they asked for. */
-  validateSearch: (search: Record<string, unknown>): {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
     view?: string | undefined;
     id?: string | undefined;
     detailId?: string | undefined;
@@ -656,7 +658,18 @@ function BookingPage() {
         if (typeof cleanVal === "string") {
           cleanVal = cleanVal.replace(/[^0-9.]/g, "");
         }
-      } else if (["qty", "holes", "cutouts", "bigHoles", "bigCutouts", "csks", "countersinks", "freq"].includes(field)) {
+      } else if (
+        [
+          "qty",
+          "holes",
+          "cutouts",
+          "bigHoles",
+          "bigCutouts",
+          "csks",
+          "countersinks",
+          "freq",
+        ].includes(field)
+      ) {
         if (typeof cleanVal === "string") {
           cleanVal = cleanVal.replace(/[^0-9]/g, "");
         }
@@ -926,7 +939,9 @@ function BookingPage() {
               <div className="text-xl font-bold text-foreground mt-0.5">
                 {preProformaInvoices.length}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Total proforma invoices</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                Total proforma invoices
+              </div>
             </div>
             {/* Card 2: FOLLOWED UP */}
             <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
@@ -1088,15 +1103,15 @@ function BookingPage() {
                                 isCancelled
                                   ? "bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60"
                                   : item.whatsappSent
-                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
-                                  : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                    : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
                               }`}
                               title={
                                 isCancelled
                                   ? "Cancelled invoice"
                                   : item.whatsappSent
-                                  ? "Status: Yes (Click to toggle)"
-                                  : "Status: No (Click to toggle)"
+                                    ? "Status: Yes (Click to toggle)"
+                                    : "Status: No (Click to toggle)"
                               }
                             >
                               {item.whatsappSent ? (
@@ -1130,7 +1145,12 @@ function BookingPage() {
                                     loadInvoice(item.id, false);
                                     navigate({
                                       to: "/order",
-                                      search: { view: "form", id: item.id, action: "confirm", from: "booking" } as any,
+                                      search: {
+                                        view: "form",
+                                        id: item.id,
+                                        action: "confirm",
+                                        from: "booking",
+                                      } as any,
                                     });
                                   }}
                                   title={
@@ -2031,14 +2051,12 @@ function BookingPage() {
                                                   value={item.l1 || ""}
                                                   onKeyDown={handleInchKeyDown}
                                                   onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9 ./-]/g, "");
-                                                    e.target.value = clean;
-                                                    updateLayerItem(
-                                                      layerIdx,
-                                                      itemIdx,
-                                                      "l1",
-                                                      clean,
+                                                    const clean = e.target.value.replace(
+                                                      /[^0-9 ./-]/g,
+                                                      "",
                                                     );
+                                                    e.target.value = clean;
+                                                    updateLayerItem(layerIdx, itemIdx, "l1", clean);
                                                   }}
                                                   placeholder={isFreqOn ? "36 2" : "36 3/8"}
                                                 />
@@ -2049,14 +2067,12 @@ function BookingPage() {
                                                   value={item.l2 || ""}
                                                   onKeyDown={handleInchKeyDown}
                                                   onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9 ./-]/g, "");
-                                                    e.target.value = clean;
-                                                    updateLayerItem(
-                                                      layerIdx,
-                                                      itemIdx,
-                                                      "l2",
-                                                      clean,
+                                                    const clean = e.target.value.replace(
+                                                      /[^0-9 ./-]/g,
+                                                      "",
                                                     );
+                                                    e.target.value = clean;
+                                                    updateLayerItem(layerIdx, itemIdx, "l2", clean);
                                                   }}
                                                   placeholder={isFreqOn ? "32 2" : "13 3/8"}
                                                 />
@@ -2075,7 +2091,10 @@ function BookingPage() {
                                                   value={item.l1mm ?? ""}
                                                   onKeyDown={handleDecimalKeyDown}
                                                   onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                                    const clean = e.target.value.replace(
+                                                      /[^0-9.]/g,
+                                                      "",
+                                                    );
                                                     e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
@@ -2095,7 +2114,10 @@ function BookingPage() {
                                                   value={item.l2mm ?? ""}
                                                   onKeyDown={handleDecimalKeyDown}
                                                   onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                                    const clean = e.target.value.replace(
+                                                      /[^0-9.]/g,
+                                                      "",
+                                                    );
                                                     e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
@@ -2540,7 +2562,10 @@ function BookingPage() {
         open={detailOpen}
         onOpenChange={(open) => {
           setDetailOpen(open);
-          if (!open && (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))) {
+          if (
+            !open &&
+            (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))
+          ) {
             navigate({ to: "/booking", search: { view: undefined } as any, replace: true });
           }
         }}

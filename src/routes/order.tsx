@@ -65,7 +65,9 @@ import {
 } from "@/components/app/ConfirmPaymentModal";
 
 export const Route = createFileRoute("/order")({
-  validateSearch: (search: Record<string, unknown>): {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
     view?: string | undefined;
     id?: string | undefined;
     detailId?: string | undefined;
@@ -116,8 +118,6 @@ function Section({
     </div>
   );
 }
-
-
 
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
@@ -226,7 +226,8 @@ function OrderPage() {
     () =>
       proformaInvoices.filter(
         (x: any) =>
-          x.status !== "cancelled" && (x.deliveryStatus === "Delivered" || x.status === "delivered"),
+          x.status !== "cancelled" &&
+          (x.deliveryStatus === "Delivered" || x.status === "delivered"),
       ).length,
     [proformaInvoices],
   );
@@ -1407,7 +1408,9 @@ function OrderPage() {
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md cursor-pointer text-xs"
                         onClick={() => {
                           if (saveInvoice()) {
-                            toast.success(`Order Confirm ${inv.no || inv.orderNo} saved successfully`);
+                            toast.success(
+                              `Order Confirm ${inv.no || inv.orderNo} saved successfully`,
+                            );
                             setShowForm(false);
                             navigate({ to: "/order", search: { view: undefined } as any });
                           }
@@ -1436,7 +1439,10 @@ function OrderPage() {
         open={detailOpen}
         onOpenChange={(open) => {
           setDetailOpen(open);
-          if (!open && (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))) {
+          if (
+            !open &&
+            (searchParams?.detailId || (searchParams?.id && searchParams?.view !== "form"))
+          ) {
             navigate({ to: "/order", search: { view: undefined } as any, replace: true });
           }
         }}
