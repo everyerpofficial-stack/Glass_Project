@@ -61,10 +61,13 @@ function ReportsAnalyticsPage() {
   }, [revenueRecords]);
 
   // Sync status data
-  const syncStatusData = useMemo(() => [
-    { name: "Synced to Sheet", count: syncedCount, fill: "#10b981" },
-    { name: "Local / Pending Sync", count: pendingCount, fill: "#f59e0b" },
-  ], [syncedCount, pendingCount]);
+  const syncStatusData = useMemo(
+    () => [
+      { name: "Synced to Sheet", count: syncedCount, fill: "#10b981" },
+      { name: "Local / Pending Sync", count: pendingCount, fill: "#f59e0b" },
+    ],
+    [syncedCount, pendingCount],
+  );
 
   /* Monthly trend for the current year.
      This previously ran `... .length || (idx + 1) * 2` and
@@ -76,8 +79,18 @@ function ReportsAnalyticsPage() {
 
   const monthlyTrendData = useMemo(() => {
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     const buckets = months.map((month) => ({ month, quotes: 0, revenue: 0 }));
 
@@ -97,9 +110,12 @@ function ReportsAnalyticsPage() {
     <div className="max-w-[1200px] mx-auto space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics & Performance</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Analytics & Performance
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Visual insights into quotation revenue, glass thickness trends, and sheet sync distribution
+          Visual insights into quotation revenue, glass thickness trends, and sheet sync
+          distribution
         </p>
       </div>
 
@@ -167,12 +183,28 @@ function ReportsAnalyticsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <RechartsTooltip
-                  contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "12px",
+                  }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -208,13 +240,19 @@ function ReportsAnalyticsPage() {
                     ))}
                   </Pie>
                   <RechartsTooltip
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "12px",
+                    }}
                   />
                   <Legend
                     verticalAlign="bottom"
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value: string) => <span className="text-[11px] text-gray-600 ml-1">{value}</span>}
+                    formatter={(value: string) => (
+                      <span className="text-[11px] text-gray-600 ml-1">{value}</span>
+                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -237,10 +275,24 @@ function ReportsAnalyticsPage() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={syncStatusData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+              />
               <RechartsTooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                contentStyle={{
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  fontSize: "12px",
+                }}
               />
               <Bar dataKey="count" radius={[8, 8, 0, 0]} />
             </BarChart>
@@ -272,16 +324,22 @@ function KPICard({
   return (
     <div className="bg-white rounded-xl border border-border px-5 py-4 shadow-xs">
       <div className="flex items-start justify-between mb-2">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">{label}</p>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-2">
+          {label}
+        </p>
         {Icon && (
-          <div className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}>
+          <div
+            className={`h-9 w-9 rounded-lg ${iconBg || "bg-blue-50"} flex items-center justify-center shrink-0`}
+          >
             <Icon className={`h-[18px] w-[18px] ${iconColor || "text-blue-600"}`} />
           </div>
         )}
       </div>
       <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
       {sub && (
-        <p className={`text-[11px] mt-1 ${subColor || "text-muted-foreground"} flex items-center gap-1`}>
+        <p
+          className={`text-[11px] mt-1 ${subColor || "text-muted-foreground"} flex items-center gap-1`}
+        >
           {subColor && <ArrowUpRight className="h-3 w-3" />}
           {sub}
         </p>

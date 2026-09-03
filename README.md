@@ -20,15 +20,15 @@ bun run dev          # http://localhost:8080
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `bun run dev` | Vite dev server on port 8080 |
-| `bun run build` | Production build (client + nitro server bundle) |
+| Script              | What it does                                      |
+| ------------------- | ------------------------------------------------- |
+| `bun run dev`       | Vite dev server on port 8080                      |
+| `bun run build`     | Production build (client + nitro server bundle)   |
 | `bun run build:dev` | Production build with development mode sourcemaps |
-| `bun run preview` | Serve the built output locally |
-| `bun run lint` | ESLint over the whole repo |
-| `bun run typecheck` | `tsc --noEmit` |
-| `bun run format` | Prettier write |
+| `bun run preview`   | Serve the built output locally                    |
+| `bun run lint`      | ESLint over the whole repo                        |
+| `bun run typecheck` | `tsc --noEmit`                                    |
+| `bun run format`    | Prettier write                                    |
 
 ---
 
@@ -78,17 +78,17 @@ bun run dev          # http://localhost:8080
 
 ## Routes
 
-| Path | Page |
-| --- | --- |
-| `/` | Dashboard |
-| `/booking` | Order Booking |
-| `/order` | Proforma Invoice management |
-| `/work-order` | Work Order & Stickers |
-| `/customers` | Customers |
-| `/reports` | Reports |
-| `/settings` | Company settings, terms, numbering |
-| `/invoice` | Single invoice detail / print view |
-| `/checks` | System self-checks (storage, Sheets connectivity, calc tests) |
+| Path          | Page                                                          |
+| ------------- | ------------------------------------------------------------- |
+| `/`           | Dashboard                                                     |
+| `/booking`    | Order Booking                                                 |
+| `/order`      | Proforma Invoice management                                   |
+| `/work-order` | Work Order & Stickers                                         |
+| `/customers`  | Customers                                                     |
+| `/reports`    | Reports                                                       |
+| `/settings`   | Company settings, terms, numbering                            |
+| `/invoice`    | Single invoice detail / print view                            |
+| `/checks`     | System self-checks (storage, Sheets connectivity, calc tests) |
 
 `/quote`, `/quotes` and `/stickers` are redirects kept for older bookmarks.
 

@@ -980,4 +980,3 @@ Confirmation that calculation logic was not changed
 Confirmation that backend/API functionality was not changed
 
 Any issues that still need attention
-

@@ -1,6 +1,14 @@
 /* Client-side state container. It owns storage + sync only — every number
    comes from GlassCalc via computeTotals(). No formulas here. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
@@ -121,17 +129,11 @@ function setRowSync(
   });
 }
 
-const markSynced = (
-  setter: (fn: (prev: any[]) => any[]) => void,
-  lsKey: string,
-  id: string,
-) => setRowSync(setter, lsKey, id, "synced");
+const markSynced = (setter: (fn: (prev: any[]) => any[]) => void, lsKey: string, id: string) =>
+  setRowSync(setter, lsKey, id, "synced");
 
-const markPending = (
-  setter: (fn: (prev: any[]) => any[]) => void,
-  lsKey: string,
-  id: string,
-) => setRowSync(setter, lsKey, id, "pending");
+const markPending = (setter: (fn: (prev: any[]) => any[]) => void, lsKey: string, id: string) =>
+  setRowSync(setter, lsKey, id, "pending");
 
 type Ctx = {
   hydrated: boolean;
@@ -173,7 +175,7 @@ type Ctx = {
       refNo?: string;
       notes?: string;
       dueDate?: string;
-    }
+    },
   ) => void;
   generateWorkOrder: (orderId: string) => any;
   getBookingsByStatus: (status: WorkflowStatus) => any[];
@@ -282,7 +284,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     const samplePreProforma = buildRecord(
       { ...SAMPLE_INVOICE_07321, docType: "pre_proforma" },
-      computeTotals(s, SAMPLE_INVOICE_07321)
+      computeTotals(s, SAMPLE_INVOICE_07321),
     );
     const sampleProforma = buildRecord(
       {
@@ -293,11 +295,14 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         docType: "proforma",
         delivery: { paymentType: "Paid" },
       },
-      computeTotals(s, SAMPLE_INVOICE_07321)
+      computeTotals(s, SAMPLE_INVOICE_07321),
     );
     const savedInvoices = LS.get<any[] | null>("invoices", null);
     /* Auto-migrate: ensure every invoice has status and docType fields */
-    const rawInvoices = savedInvoices !== null ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321") : [];
+    const rawInvoices =
+      savedInvoices !== null
+        ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321")
+        : [];
     const migratedInvoices = rawInvoices.map((inv: any) => ({
       ...inv,
       docType: inv.docType || "pre_proforma",
@@ -307,13 +312,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     LS.set("invoices", migratedInvoices);
 
     const savedCustomers = LS.get<any[] | null>("customers", null);
-    const initialCustomers = savedCustomers !== null ? savedCustomers.filter((c: any) => c.id !== "cus-hindustan") : [];
-    
+    const initialCustomers =
+      savedCustomers !== null ? savedCustomers.filter((c: any) => c.id !== "cus-hindustan") : [];
+
     /* Auto-harvest customers from invoices */
     migratedInvoices.forEach((invoice: any) => {
       if (invoice.cust && invoice.cust.name && String(invoice.cust.name).trim()) {
         const nameLower = String(invoice.cust.name).trim().toLowerCase();
-        const exists = initialCustomers.some((c: any) => String(c.name || "").trim().toLowerCase() === nameLower);
+        const exists = initialCustomers.some(
+          (c: any) =>
+            String(c.name || "")
+              .trim()
+              .toLowerCase() === nameLower,
+        );
         if (!exists) {
           initialCustomers.push({
             id: uid("cus"),
@@ -339,7 +350,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     /* Load payments */
     const savedPayments = LS.get<any[] | null>("payments", null);
-    const initialPayments = savedPayments !== null ? savedPayments.filter((p: any) => p.id !== "pay-1001") : [];
+    const initialPayments =
+      savedPayments !== null ? savedPayments.filter((p: any) => p.id !== "pay-1001") : [];
     setPayments(initialPayments);
     LS.set("payments", initialPayments);
 
@@ -492,16 +504,19 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     else toast.success("Settings saved");
   }, []);
 
-  const newInvoice = useCallback((docType: string = "pre_proforma") => {
-    const piNo = getNextProformaNo(invoices);
-    const blank = blankInvoice(settings, docType);
-    blank.no = piNo;
-    blank.orderNo = "";
-    blank.preProformaNo = "";
-    setInvState(blank);
-    const typeLabel = docType === "proforma" ? "Proforma Invoice" : "Order Booking";
-    toast(`Started new ${typeLabel} (${blank.no})`);
-  }, [invoices, settings]);
+  const newInvoice = useCallback(
+    (docType: string = "pre_proforma") => {
+      const piNo = getNextProformaNo(invoices);
+      const blank = blankInvoice(settings, docType);
+      blank.no = piNo;
+      blank.orderNo = "";
+      blank.preProformaNo = "";
+      setInvState(blank);
+      const typeLabel = docType === "proforma" ? "Proforma Invoice" : "Order Booking";
+      toast(`Started new ${typeLabel} (${blank.no})`);
+    },
+    [invoices, settings],
+  );
 
   const syncOne = useCallback(
     (rec: any) => {
@@ -557,11 +572,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
       /* `sync: "local"` is what stops the next background merge from treating
          this row as "deleted on another device" and purging it. */
-      const custWithId = Object.assign(
-        { id: cust.id || uid("cus") },
-        cust,
-        { id: cust.id || uid("cus"), sync: "local", updatedAt: new Date().toISOString() },
-      );
+      const custWithId = Object.assign({ id: cust.id || uid("cus") }, cust, {
+        id: cust.id || uid("cus"),
+        sync: "local",
+        updatedAt: new Date().toISOString(),
+      });
       setCustomers((prev) => {
         /* Match on id first. Matching on name alone meant renaming a customer
            found no existing row and appended a second one carrying the same id. */
@@ -641,7 +656,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       saveCustomer(rec.cust);
     }
 
-    toast.success((rec.docType === "proforma" ? "Proforma Invoice " : "Booking ") + rec.no + " saved");
+    toast.success(
+      (rec.docType === "proforma" ? "Proforma Invoice " : "Booking ") + rec.no + " saved",
+    );
     if (settings.sheetUrl) syncOne(rec);
     return true;
   }, [inv, totals, invoices, settings, syncOne, saveCustomer]);
@@ -665,72 +682,76 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [invoices, settings],
   );
 
-  const deleteInvoice = useCallback((id: string) => {
-    /* Work out what is going before touching state. A state updater runs at
+  const deleteInvoice = useCallback(
+    (id: string) => {
+      /* Work out what is going before touching state. A state updater runs at
        render time, not on this line, so anything collected inside one is still
        empty by the time the sheet calls below would read it — and calling
        rememberDeletion from inside an updater would be a side effect during
        render, which StrictMode runs twice. */
-    const target = invoices.find((x) => x.id === id);
-    /* Deleting a Proforma Invoice has to take its work order — and therefore
+      const target = invoices.find((x) => x.id === id);
+      /* Deleting a Proforma Invoice has to take its work order — and therefore
        its barcode stickers, which are rendered from the work order's pieces —
        with it. workOrderBelongsTo carries the matching rule; the old inline
        check compared the work order's document numbers against the invoice's
        record id and matched nothing. */
-    const doomedWorkOrderIds = target
-      ? workOrders.filter((wo) => workOrderBelongsTo(wo, target)).map((wo) => String(wo.id))
-      : [];
+      const doomedWorkOrderIds = target
+        ? workOrders.filter((wo) => workOrderBelongsTo(wo, target)).map((wo) => String(wo.id))
+        : [];
 
-    /* Tombstone first, then remove: the other order leaves a window where a
+      /* Tombstone first, then remove: the other order leaves a window where a
        background merge lands in between and puts the row straight back. */
-    rememberDeletion("invoices", id);
-    doomedWorkOrderIds.forEach((woId) => rememberDeletion("workOrders", woId));
+      rememberDeletion("invoices", id);
+      doomedWorkOrderIds.forEach((woId) => rememberDeletion("workOrders", woId));
 
-    setInvoices((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      LS.set("invoices", next);
-      return next;
-    });
-    if (doomedWorkOrderIds.length) {
-      const doomed = new Set(doomedWorkOrderIds);
-      setWorkOrders((prev) => {
-        const next = prev.filter((x) => !doomed.has(String(x.id)));
-        LS.set("workOrders", next);
+      setInvoices((prev) => {
+        const next = prev.filter((x) => x.id !== id);
+        LS.set("invoices", next);
         return next;
       });
-    }
-    toast.success(
-      doomedWorkOrderIds.length
-        ? `Deleted, along with ${doomedWorkOrderIds.length} work order${doomedWorkOrderIds.length === 1 ? "" : "s"} and its stickers`
-        : "Deleted",
-    );
-    /* Also delete from Google Sheet if configured */
-    if (settings.sheetUrl) {
-      syncDeletion("invoices", id, deleteInvoiceFromSheet);
-      /* Work-order rows are keyed by their own id. This used to pass the
+      if (doomedWorkOrderIds.length) {
+        const doomed = new Set(doomedWorkOrderIds);
+        setWorkOrders((prev) => {
+          const next = prev.filter((x) => !doomed.has(String(x.id)));
+          LS.set("workOrders", next);
+          return next;
+        });
+      }
+      toast.success(
+        doomedWorkOrderIds.length
+          ? `Deleted, along with ${doomedWorkOrderIds.length} work order${doomedWorkOrderIds.length === 1 ? "" : "s"} and its stickers`
+          : "Deleted",
+      );
+      /* Also delete from Google Sheet if configured */
+      if (settings.sheetUrl) {
+        syncDeletion("invoices", id, deleteInvoiceFromSheet);
+        /* Work-order rows are keyed by their own id. This used to pass the
          *invoice* id to deleteWorkOrder, which never matched a row, so the work
          orders belonging to a deleted invoice stayed on the sheet forever and
          came back on the next sync. */
-      doomedWorkOrderIds.forEach((woId) =>
-        syncDeletion("workOrders", woId, deleteWorkOrderFromSheet),
-      );
-    }
-  }, [settings.sheetUrl, invoices, workOrders, rememberDeletion, syncDeletion]);
+        doomedWorkOrderIds.forEach((woId) =>
+          syncDeletion("workOrders", woId, deleteWorkOrderFromSheet),
+        );
+      }
+    },
+    [settings.sheetUrl, invoices, workOrders, rememberDeletion, syncDeletion],
+  );
 
-
-
-  const deleteCustomer = useCallback((id: string) => {
-    rememberDeletion("customers", id);
-    setCustomers((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      LS.set("customers", next);
-      return next;
-    });
-    toast.success("Customer deleted");
-    if (settings.sheetUrl) {
-      syncDeletion("customers", id, deleteCustomerFromSheet);
-    }
-  }, [settings.sheetUrl, rememberDeletion, syncDeletion]);
+  const deleteCustomer = useCallback(
+    (id: string) => {
+      rememberDeletion("customers", id);
+      setCustomers((prev) => {
+        const next = prev.filter((x) => x.id !== id);
+        LS.set("customers", next);
+        return next;
+      });
+      toast.success("Customer deleted");
+      if (settings.sheetUrl) {
+        syncDeletion("customers", id, deleteCustomerFromSheet);
+      }
+    },
+    [settings.sheetUrl, rememberDeletion, syncDeletion],
+  );
 
   const syncAll = useCallback(() => {
     const pending = invoices.filter((r) => r.sync !== "synced");
@@ -766,143 +787,163 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const confirmPreProforma = useCallback((id: string) => {
-    let newProforma: any = null;
-    let duplicateOf: any = null;
-    setInvoices((prev) => {
-      const sourceBooking = prev.find((x) => x.id === id);
-      if (!sourceBooking) return prev;
-      const bookingNo = String(sourceBooking.no || "");
-      const already = prev.find(
-        (x) => x.docType === "proforma" && bookingNo && (String(x.no || "") === bookingNo || String(x.preProformaNo || "") === bookingNo)
-      );
-      if (already) {
-        duplicateOf = already;
-        return prev;
+  const confirmPreProforma = useCallback(
+    (id: string) => {
+      let newProforma: any = null;
+      let duplicateOf: any = null;
+      setInvoices((prev) => {
+        const sourceBooking = prev.find((x) => x.id === id);
+        if (!sourceBooking) return prev;
+        const bookingNo = String(sourceBooking.no || "");
+        const already = prev.find(
+          (x) =>
+            x.docType === "proforma" &&
+            bookingNo &&
+            (String(x.no || "") === bookingNo || String(x.preProformaNo || "") === bookingNo),
+        );
+        if (already) {
+          duplicateOf = already;
+          return prev;
+        }
+
+        const newOrderNo = getNextOrderNo(prev);
+        const piNo = sourceBooking.no || getNextProformaNo(prev);
+
+        newProforma = {
+          ...JSON.parse(JSON.stringify(sourceBooking)),
+          id: uid("inv-pi"),
+          docType: "proforma",
+          no: piNo,
+          orderNo: newOrderNo,
+          preProformaNo: newOrderNo,
+          status: "order_confirmed",
+          sync: "local",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const updatedPrev = prev.map((x) => {
+          if (x.id === id) {
+            return {
+              ...x,
+              docType: "proforma_converted",
+              status: "order_confirmed",
+              orderNo: newOrderNo,
+              preProformaNo: newOrderNo,
+              sync: "local",
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return x;
+        });
+        const next = [newProforma, ...updatedPrev];
+        LS.set("invoices", next);
+        return next;
+      });
+      if (duplicateOf) {
+        toast.info(
+          `Opening existing Proforma Invoice ${duplicateOf.no || duplicateOf} for this booking.`,
+        );
+        return duplicateOf;
       }
-
-      const newOrderNo = getNextOrderNo(prev);
-      const piNo = sourceBooking.no || getNextProformaNo(prev);
-
-      newProforma = {
-        ...JSON.parse(JSON.stringify(sourceBooking)),
-        id: uid("inv-pi"),
-        docType: "proforma",
-        no: piNo,
-        orderNo: newOrderNo,
-        preProformaNo: newOrderNo,
-        status: "order_confirmed",
-        sync: "local",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const updatedPrev = prev.map((x) => {
-        if (x.id === id) {
-          return {
-            ...x,
+      if (!newProforma) {
+        toast.error("Order Booking not found");
+        return null;
+      }
+      toast.success(
+        `Confirmed! Assigned Order No. ${newProforma.orderNo} for PI ${newProforma.no}`,
+      );
+      if (settings.sheetUrl) {
+        postInvoice(settings.sheetUrl, newProforma).catch(() => {});
+        const sourceBooking = invoices.find((x) => x.id === id);
+        if (sourceBooking) {
+          postInvoice(settings.sheetUrl, {
+            ...sourceBooking,
             docType: "proforma_converted",
             status: "order_confirmed",
-            orderNo: newOrderNo,
-            preProformaNo: newOrderNo,
-            sync: "local",
-            updatedAt: new Date().toISOString(),
-          };
+          }).catch(() => {});
         }
-        return x;
-      });
-      const next = [newProforma, ...updatedPrev];
-      LS.set("invoices", next);
-      return next;
-    });
-    if (duplicateOf) {
-      toast.info(`Opening existing Proforma Invoice ${duplicateOf.no || duplicateOf} for this booking.`);
-      return duplicateOf;
-    }
-    if (!newProforma) {
-      toast.error("Order Booking not found");
-      return null;
-    }
-    toast.success(`Confirmed! Assigned Order No. ${newProforma.orderNo} for PI ${newProforma.no}`);
-    if (settings.sheetUrl) {
-      postInvoice(settings.sheetUrl, newProforma).catch(() => {});
-      const sourceBooking = invoices.find((x) => x.id === id);
-      if (sourceBooking) {
-        postInvoice(settings.sheetUrl, {
-          ...sourceBooking,
-          docType: "proforma_converted",
-          status: "order_confirmed",
-        }).catch(() => {});
       }
-    }
-    return newProforma;
-  }, [invoices, settings.sheetUrl]);
+      return newProforma;
+    },
+    [invoices, settings.sheetUrl],
+  );
 
-  const updateInvoiceStatus = useCallback((id: string, status: WorkflowStatus) => {
-    let updatedRecord: any = null;
-    setInvoices((prev) => {
-      const next = prev.map((x) => {
-        if (x.id === id) {
-          updatedRecord = { ...x, status };
-          return updatedRecord;
-        }
-        return x;
-      });
-      LS.set("invoices", next);
-      return next;
-    });
-    if (settings.sheetUrl && updatedRecord) {
-      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
-    }
-  }, [settings.sheetUrl]);
-
-  const markAsDelivered = useCallback((id: string) => {
-    let updatedRecord: any = null;
-    setInvoices((prev) => {
-      const next = prev.map((x) => {
-        if (x.id === id && !x.delivered) {
-          updatedRecord = {
-            ...x,
-            delivered: true,
-            deliveredAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          return updatedRecord;
-        }
-        return x;
-      });
-      LS.set("invoices", next);
-      return next;
-    });
-    if (settings.sheetUrl && updatedRecord) {
-      postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
-    }
-  }, [settings.sheetUrl]);
-
-  const savePayment = useCallback((pay: any) => {
-    const rec = {
-      ...pay,
-      id: pay.id || uid("pay"),
-      createdAt: pay.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      sync: "local",
-    };
-    setPayments((prev) => {
-      const existing = prev.findIndex((x) => x.id === rec.id);
-      const next = existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
-      LS.set("payments", next);
-      return next;
-    });
-    toast.success("Payment recorded successfully");
-    /* Auto-sync payment to Google Sheet */
-    if (settings.sheetUrl) {
-      postPayment(settings.sheetUrl, rec)
-        .then(() => markSynced(setPayments, "payments", rec.id))
-        .catch((err: Error) => {
-          markPending(setPayments, "payments", rec.id);
-          toast.error("Payment saved on this device. Sheet sync failed: " + err.message);
+  const updateInvoiceStatus = useCallback(
+    (id: string, status: WorkflowStatus) => {
+      let updatedRecord: any = null;
+      setInvoices((prev) => {
+        const next = prev.map((x) => {
+          if (x.id === id) {
+            updatedRecord = { ...x, status };
+            return updatedRecord;
+          }
+          return x;
         });
-    }
-  }, [settings.sheetUrl]);
+        LS.set("invoices", next);
+        return next;
+      });
+      if (settings.sheetUrl && updatedRecord) {
+        postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+      }
+    },
+    [settings.sheetUrl],
+  );
+
+  const markAsDelivered = useCallback(
+    (id: string) => {
+      let updatedRecord: any = null;
+      setInvoices((prev) => {
+        const next = prev.map((x) => {
+          if (x.id === id && !x.delivered) {
+            updatedRecord = {
+              ...x,
+              delivered: true,
+              deliveredAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            return updatedRecord;
+          }
+          return x;
+        });
+        LS.set("invoices", next);
+        return next;
+      });
+      if (settings.sheetUrl && updatedRecord) {
+        postInvoice(settings.sheetUrl, updatedRecord).catch(() => {});
+      }
+    },
+    [settings.sheetUrl],
+  );
+
+  const savePayment = useCallback(
+    (pay: any) => {
+      const rec = {
+        ...pay,
+        id: pay.id || uid("pay"),
+        createdAt: pay.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        sync: "local",
+      };
+      setPayments((prev) => {
+        const existing = prev.findIndex((x) => x.id === rec.id);
+        const next =
+          existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
+        LS.set("payments", next);
+        return next;
+      });
+      toast.success("Payment recorded successfully");
+      /* Auto-sync payment to Google Sheet */
+      if (settings.sheetUrl) {
+        postPayment(settings.sheetUrl, rec)
+          .then(() => markSynced(setPayments, "payments", rec.id))
+          .catch((err: Error) => {
+            markPending(setPayments, "payments", rec.id);
+            toast.error("Payment saved on this device. Sheet sync failed: " + err.message);
+          });
+      }
+    },
+    [settings.sheetUrl],
+  );
 
   const confirmOrder = useCallback(
     (
@@ -913,7 +954,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         refNo?: string;
         notes?: string;
         dueDate?: string;
-      }
+      },
     ) => {
       let targetRecord: any = null;
 
@@ -946,7 +987,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
               remainingBalance,
               paymentStatus,
               paymentRef: paymentDetails?.refNo !== undefined ? paymentDetails.refNo : x.paymentRef,
-              paymentNotes: paymentDetails?.notes !== undefined ? paymentDetails.notes : x.paymentNotes,
+              paymentNotes:
+                paymentDetails?.notes !== undefined ? paymentDetails.notes : x.paymentNotes,
               dueDate: paymentDetails?.dueDate !== undefined ? paymentDetails.dueDate : x.dueDate,
             };
             targetRecord = updated;
@@ -977,7 +1019,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         postInvoice(settings.sheetUrl, targetRecord).catch(() => {});
       }
     },
-    [savePayment, settings.sheetUrl]
+    [savePayment, settings.sheetUrl],
   );
 
   const generateWorkOrder = useCallback(
@@ -996,14 +1038,18 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         if (!line?.ok) return;
         const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
         const layerObj = order.layers?.[layerIdx] || null;
-        const prodName = layerObj?.productName || layerObj?.glassName || item.productName || order.productName || "Glass Product";
+        const prodName =
+          layerObj?.productName ||
+          layerObj?.glassName ||
+          item.productName ||
+          order.productName ||
+          "Glass Product";
         const layerNo = layerObj?.layerNo || `Item ${layerIdx + 1}`;
         const qty = Number(item.qty) || 1;
         for (let p = 0; p < qty; p++) {
           globalSr++;
-          const barcodeNum = String(
-            (order.orderNo || order.no || "0000").replace(/\D/g, ""),
-          ).padStart(4, "0") +
+          const barcodeNum =
+            String((order.orderNo || order.no || "0000").replace(/\D/g, "")).padStart(4, "0") +
             String(globalSr).padStart(4, "0") +
             String(p + 1).padStart(2, "0");
           pieces.push({
@@ -1062,27 +1108,29 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [invoices, settings],
   );
 
-  const saveWorkOrder = useCallback((wo: any) => {
-    const rec = { ...wo, sync: "local", updatedAt: new Date().toISOString() };
-    setWorkOrders((prev) => {
-      const existing = prev.findIndex((x) => x.id === rec.id);
-      const next = existing >= 0
-        ? prev.map((x, i) => (i === existing ? rec : x))
-        : [rec, ...prev];
-      LS.set("workOrders", next);
-      return next;
-    });
-    toast.success("Work Order " + rec.woNo + " saved");
-    /* Auto-sync work order to Google Sheet */
-    if (settings.sheetUrl) {
-      postWorkOrder(settings.sheetUrl, rec)
-        .then(() => markSynced(setWorkOrders, "workOrders", rec.id))
-        .catch((err: Error) => {
-          markPending(setWorkOrders, "workOrders", rec.id);
-          toast.error("Work order saved on this device. Sheet sync failed: " + err.message);
-        });
-    }
-  }, [settings.sheetUrl]);
+  const saveWorkOrder = useCallback(
+    (wo: any) => {
+      const rec = { ...wo, sync: "local", updatedAt: new Date().toISOString() };
+      setWorkOrders((prev) => {
+        const existing = prev.findIndex((x) => x.id === rec.id);
+        const next =
+          existing >= 0 ? prev.map((x, i) => (i === existing ? rec : x)) : [rec, ...prev];
+        LS.set("workOrders", next);
+        return next;
+      });
+      toast.success("Work Order " + rec.woNo + " saved");
+      /* Auto-sync work order to Google Sheet */
+      if (settings.sheetUrl) {
+        postWorkOrder(settings.sheetUrl, rec)
+          .then(() => markSynced(setWorkOrders, "workOrders", rec.id))
+          .catch((err: Error) => {
+            markPending(setWorkOrders, "workOrders", rec.id);
+            toast.error("Work order saved on this device. Sheet sync failed: " + err.message);
+          });
+      }
+    },
+    [settings.sheetUrl],
+  );
 
   const getBookingsByStatus = useCallback(
     (status: WorkflowStatus) => {
@@ -1091,22 +1139,21 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     [invoices],
   );
 
-
-
-  const deletePayment = useCallback((id: string) => {
-    rememberDeletion("payments", id);
-    setPayments((prev) => {
-      const next = prev.filter((x) => x.id !== id);
-      LS.set("payments", next);
-      return next;
-    });
-    toast.success("Payment deleted");
-    if (settings.sheetUrl) {
-      syncDeletion("payments", id, deletePaymentFromSheet);
-    }
-  }, [settings.sheetUrl, rememberDeletion, syncDeletion]);
-
-
+  const deletePayment = useCallback(
+    (id: string) => {
+      rememberDeletion("payments", id);
+      setPayments((prev) => {
+        const next = prev.filter((x) => x.id !== id);
+        LS.set("payments", next);
+        return next;
+      });
+      toast.success("Payment deleted");
+      if (settings.sheetUrl) {
+        syncDeletion("payments", id, deletePaymentFromSheet);
+      }
+    },
+    [settings.sheetUrl, rememberDeletion, syncDeletion],
+  );
 
   const pushAllToSheet = useCallback(async () => {
     if (!settings.sheetUrl) {
@@ -1136,9 +1183,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       ) => {
         const saved = new Set(savedIds);
         setter((prev) => {
-          const next = prev.map((x) =>
-            saved.has(String(x.id)) ? { ...x, sync: "synced" } : x,
-          );
+          const next = prev.map((x) => (saved.has(String(x.id)) ? { ...x, sync: "synced" } : x));
           LS.set(lsKey, next);
           return next;
         });

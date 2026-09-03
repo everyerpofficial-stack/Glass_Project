@@ -34,9 +34,23 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
@@ -69,11 +83,22 @@ const AVATAR_COLORS = [
 
 function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, invoices, payments, saveCustomer, deleteCustomer, savePayment, deletePayment, setInv, settings, hydrated } = useGQ();
+  const {
+    customers,
+    invoices,
+    payments,
+    saveCustomer,
+    deleteCustomer,
+    savePayment,
+    deletePayment,
+    setInv,
+    settings,
+    hydrated,
+  } = useGQ();
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+
   /* Edit / Add Modal state */
   const [openModal, setOpenModal] = useState(false);
   const [editCust, setEditCust] = useState<any>(null);
@@ -146,10 +171,14 @@ function CustomersPage() {
      against a customer name — passing c.name here left the page silently blank.
      Resolve the customer's newest work-order-eligible invoice instead. */
   const openWorkOrderForCust = (c: any) => {
-    const name = String(c?.name || "").trim().toLowerCase();
+    const name = String(c?.name || "")
+      .trim()
+      .toLowerCase();
     const candidates = invoices.filter(
       (x) =>
-        String(x.cust?.name || "").trim().toLowerCase() === name &&
+        String(x.cust?.name || "")
+          .trim()
+          .toLowerCase() === name &&
         (x.status === "order_confirmed" ||
           x.status === "work_order_generated" ||
           x.docType === "proforma"),
@@ -186,14 +215,15 @@ function CustomersPage() {
     if (!viewCust) return [];
     const oneRowPerOrder = commercialRecords(invoices);
     return oneRowPerOrder.filter(
-      (inv) => String(inv.cust?.name || "").toLowerCase() === String(viewCust.name || "").toLowerCase()
+      (inv) =>
+        String(inv.cust?.name || "").toLowerCase() === String(viewCust.name || "").toLowerCase(),
     );
   }, [invoices, viewCust]);
 
   const customerPayments = useMemo(() => {
     if (!viewCust) return [];
     return payments.filter(
-      (p) => String(p.custName || "").toLowerCase() === String(viewCust.name || "").toLowerCase()
+      (p) => String(p.custName || "").toLowerCase() === String(viewCust.name || "").toLowerCase(),
     );
   }, [payments, viewCust]);
 
@@ -242,10 +272,18 @@ function CustomersPage() {
     invoices.forEach((inv) => {
       if (inv.cust && inv.cust.name && String(inv.cust.name).trim()) {
         const nameLower = String(inv.cust.name).trim().toLowerCase();
-        const exists = list.some((c) => String(c.name || "").trim().toLowerCase() === nameLower);
+        const exists = list.some(
+          (c) =>
+            String(c.name || "")
+              .trim()
+              .toLowerCase() === nameLower,
+        );
         if (!exists) {
           list.push({
-            id: inv.cust.id || "cus-" + Math.abs(nameLower.split("").reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
+            id:
+              inv.cust.id ||
+              "cus-" +
+                Math.abs(nameLower.split("").reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
             name: inv.cust.name,
             phone: inv.cust.phone || "",
             email: inv.cust.email || "",
@@ -263,8 +301,14 @@ function CustomersPage() {
 
   /* Metrics counts */
   const totalCustomers = allCustomers.length;
-  const activeCount = useMemo(() => allCustomers.filter((c) => (c.status || "active") === "active").length, [allCustomers]);
-  const pendingKycCount = useMemo(() => allCustomers.filter((c) => c.status === "pending").length, [allCustomers]);
+  const activeCount = useMemo(
+    () => allCustomers.filter((c) => (c.status || "active") === "active").length,
+    [allCustomers],
+  );
+  const pendingKycCount = useMemo(
+    () => allCustomers.filter((c) => c.status === "pending").length,
+    [allCustomers],
+  );
 
   /* Unique cities */
   const cities = useMemo(() => {
@@ -289,23 +333,33 @@ function CustomersPage() {
       const matchSearch =
         !search ||
         nameStr.toLowerCase().includes(q) ||
-        String(c.phone || "").toLowerCase().includes(q) ||
-        String(c.gstin || "").toLowerCase().includes(q) ||
-        String(c.city || "").toLowerCase().includes(q) ||
-        String(c.id || "").toLowerCase().includes(q);
+        String(c.phone || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c.gstin || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c.city || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c.id || "")
+          .toLowerCase()
+          .includes(q);
 
-      const matchLetter =
-        letterFilter === "ALL" ||
-        nameStr.toUpperCase().startsWith(letterFilter);
+      const matchLetter = letterFilter === "ALL" || nameStr.toUpperCase().startsWith(letterFilter);
 
-      const matchCity = cityFilter === "all" || String(c.city || "").toLowerCase() === cityFilter.toLowerCase();
+      const matchCity =
+        cityFilter === "all" || String(c.city || "").toLowerCase() === cityFilter.toLowerCase();
       const matchStatus = statusFilter === "all" || (c.status || "active") === statusFilter;
 
       return matchSearch && matchLetter && matchCity && matchStatus;
     });
   }, [allCustomers, search, letterFilter, cityFilter, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / (pageSize || filteredCustomers.length || 1)));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCustomers.length / (pageSize || filteredCustomers.length || 1)),
+  );
 
   const paginatedCustomers = useMemo(() => {
     if (pageSize === 0) return filteredCustomers;
@@ -325,17 +379,31 @@ function CustomersPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => toast.info("Exporting customer data...")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => toast.info("Exporting customer data...")}
+          >
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => toast.info("Import customer CSV feature ready.")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => toast.info("Import customer CSV feature ready.")}
+          >
             <Upload className="h-3.5 w-3.5" /> Import
           </Button>
 
           {/* Add / Edit Customer Modal */}
           <Dialog open={openModal} onOpenChange={setOpenModal}>
             <DialogTrigger asChild>
-              <Button size="sm" onClick={handleOpenAdd} className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-sm">
+              <Button
+                size="sm"
+                onClick={handleOpenAdd}
+                className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold shadow-sm"
+              >
                 <Plus className="h-3.5 w-3.5" /> Add Customer
               </Button>
             </DialogTrigger>
@@ -364,7 +432,12 @@ function CustomersPage() {
                     <Input
                       className="h-8 text-xs font-mono"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+                        })
+                      }
                       maxLength={10}
                       placeholder="9799998611"
                     />
@@ -425,8 +498,12 @@ function CustomersPage() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" size="sm" onClick={() => setOpenModal(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleSubmit}>Save Customer</Button>
+                <Button variant="outline" size="sm" onClick={() => setOpenModal(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSubmit}>
+                  Save Customer
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -441,8 +518,12 @@ function CustomersPage() {
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Customers</div>
-              <div className="text-xl font-bold tracking-tight text-foreground">{totalCustomers}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Customers
+              </div>
+              <div className="text-xl font-bold tracking-tight text-foreground">
+                {totalCustomers}
+              </div>
             </div>
           </div>
         </div>
@@ -453,8 +534,12 @@ function CustomersPage() {
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active</div>
-              <div className="text-xl font-bold tracking-tight text-emerald-600">{activeCount || totalCustomers}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Active
+              </div>
+              <div className="text-xl font-bold tracking-tight text-emerald-600">
+                {activeCount || totalCustomers}
+              </div>
             </div>
           </div>
         </div>
@@ -465,8 +550,12 @@ function CustomersPage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pending KYC / GST</div>
-              <div className="text-xl font-bold tracking-tight text-amber-600">{pendingKycCount}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Pending KYC / GST
+              </div>
+              <div className="text-xl font-bold tracking-tight text-amber-600">
+                {pendingKycCount}
+              </div>
             </div>
           </div>
         </div>
@@ -477,8 +566,12 @@ function CustomersPage() {
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Recorded Payments</div>
-              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">₹ {nf(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0))}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Recorded Payments
+              </div>
+              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">
+                ₹ {nf(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0))}
+              </div>
             </div>
           </div>
         </div>
@@ -508,7 +601,9 @@ function CustomersPage() {
             <SelectContent>
               <SelectItem value="all">All Cities</SelectItem>
               {cities.map((city) => (
-                <SelectItem key={city} value={city}>{city}</SelectItem>
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -566,7 +661,9 @@ function CustomersPage() {
             </div>
             <p className="text-sm font-semibold text-foreground">No customers found</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-              {search ? "No clients match your filter criteria." : "Click below to add your first customer."}
+              {search
+                ? "No clients match your filter criteria."
+                : "Click below to add your first customer."}
             </p>
             <Button size="sm" onClick={handleOpenAdd} className="mt-4 h-8 text-xs">
               <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add Customer
@@ -590,10 +687,13 @@ function CustomersPage() {
               <tbody className="divide-y divide-border/40 text-xs">
                 {paginatedCustomers.map((c, i) => {
                   const customerQuotes = invoices.filter(
-                    (inv) => String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase()
+                    (inv) =>
+                      String(inv.cust?.name || "").toLowerCase() ===
+                      String(c.name || "").toLowerCase(),
                   );
                   const custPays = payments.filter(
-                    (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase()
+                    (p) =>
+                      String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
                   );
                   const totalPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
@@ -609,14 +709,18 @@ function CustomersPage() {
                       {/* Customer Info */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className={`h-8 w-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${colorClass}`}>
+                          <div
+                            className={`h-8 w-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${colorClass}`}
+                          >
                             {getInitials(c.name)}
                           </div>
                           <div>
                             <div className="font-semibold text-foreground leading-tight hover:underline text-primary">
                               {c.name}
                             </div>
-                            <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{code}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                              {code}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -661,7 +765,9 @@ function CustomersPage() {
                       {/* Payments Received */}
                       <td className="py-3 px-4 text-right font-mono font-semibold">
                         <span className="text-emerald-600 font-bold">₹ {nf(totalPaid)}</span>
-                        <div className="text-[10px] text-muted-foreground font-normal">{custPays.length} payments</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">
+                          {custPays.length} payments
+                        </div>
                       </td>
 
                       {/* KYC / GST Status */}
@@ -679,21 +785,30 @@ function CustomersPage() {
 
                       {/* Status */}
                       <td className="py-3 px-4 text-center">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          (c.status || "active") === "active"
-                            ? "bg-emerald-500/10 text-emerald-600"
-                            : "bg-amber-500/10 text-amber-600"
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${
-                            (c.status || "active") === "active" ? "bg-emerald-500" : "bg-amber-500"
-                          }`} />
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            (c.status || "active") === "active"
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : "bg-amber-500/10 text-amber-600"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              (c.status || "active") === "active"
+                                ? "bg-emerald-500"
+                                : "bg-amber-500"
+                            }`}
+                          />
                           {(c.status || "active") === "active" ? "Active" : "Pending"}
                         </span>
                       </td>
 
                       {/* Actions (Removed confusing + button as requested) */}
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex items-center justify-end gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
@@ -752,11 +867,16 @@ function CustomersPage() {
         {filteredCustomers.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 border-t border-border bg-muted/20 text-xs">
             <div className="text-muted-foreground font-medium">
-              Showing <span className="font-bold text-foreground">{(page - 1) * (pageSize || filteredCustomers.length) + 1}</span> to{" "}
+              Showing{" "}
+              <span className="font-bold text-foreground">
+                {(page - 1) * (pageSize || filteredCustomers.length) + 1}
+              </span>{" "}
+              to{" "}
               <span className="font-bold text-foreground">
                 {Math.min(page * (pageSize || filteredCustomers.length), filteredCustomers.length)}
               </span>{" "}
-              of <span className="font-bold text-foreground">{filteredCustomers.length}</span> customers
+              of <span className="font-bold text-foreground">{filteredCustomers.length}</span>{" "}
+              customers
             </div>
 
             <div className="flex items-center gap-3">
@@ -857,7 +977,8 @@ function CustomersPage() {
                     <FileText className="h-3.5 w-3.5" /> Invoices ({customerInvoices.length})
                   </TabsTrigger>
                   <TabsTrigger value="payments" className="text-xs gap-1.5">
-                    <CreditCard className="h-3.5 w-3.5" /> Payment History ({customerPayments.length})
+                    <CreditCard className="h-3.5 w-3.5" /> Payment History (
+                    {customerPayments.length})
                   </TabsTrigger>
                 </TabsList>
 
@@ -869,11 +990,26 @@ function CustomersPage() {
                         <Building className="h-3.5 w-3.5" /> Contact Information
                       </div>
                       <div className="space-y-1">
-                        <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{viewCust.name}</span></div>
-                        <div><span className="text-muted-foreground">Phone:</span> <span className="font-mono">{viewCust.phone || "N/A"}</span></div>
-                        <div><span className="text-muted-foreground">Email:</span> {viewCust.email || "N/A"}</div>
-                        <div><span className="text-muted-foreground">GSTIN:</span> <span className="font-mono">{viewCust.gstin || "N/A"}</span></div>
-                        <div><span className="text-muted-foreground">City:</span> {viewCust.city || "Jaipur"}</div>
+                        <div>
+                          <span className="text-muted-foreground">Name:</span>{" "}
+                          <span className="font-medium">{viewCust.name}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Phone:</span>{" "}
+                          <span className="font-mono">{viewCust.phone || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Email:</span>{" "}
+                          {viewCust.email || "N/A"}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">GSTIN:</span>{" "}
+                          <span className="font-mono">{viewCust.gstin || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">City:</span>{" "}
+                          {viewCust.city || "Jaipur"}
+                        </div>
                       </div>
                     </div>
 
@@ -883,12 +1019,20 @@ function CustomersPage() {
                       </div>
                       <div className="space-y-1">
                         <div>
-                          <span className="text-muted-foreground font-semibold">Billing Address:</span>
-                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">{viewCust.addr || "No billing address stored."}</p>
+                          <span className="text-muted-foreground font-semibold">
+                            Billing Address:
+                          </span>
+                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">
+                            {viewCust.addr || "No billing address stored."}
+                          </p>
                         </div>
                         <div className="pt-1">
-                          <span className="text-muted-foreground font-semibold">Dispatch / Delivery Address:</span>
-                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">{viewCust.ship || "Same as billing address."}</p>
+                          <span className="text-muted-foreground font-semibold">
+                            Dispatch / Delivery Address:
+                          </span>
+                          <p className="text-muted-foreground text-[11px] whitespace-pre-line mt-0.5">
+                            {viewCust.ship || "Same as billing address."}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -897,16 +1041,30 @@ function CustomersPage() {
                   {/* Financial Summary */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
-                      <div className="text-[10px] font-bold uppercase text-blue-600">Total Billed</div>
-                      <div className="text-base font-bold font-mono text-blue-700 mt-0.5">₹ {nf(totalInvoicedForViewCust)}</div>
+                      <div className="text-[10px] font-bold uppercase text-blue-600">
+                        Total Billed
+                      </div>
+                      <div className="text-base font-bold font-mono text-blue-700 mt-0.5">
+                        ₹ {nf(totalInvoicedForViewCust)}
+                      </div>
                     </div>
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
-                      <div className="text-[10px] font-bold uppercase text-emerald-600">Total Paid</div>
-                      <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">₹ {nf(totalPaidForViewCust)}</div>
+                      <div className="text-[10px] font-bold uppercase text-emerald-600">
+                        Total Paid
+                      </div>
+                      <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">
+                        ₹ {nf(totalPaidForViewCust)}
+                      </div>
                     </div>
-                    <div className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-rose-500/10 border-rose-500/20 text-rose-700" : "bg-muted/30 border-border text-foreground"}`}>
-                      <div className="text-[10px] font-bold uppercase text-muted-foreground">Due Balance</div>
-                      <div className="text-base font-bold font-mono mt-0.5">₹ {nf(Math.max(0, dueBalanceForViewCust))}</div>
+                    <div
+                      className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-rose-500/10 border-rose-500/20 text-rose-700" : "bg-muted/30 border-border text-foreground"}`}
+                    >
+                      <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                        Due Balance
+                      </div>
+                      <div className="text-base font-bold font-mono mt-0.5">
+                        ₹ {nf(Math.max(0, dueBalanceForViewCust))}
+                      </div>
                     </div>
                   </div>
 
@@ -947,15 +1105,25 @@ function CustomersPage() {
                               <td className="p-2.5 text-muted-foreground font-sans">{inv.date}</td>
                               <td className="p-2.5 font-sans">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
-                                  {inv.docType === "proforma" ? "Proforma Invoice" : "Order Booking"}
+                                  {inv.docType === "proforma"
+                                    ? "Proforma Invoice"
+                                    : "Order Booking"}
                                 </span>
                               </td>
-                              <td className="p-2.5 text-center font-sans">{inv.items?.length || 0}</td>
-                              <td className="p-2.5 text-right font-bold text-emerald-600">₹ {nf(inv.totals?.grandTotal || 0)}</td>
                               <td className="p-2.5 text-center font-sans">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  inv.status === "order_confirmed" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
-                                }`}>
+                                {inv.items?.length || 0}
+                              </td>
+                              <td className="p-2.5 text-right font-bold text-emerald-600">
+                                ₹ {nf(inv.totals?.grandTotal || 0)}
+                              </td>
+                              <td className="p-2.5 text-center font-sans">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    inv.status === "order_confirmed"
+                                      ? "bg-emerald-500/10 text-emerald-600"
+                                      : "bg-amber-500/10 text-amber-600"
+                                  }`}
+                                >
                                   {inv.status || "Draft"}
                                 </span>
                               </td>
@@ -985,9 +1153,16 @@ function CustomersPage() {
                   {/* Top Bar with Totals + Add Payment Button */}
                   <div className="flex items-center justify-between gap-2 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex-wrap">
                     <div>
-                      <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Payment Ledger Summary</div>
+                      <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                        Payment Ledger Summary
+                      </div>
                       <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">
-                        Total Payments Received: <span className="font-bold font-mono">₹ {nf(totalPaidForViewCust)}</span> | Remaining Due: <span className="font-bold font-mono">₹ {nf(Math.max(0, dueBalanceForViewCust))}</span>
+                        Total Payments Received:{" "}
+                        <span className="font-bold font-mono">₹ {nf(totalPaidForViewCust)}</span> |
+                        Remaining Due:{" "}
+                        <span className="font-bold font-mono">
+                          ₹ {nf(Math.max(0, dueBalanceForViewCust))}
+                        </span>
                       </div>
                     </div>
                     <Button
@@ -1014,7 +1189,9 @@ function CustomersPage() {
                             type="date"
                             className="h-8 text-xs"
                             value={payFormData.date}
-                            onChange={(e) => setPayFormData({ ...payFormData, date: e.target.value })}
+                            onChange={(e) =>
+                              setPayFormData({ ...payFormData, date: e.target.value })
+                            }
                           />
                         </div>
 
@@ -1029,7 +1206,9 @@ function CustomersPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="UPI">UPI / Google Pay</SelectItem>
-                              <SelectItem value="Bank Transfer">Bank Transfer (NEFT/RTGS)</SelectItem>
+                              <SelectItem value="Bank Transfer">
+                                Bank Transfer (NEFT/RTGS)
+                              </SelectItem>
                               <SelectItem value="Cash">Cash</SelectItem>
                               <SelectItem value="Cheque">Cheque</SelectItem>
                               <SelectItem value="Credit Card">Credit / Debit Card</SelectItem>
@@ -1044,7 +1223,9 @@ function CustomersPage() {
                             className="h-8 text-xs font-mono font-bold"
                             placeholder="e.g. 10000"
                             value={payFormData.amount}
-                            onChange={(e) => setPayFormData({ ...payFormData, amount: e.target.value })}
+                            onChange={(e) =>
+                              setPayFormData({ ...payFormData, amount: e.target.value })
+                            }
                           />
                         </div>
 
@@ -1054,7 +1235,9 @@ function CustomersPage() {
                             className="h-8 text-xs font-mono"
                             placeholder="e.g. PI-1001"
                             value={payFormData.invoiceNo}
-                            onChange={(e) => setPayFormData({ ...payFormData, invoiceNo: e.target.value })}
+                            onChange={(e) =>
+                              setPayFormData({ ...payFormData, invoiceNo: e.target.value })
+                            }
                           />
                         </div>
 
@@ -1064,7 +1247,9 @@ function CustomersPage() {
                             className="h-8 text-xs font-mono"
                             placeholder="e.g. UPI-9872134"
                             value={payFormData.refNo}
-                            onChange={(e) => setPayFormData({ ...payFormData, refNo: e.target.value })}
+                            onChange={(e) =>
+                              setPayFormData({ ...payFormData, refNo: e.target.value })
+                            }
                           />
                         </div>
 
@@ -1074,16 +1259,27 @@ function CustomersPage() {
                             className="h-8 text-xs"
                             placeholder="e.g. 50% advance received"
                             value={payFormData.notes}
-                            onChange={(e) => setPayFormData({ ...payFormData, notes: e.target.value })}
+                            onChange={(e) =>
+                              setPayFormData({ ...payFormData, notes: e.target.value })
+                            }
                           />
                         </div>
                       </div>
 
                       <div className="flex justify-end gap-2 pt-1">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowAddPayment(false)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setShowAddPayment(false)}
+                        >
                           Cancel
                         </Button>
-                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" onClick={handleAddPaymentSubmit}>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                          onClick={handleAddPaymentSubmit}
+                        >
                           Save Payment Record
                         </Button>
                       </div>
@@ -1094,7 +1290,9 @@ function CustomersPage() {
                   {customerPayments.length === 0 ? (
                     <div className="text-center py-8 text-xs text-muted-foreground space-y-1">
                       <p>No payment entries recorded yet for {viewCust.name}.</p>
-                      <p className="text-[11px] text-muted-foreground/70">Click "Record New Payment" above to add payment logs.</p>
+                      <p className="text-[11px] text-muted-foreground/70">
+                        Click "Record New Payment" above to add payment logs.
+                      </p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto border border-border rounded-lg">
@@ -1119,10 +1317,18 @@ function CustomersPage() {
                                   {pay.mode || "UPI"}
                                 </span>
                               </td>
-                              <td className="p-2.5 font-mono text-muted-foreground">{pay.refNo || "—"}</td>
-                              <td className="p-2.5 font-mono font-medium text-foreground">{pay.invoiceNo || "—"}</td>
-                              <td className="p-2.5 text-right font-mono font-bold text-emerald-600">₹ {nf(pay.amount)}</td>
-                              <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">{pay.notes || "—"}</td>
+                              <td className="p-2.5 font-mono text-muted-foreground">
+                                {pay.refNo || "—"}
+                              </td>
+                              <td className="p-2.5 font-mono font-medium text-foreground">
+                                {pay.invoiceNo || "—"}
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-bold text-emerald-600">
+                                ₹ {nf(pay.amount)}
+                              </td>
+                              <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">
+                                {pay.notes || "—"}
+                              </td>
                               <td className="p-2.5 text-right">
                                 <ConfirmDelete
                                   title="Delete this payment record?"

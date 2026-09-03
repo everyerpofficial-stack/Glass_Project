@@ -38,7 +38,17 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankItem, nf, uid, dmy, GLASS_TYPES, PRODUCTS_BY_TYPE, detectGlassTypeFromProduct, formatOrderId, formatPiNo } from "@/lib/gq";
+import {
+  blankItem,
+  nf,
+  uid,
+  dmy,
+  GLASS_TYPES,
+  PRODUCTS_BY_TYPE,
+  detectGlassTypeFromProduct,
+  formatOrderId,
+  formatPiNo,
+} from "@/lib/gq";
 
 const BASE_GLASS_PRODUCTS = [
   "04 mm Clear Glass",
@@ -129,7 +139,9 @@ function Section({
 }) {
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className={`flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border gap-2 flex-wrap ${accent || "bg-muted/30"}`}>
+      <div
+        className={`flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border gap-2 flex-wrap ${accent || "bg-muted/30"}`}
+      >
         <span className="text-[11px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5">
           <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
           {title}
@@ -160,7 +172,9 @@ function PRow({
   highlight?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-[1fr_50px_60px_40px_65px] gap-1 items-center py-[3px] text-[11px] border-b border-border/30 last:border-0 ${highlight ? "bg-emerald-500/5" : ""}`}>
+    <div
+      className={`grid grid-cols-[1fr_50px_60px_40px_65px] gap-1 items-center py-[3px] text-[11px] border-b border-border/30 last:border-0 ${highlight ? "bg-emerald-500/5" : ""}`}
+    >
       <span className="text-foreground truncate">{label}</span>
       <span className="text-muted-foreground text-center font-mono">{qty ?? ""}</span>
       {onRateChange ? (
@@ -180,13 +194,7 @@ function PRow({
 }
 
 /* ─── Remark Selector Cell ────────────────────────────────────────── */
-function RemarkCell({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-}) {
+function RemarkCell({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const PRESETS = ["BLOCK", "DESIGN", "DRAWING"];
   const isPreset = PRESETS.includes(value) || value === "";
   const [isCustomMode, setIsCustomMode] = useState(!isPreset && Boolean(value));
@@ -307,20 +315,27 @@ function BulkEntryModal({
             <ClipboardPaste className="h-4 w-4 text-primary" />
             Bulk Size Entry ({inputUnit.toUpperCase()})
           </span>
-          <button onClick={onClose} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground">
+          <button
+            onClick={onClose}
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            Paste sizes, one per line. Format: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">L1 x L2</code> or <code className="bg-muted px-1 py-0.5 rounded text-[10px]">L1, L2</code>
+            Paste sizes, one per line. Format:{" "}
+            <code className="bg-muted px-1 py-0.5 rounded text-[10px]">L1 x L2</code> or{" "}
+            <code className="bg-muted px-1 py-0.5 rounded text-[10px]">L1, L2</code>
           </p>
           <Textarea
             rows={12}
             className="font-mono text-xs resize-none"
-            placeholder={inputUnit === "mm"
-              ? "60.3 x 51.2\n60.3 x 52.0\n60.3 x 51.2\n60.3 x 52.2\n60.4 x 51.3"
-              : "36 3/8 x 13 3/8\n48 1/16 x 24\n119 5/16 x 48"}
+            placeholder={
+              inputUnit === "mm"
+                ? "60.3 x 51.2\n60.3 x 52.0\n60.3 x 51.2\n60.3 x 52.2\n60.4 x 51.3"
+                : "36 3/8 x 13 3/8\n48 1/16 x 24\n119 5/16 x 48"
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
             autoFocus
@@ -330,7 +345,9 @@ function BulkEntryModal({
               {text.split("\n").filter((l) => l.trim()).length} lines detected
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onClose}>Cancel</Button>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onClose}>
+                Cancel
+              </Button>
               <Button size="sm" className="h-8 text-xs gap-1" onClick={handleApply}>
                 <Plus className="h-3 w-3" /> Add All Items
               </Button>
@@ -341,7 +358,6 @@ function BulkEntryModal({
     </div>
   );
 }
-
 
 /* ─── Main Booking Page ──────────────────────────────────────────── */
 function BookingPage() {
@@ -404,22 +420,23 @@ function BookingPage() {
         (x: any) =>
           (!x.docType || x.docType === "pre_proforma") &&
           x.docType !== "proforma_converted" &&
-          x.status !== "order_confirmed"
+          x.status !== "order_confirmed",
       ),
-    [invoices]
+    [invoices],
   );
 
   const pendingWhatsAppCount = useMemo(
     () => preProformaInvoices.filter((x) => !x.whatsappSent).length,
-    [preProformaInvoices]
+    [preProformaInvoices],
   );
   const sentWhatsAppCount = useMemo(
     () => preProformaInvoices.filter((x) => !!x.whatsappSent).length,
-    [preProformaInvoices]
+    [preProformaInvoices],
   );
   const totalSavedValue = useMemo(
-    () => preProformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
-    [preProformaInvoices]
+    () =>
+      preProformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
+    [preProformaInvoices],
   );
 
   const filteredSavedInvoices = useMemo(
@@ -434,7 +451,7 @@ function BookingPage() {
           item.cust?.gstin?.toLowerCase().includes(query)
         );
       }),
-    [preProformaInvoices, savedSearch]
+    [preProformaInvoices, savedSearch],
   );
 
   /* ── field helpers ── */
@@ -487,7 +504,12 @@ function BookingPage() {
     return inv.layers.map((l: any, idx: number) => ({
       ...l,
       layerNo: sanitizeItemNo(l.layerNo, idx),
-      items: l.items && l.items.length > 0 ? l.items : (idx === 0 && inv.items && inv.items.length > 0 ? inv.items : [blankItem()]),
+      items:
+        l.items && l.items.length > 0
+          ? l.items
+          : idx === 0 && inv.items && inv.items.length > 0
+            ? inv.items
+            : [blankItem()],
     }));
   }, [inv.layers, inv.items, inv.productName, inv.glass?.thickness]);
 
@@ -638,11 +660,8 @@ function BookingPage() {
   const [custDropOpen, setCustDropOpen] = useState(false);
 
   const filteredCustomers = useMemo(
-    () =>
-      customers.filter((c: any) =>
-        c.name?.toLowerCase().includes(custSearch.toLowerCase())
-      ),
-    [customers, custSearch]
+    () => customers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
+    [customers, custSearch],
   );
 
   const selectCustomer = (c: any) => {
@@ -681,7 +700,9 @@ function BookingPage() {
     <div className="min-h-screen bg-background">
       {/* ── UNIFIED SECTION TABS ───────────────────────── */}
       <div className="bg-muted/40 border-b border-border px-3 sm:px-6 py-2 flex items-center gap-2 text-xs font-semibold flex-wrap">
-        <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">Proforma Section:</span>
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">
+          Proforma Section:
+        </span>
         <Link
           to="/booking"
           className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold shadow-sm flex items-center gap-1.5"
@@ -703,10 +724,15 @@ function BookingPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-              <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+              <Link to="/" className="hover:text-foreground transition-colors">
+                Home
+              </Link>
               {" / "}
               {showForm ? (
-                <button onClick={() => setShowForm(false)} className="hover:text-foreground transition-colors">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="hover:text-foreground transition-colors"
+                >
                   Order Booking
                 </button>
               ) : (
@@ -723,7 +749,11 @@ function BookingPage() {
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              {showForm ? (inv._saved ? "Edit Order Booking" : "New Order Booking") : "Order Booking Management"}
+              {showForm
+                ? inv._saved
+                  ? "Edit Order Booking"
+                  : "New Order Booking"
+                : "Order Booking Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -733,15 +763,15 @@ function BookingPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {showForm ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs gap-1.5"
-                  onClick={() => setShowForm(false)}
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Back to Saved List
-                </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setShowForm(false)}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Saved List
+              </Button>
             ) : (
               /* RIGHT BUTTON: New Order Booking */
               <Button
@@ -766,19 +796,27 @@ function BookingPage() {
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
                 <Clock className="h-3 w-3" /> Pending Follow Up
               </div>
-              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingWhatsAppCount}</div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                {pendingWhatsAppCount}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting follow up</div>
             </div>
             <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
               <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
                 <CheckCircle2 className="h-3 w-3" /> Followed Up
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{sentWhatsAppCount}</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {sentWhatsAppCount}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Follow up completed</div>
             </div>
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">₹ {nf(totalSavedValue)}</div>
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Total Value
+              </div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
+                ₹ {nf(totalSavedValue)}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Saved quotes value</div>
             </div>
           </div>
@@ -802,7 +840,8 @@ function BookingPage() {
                   />
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">
-                  <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span> saved records
+                  <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span>{" "}
+                  saved records
                 </span>
               </div>
             }
@@ -811,7 +850,11 @@ function BookingPage() {
               <TableSkeleton rows={6} cols={6} />
             ) : filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
-                <p>{savedSearch ? "No matching Order Bookings found." : "No saved Order Bookings found."}</p>
+                <p>
+                  {savedSearch
+                    ? "No matching Order Bookings found."
+                    : "No saved Order Bookings found."}
+                </p>
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
@@ -825,7 +868,10 @@ function BookingPage() {
               </div>
             ) : (
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "820px" }}>
+                <table
+                  className="w-full text-xs text-left border-collapse"
+                  style={{ minWidth: "820px" }}
+                >
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">PI No</th>
@@ -840,7 +886,8 @@ function BookingPage() {
                   </thead>
                   <tbody className="divide-y divide-border/40 text-xs">
                     {filteredSavedInvoices.map((item: any) => {
-                      const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
+                      const isConfirmed =
+                        item.status === "order_confirmed" || item.status === "work_order_generated";
 
                       return (
                         <tr
@@ -852,20 +899,27 @@ function BookingPage() {
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <span className="hover:underline font-bold">
-                              {formatPiNo(item.no)}
-                            </span>
+                            <span className="hover:underline font-bold">{formatPiNo(item.no)}</span>
                           </td>
-                          <td className="py-2.5 px-3 text-muted-foreground font-mono">{dmy(item.date)}</td>
-                          <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground font-mono">
+                            {dmy(item.date)}
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-foreground">
+                            {item.cust?.name || "—"}
+                          </td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
                             {item.cust?.phone || "—"}
                           </td>
-                          <td className="py-2.5 px-3 text-center font-mono">{item.items?.length || 0}</td>
+                          <td className="py-2.5 px-3 text-center font-mono">
+                            {item.items?.length || 0}
+                          </td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
                             ₹ {nf(item.totals?.grandTotal || 0)}
                           </td>
-                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="py-2.5 px-3 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -876,7 +930,11 @@ function BookingPage() {
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
                                   : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
                               }`}
-                              title={item.whatsappSent ? "Status: Yes (Click to toggle)" : "Status: No (Click to toggle)"}
+                              title={
+                                item.whatsappSent
+                                  ? "Status: Yes (Click to toggle)"
+                                  : "Status: No (Click to toggle)"
+                              }
                             >
                               {item.whatsappSent ? (
                                 <>
@@ -891,7 +949,10 @@ function BookingPage() {
                               )}
                             </button>
                           </td>
-                          <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="py-2.5 px-3 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1">
                               {/* Confirm & Convert Action Button */}
                               <Button
@@ -905,10 +966,17 @@ function BookingPage() {
                                   const targetPI = confirmPreProforma(item.id);
                                   if (targetPI && targetPI.id) {
                                     loadInvoice(targetPI.id, false);
-                                    navigate({ to: "/order", search: { view: "form", id: targetPI.id } as any });
+                                    navigate({
+                                      to: "/order",
+                                      search: { view: "form", id: targetPI.id } as any,
+                                    });
                                   }
                                 }}
-                                title={isConfirmed ? "Order Booking Confirmed - Click to open Proforma Invoice" : "Confirm Order Booking & Open Proforma Invoice"}
+                                title={
+                                  isConfirmed
+                                    ? "Order Booking Confirmed - Click to open Proforma Invoice"
+                                    : "Confirm Order Booking & Open Proforma Invoice"
+                                }
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
@@ -973,930 +1041,1268 @@ function BookingPage() {
       ) : (
         /* ── ORDER BOOKING CREATION / EDITING FORM SECTION ─────────────── */
         <div id="order-booking-form" className="p-3 sm:p-4 w-full">
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
-
-          {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-4 min-w-0">
-            {/* 1. Customer & Order Booking Details */}
-            <Section
-              title="Customer & Order Booking Details"
-              headerRight={
-                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                  <div className="relative">
-                    <div
-                      className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => setCustDropOpen((v) => !v)}
-                    >
-                      <Search className="h-3 w-3 text-muted-foreground" />
-                      <input
-                        className="w-28 sm:w-40 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
-                        placeholder="Search saved customer"
-                        value={custSearch}
-                        onChange={(e) => {
-                          setCustSearch(e.target.value);
-                          setCustDropOpen(true);
-                        }}
-                        onFocus={() => setCustDropOpen(true)}
-                      />
-                    </div>
-                    {custDropOpen && filteredCustomers.length > 0 && (
-                      <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-64 max-h-48 overflow-y-auto">
-                        {filteredCustomers.map((c: any) => (
-                          <div
-                            key={c.id || c.name}
-                            className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground border-b border-border/30 last:border-0"
-                            onMouseDown={() => selectCustomer(c)}
-                          >
-                            <div className="font-semibold">{c.name}</div>
-                            {c.phone && <div className="text-[10px] text-muted-foreground">{c.phone}</div>}
-                          </div>
-                        ))}
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
+            {/* ════ LEFT COLUMN ════ */}
+            <div className="space-y-4 min-w-0">
+              {/* 1. Customer & Order Booking Details */}
+              <Section
+                title="Customer & Order Booking Details"
+                headerRight={
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <div className="relative">
+                      <div
+                        className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
+                        onClick={() => setCustDropOpen((v) => !v)}
+                      >
+                        <Search className="h-3 w-3 text-muted-foreground" />
+                        <input
+                          className="w-28 sm:w-40 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
+                          placeholder="Search saved customer"
+                          value={custSearch}
+                          onChange={(e) => {
+                            setCustSearch(e.target.value);
+                            setCustDropOpen(true);
+                          }}
+                          onFocus={() => setCustDropOpen(true)}
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
-              }
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                <div>
-                  <FieldLabel>PI No</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={formatPiNo(inv.no)} onChange={(e) => updateInvField("no", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Date</FieldLabel>
-                  <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Sales Person</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} placeholder="Office" />
-                </div>
-                <div>
-                  <FieldLabel>P.O. No.</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-border/40">
-                {/* Secondary Old Customer Selector */}
-                <div className="sm:col-span-4 bg-muted/40 p-2.5 rounded-lg border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs mb-1">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="h-4 w-4 text-primary shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold text-foreground">Select Old / Existing Customer</span>
-                      <p className="text-[10px] text-muted-foreground">Pick a saved customer from database to autofill customer details</p>
+                      {custDropOpen && filteredCustomers.length > 0 && (
+                        <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-64 max-h-48 overflow-y-auto">
+                          {filteredCustomers.map((c: any) => (
+                            <div
+                              key={c.id || c.name}
+                              className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground border-b border-border/30 last:border-0"
+                              onMouseDown={() => selectCustomer(c)}
+                            >
+                              <div className="font-semibold">{c.name}</div>
+                              {c.phone && (
+                                <div className="text-[10px] text-muted-foreground">{c.phone}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="w-full sm:w-72">
-                    <Select
-                      value={inv.cust?.name || ""}
-                      onValueChange={(val) => {
-                        const found = customers.find((c: any) => c.name === val);
-                        if (found) selectCustomer(found);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-xs bg-background">
-                        <SelectValue placeholder="-- Select Old Customer --" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c: any) => (
-                          <SelectItem key={c.id || c.name} value={c.name}>
-                            <span className="font-semibold">{c.name}</span> {c.phone ? `(${c.phone})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                }
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <div>
+                    <FieldLabel>PI No</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      value={formatPiNo(inv.no)}
+                      onChange={(e) => updateInvField("no", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Date</FieldLabel>
+                    <Input
+                      type="date"
+                      className="h-8 text-xs"
+                      value={inv.date || ""}
+                      onChange={(e) => updateInvField("date", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Sales Person</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.salesPerson || ""}
+                      onChange={(e) => updateInvField("salesPerson", e.target.value)}
+                      placeholder="Office"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>P.O. No.</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.poNo || ""}
+                      onChange={(e) => updateInvField("poNo", e.target.value)}
+                      placeholder="PO-1234"
+                    />
                   </div>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <FieldLabel>Customer / M/S. Name</FieldLabel>
-                  <Input className="h-8 text-xs font-medium" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} placeholder="Hindustan Float Glass Pvt Ltd" />
-                </div>
-                <div>
-                  <FieldLabel>GSTIN</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.cust?.gstin || ""} onChange={(e) => updateInvField("cust.gstin", e.target.value)} placeholder="08AACCH4208C1Z3" />
-                </div>
-                <div>
-                  <FieldLabel>Phone</FieldLabel>
-                  <Input
-                    className="h-8 text-xs font-mono"
-                    value={inv.cust?.phone || ""}
-                    onChange={(e) => updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    maxLength={10}
-                    placeholder="9799998611"
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Email</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.email || ""} onChange={(e) => updateInvField("cust.email", e.target.value)} placeholder="hindustan@live.in" />
-                </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel>Billing Address</FieldLabel>
-                  <Input
-                    className="h-8 text-xs"
-                    value={inv.cust?.addr || ""}
-                    onChange={(e) => {
-                      const newAddr = e.target.value;
-                      const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
-                      updateInvField("cust.addr", newAddr);
-                      if (isSame) {
-                        updateInvField("cust.ship", newAddr);
-                      }
-                    }}
-                    placeholder="S 5, Shri Govind Complex, Jhotwara, Jaipur"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <FieldLabel>Dispatch Address</FieldLabel>
-                    <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
-                        checked={Boolean(inv.cust?.sameAsBilling)}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          updateInvField("cust.sameAsBilling", isChecked);
-                          if (isChecked) {
-                            updateInvField("cust.ship", inv.cust?.addr || "");
-                          } else {
-                            updateInvField("cust.ship", "");
-                          }
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-border/40">
+                  {/* Secondary Old Customer Selector */}
+                  <div className="sm:col-span-4 bg-muted/40 p-2.5 rounded-lg border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs mb-1">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-primary shrink-0" />
+                      <div>
+                        <span className="text-xs font-bold text-foreground">
+                          Select Old / Existing Customer
+                        </span>
+                        <p className="text-[10px] text-muted-foreground">
+                          Pick a saved customer from database to autofill customer details
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-full sm:w-72">
+                      <Select
+                        value={inv.cust?.name || ""}
+                        onValueChange={(val) => {
+                          const found = customers.find((c: any) => c.name === val);
+                          if (found) selectCustomer(found);
                         }}
-                      />
-                      <span>Same as Billing Address</span>
-                    </label>
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue placeholder="-- Select Old Customer --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customers.map((c: any) => (
+                            <SelectItem key={c.id || c.name} value={c.name}>
+                              <span className="font-semibold">{c.name}</span>{" "}
+                              {c.phone ? `(${c.phone})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Input
-                    className="h-8 text-xs"
-                    value={inv.cust?.ship || ""}
-                    onChange={(e) => {
-                      updateInvField("cust.sameAsBilling", false);
-                      updateInvField("cust.ship", e.target.value);
-                    }}
-                    placeholder="Site / Shipping Address"
-                  />
+
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Customer / M/S. Name</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-medium"
+                      value={inv.cust?.name || ""}
+                      onChange={(e) => updateInvField("cust.name", e.target.value)}
+                      placeholder="Hindustan Float Glass Pvt Ltd"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>GSTIN</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      value={inv.cust?.gstin || ""}
+                      onChange={(e) => updateInvField("cust.gstin", e.target.value)}
+                      placeholder="08AACCH4208C1Z3"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Phone</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      value={inv.cust?.phone || ""}
+                      onChange={(e) =>
+                        updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                      }
+                      maxLength={10}
+                      placeholder="9799998611"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Email</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.email || ""}
+                      onChange={(e) => updateInvField("cust.email", e.target.value)}
+                      placeholder="hindustan@live.in"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Billing Address</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.addr || ""}
+                      onChange={(e) => {
+                        const newAddr = e.target.value;
+                        const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
+                        updateInvField("cust.addr", newAddr);
+                        if (isSame) {
+                          updateInvField("cust.ship", newAddr);
+                        }
+                      }}
+                      placeholder="S 5, Shri Govind Complex, Jhotwara, Jaipur"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <FieldLabel>Dispatch Address</FieldLabel>
+                      <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                          checked={Boolean(inv.cust?.sameAsBilling)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            updateInvField("cust.sameAsBilling", isChecked);
+                            if (isChecked) {
+                              updateInvField("cust.ship", inv.cust?.addr || "");
+                            } else {
+                              updateInvField("cust.ship", "");
+                            }
+                          }}
+                        />
+                        <span>Same as Billing Address</span>
+                      </label>
+                    </div>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.ship || ""}
+                      onChange={(e) => {
+                        updateInvField("cust.sameAsBilling", false);
+                        updateInvField("cust.ship", e.target.value);
+                      }}
+                      placeholder="Site / Shipping Address"
+                    />
+                  </div>
                 </div>
-              </div>
-            </Section>
+              </Section>
 
-            {/* Unified Product & Layers Section */}
-            <Section
-              title="Product & Layers"
-              headerRight={
-                <div className="flex items-center gap-2 flex-wrap justify-end text-xs">
-                  {/* Size Entry Type */}
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Size:</span>
-                    <Select value={inputUnit} onValueChange={(v) => handleInputUnitChange(v)}>
-                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[60px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mm">MM</SelectItem>
-                        <SelectItem value="inch">Inch</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Unified Product & Layers Section */}
+              <Section
+                title="Product & Layers"
+                headerRight={
+                  <div className="flex items-center gap-2 flex-wrap justify-end text-xs">
+                    {/* Size Entry Type */}
+                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
+                        Size:
+                      </span>
+                      <Select value={inputUnit} onValueChange={(v) => handleInputUnitChange(v)}>
+                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[60px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mm">MM</SelectItem>
+                          <SelectItem value="inch">Inch</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  {/* Frequency Toggle */}
-                  <div
-                    className={`flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs transition-opacity ${
-                      inputUnit === "mm" ? "opacity-50 pointer-events-none" : ""
-                    }`}
-                    title={inputUnit === "mm" ? "Frequency is available for Inch mode only" : "Toggle Frequency column"}
-                  >
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Frequency:</span>
-                    <Select
-                      disabled={inputUnit === "mm"}
-                      value={isFreqOn ? "on" : "off"}
-                      onValueChange={(v) => updateInvField("frequencyEnabled", v === "on")}
+                    {/* Frequency Toggle */}
+                    <div
+                      className={`flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs transition-opacity ${
+                        inputUnit === "mm" ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                      title={
+                        inputUnit === "mm"
+                          ? "Frequency is available for Inch mode only"
+                          : "Toggle Frequency column"
+                      }
                     >
-                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[55px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="off">Off</SelectItem>
-                        <SelectItem value="on">On</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
+                        Frequency:
+                      </span>
+                      <Select
+                        disabled={inputUnit === "mm"}
+                        value={isFreqOn ? "on" : "off"}
+                        onValueChange={(v) => updateInvField("frequencyEnabled", v === "on")}
+                      >
+                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[55px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="off">Off</SelectItem>
+                          <SelectItem value="on">On</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Area Formula */}
+                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
+                        Area Formula:
+                      </span>
+                      <Select
+                        value={inv.ch?.extraAreaFormula || "+25.4mm"}
+                        onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}
+                      >
+                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[95px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="+25.4mm">+ 25.4 MM</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {inv.ch?.extraAreaFormula === "custom" && (
+                        <Input
+                          type="number"
+                          placeholder="MM"
+                          className="h-6 w-14 text-xs font-mono px-1 py-0 text-center"
+                          value={inv.ch?.extraAreaCustomMM || ""}
+                          onChange={(e) =>
+                            updateInvField(
+                              "ch.extraAreaCustomMM",
+                              e.target.value === "" ? "" : Number(e.target.value),
+                            )
+                          }
+                        />
+                      )}
+                    </div>
+
+                    {/* Rate Find Formula */}
+                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
+                        Rate Formula:
+                      </span>
+                      <Select
+                        value={settings.rateUnit}
+                        onValueChange={(v) => updateInvField("ch.rateUnit", v)}
+                      >
+                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[105px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sqm">Sq. Metr Net</SelectItem>
+                          <SelectItem value="sqft">Sq. Feet Net</SelectItem>
+                          <SelectItem value="piece">Per Piece</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Add Item Button */}
+                    <Button
+                      size="sm"
+                      className="h-7 text-[11px] px-2.5 gap-1 bg-primary text-primary-foreground font-semibold"
+                      onClick={addLayer}
+                    >
+                      <Plus className="h-3 w-3" /> Add Item
+                    </Button>
                   </div>
-
-                  {/* Area Formula */}
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Area Formula:</span>
-                    <Select value={inv.ch?.extraAreaFormula || "+25.4mm"} onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}>
-                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[95px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="+25.4mm">+ 25.4 MM</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {inv.ch?.extraAreaFormula === "custom" && (
-                      <Input
-                        type="number"
-                        placeholder="MM"
-                        className="h-6 w-14 text-xs font-mono px-1 py-0 text-center"
-                        value={inv.ch?.extraAreaCustomMM || ""}
-                        onChange={(e) => updateInvField("ch.extraAreaCustomMM", e.target.value === "" ? "" : Number(e.target.value))}
-                      />
-                    )}
-                  </div>
-
-                  {/* Rate Find Formula */}
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">Rate Formula:</span>
-                    <Select value={settings.rateUnit} onValueChange={(v) => updateInvField("ch.rateUnit", v)}>
-                      <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[105px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sqm">Sq. Metr Net</SelectItem>
-                        <SelectItem value="sqft">Sq. Feet Net</SelectItem>
-                        <SelectItem value="piece">Per Piece</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Add Item Button */}
-                  <Button size="sm" className="h-7 text-[11px] px-2.5 gap-1 bg-primary text-primary-foreground font-semibold" onClick={addLayer}>
-                    <Plus className="h-3 w-3" /> Add Item
-                  </Button>
-                </div>
-              }
-            >
-              {(() => {
-                const extraAreaFormula = inv.ch?.extraAreaFormula || "+25.4mm";
-                const extraAreaLabel =
-                  extraAreaFormula === "+25.4mm" || extraAreaFormula === "+25mm"
-                    ? "+25.4 MM"
-                    : extraAreaFormula === "custom"
-                    ? inv.ch?.extraAreaCustomMM
-                      ? `+${inv.ch.extraAreaCustomMM} MM`
-                      : "+Custom"
-                    : "(Exact)";
-
-                return (
-                  <div className="space-y-6">
-                    {layers.map((layer: any, layerIdx: number) => {
-                  const layerName = layer.layerNo || `Item ${layerIdx + 1}`;
-                  const prodInfo = layer.productName
-                    ? `${layer.productName}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`
-                    : (layer.thickness ? `Glass (${layer.thickness}mm)` : "");
-                  const layerItems = layer.items || [blankItem()];
-
-                  const formattedProducts = BASE_GLASS_PRODUCTS.map((baseName) =>
-                    formatProductNameForUnit(baseName, inputUnit)
-                  );
-                  const curVal = layer.productName || layer.glassName || "";
-                  const isPredefined = formattedProducts.includes(curVal);
-                  const isCustomMode = layer.isCustomProduct || (curVal !== "" && !isPredefined);
+                }
+              >
+                {(() => {
+                  const extraAreaFormula = inv.ch?.extraAreaFormula || "+25.4mm";
+                  const extraAreaLabel =
+                    extraAreaFormula === "+25.4mm" || extraAreaFormula === "+25mm"
+                      ? "+25.4 MM"
+                      : extraAreaFormula === "custom"
+                        ? inv.ch?.extraAreaCustomMM
+                          ? `+${inv.ch.extraAreaCustomMM} MM`
+                          : "+Custom"
+                        : "(Exact)";
 
                   return (
-                    <div key={layer.id || layerIdx} className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40">
-                      {/* Product Header Row for this layer */}
-                      <div className="rounded-md border border-border/80 overflow-hidden bg-card shadow-xs">
-                        <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                          <div className="text-center">ITEM</div>
-                          <div>GLASS TYPE</div>
-                          <div>PRODUCT NAME</div>
-                          <div className="text-center">THK</div>
-                          <div className="text-center">RATE</div>
-                          <div></div>
-                        </div>
-                        <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2">
-                          <div>
-                            <Input
-                              className="h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
-                              value={layer.layerNo !== undefined && layer.layerNo !== "" ? layer.layerNo : `Item ${layerIdx + 1}`}
-                              onChange={(e) => updateLayer(layerIdx, "layerNo", e.target.value)}
-                            />
-                          </div>
+                    <div className="space-y-6">
+                      {layers.map((layer: any, layerIdx: number) => {
+                        const layerName = layer.layerNo || `Item ${layerIdx + 1}`;
+                        const prodInfo = layer.productName
+                          ? `${layer.productName}${layer.thickness ? ` (${layer.thickness}mm)` : ""}`
+                          : layer.thickness
+                            ? `Glass (${layer.thickness}mm)`
+                            : "";
+                        const layerItems = layer.items || [blankItem()];
 
-                          {/* 1. GLASS TYPE Dropdown */}
-                          <div>
-                            <Select
-                              value={layer.glassType || detectGlassTypeFromProduct(layer.productName || layer.glassName || "")}
-                              onValueChange={(val) => {
-                                updateLayer(layerIdx, "glassType", val);
-                                const rawProds = PRODUCTS_BY_TYPE[val] || [];
-                                const firstItem = rawProds[0];
-                                if (firstItem) {
-                                  const firstProd = formatProductNameForUnit(firstItem, inputUnit);
-                                  updateLayer(layerIdx, "productName", firstProd);
-                                  updateLayer(layerIdx, "glassName", firstProd);
-                                  const thk = extractThicknessFromProductName(firstProd);
-                                  if (thk !== null) updateLayer(layerIdx, "thickness", thk);
-                                }
-                              }}
+                        const formattedProducts = BASE_GLASS_PRODUCTS.map((baseName) =>
+                          formatProductNameForUnit(baseName, inputUnit),
+                        );
+                        const curVal = layer.productName || layer.glassName || "";
+                        const isPredefined = formattedProducts.includes(curVal);
+                        const isCustomMode =
+                          layer.isCustomProduct || (curVal !== "" && !isPredefined);
+
+                        return (
+                          <div
+                            key={layer.id || layerIdx}
+                            className="space-y-3 p-3 rounded-lg border border-border/60 bg-card/40"
+                          >
+                            {/* Product Header Row for this layer */}
+                            <div className="rounded-md border border-border/80 overflow-hidden bg-card shadow-xs">
+                              <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                <div className="text-center">ITEM</div>
+                                <div>GLASS TYPE</div>
+                                <div>PRODUCT NAME</div>
+                                <div className="text-center">THK</div>
+                                <div className="text-center">RATE</div>
+                                <div></div>
+                              </div>
+                              <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2">
+                                <div>
+                                  <Input
+                                    className="h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
+                                    value={
+                                      layer.layerNo !== undefined && layer.layerNo !== ""
+                                        ? layer.layerNo
+                                        : `Item ${layerIdx + 1}`
+                                    }
+                                    onChange={(e) =>
+                                      updateLayer(layerIdx, "layerNo", e.target.value)
+                                    }
+                                  />
+                                </div>
+
+                                {/* 1. GLASS TYPE Dropdown */}
+                                <div>
+                                  <Select
+                                    value={
+                                      layer.glassType ||
+                                      detectGlassTypeFromProduct(
+                                        layer.productName || layer.glassName || "",
+                                      )
+                                    }
+                                    onValueChange={(val) => {
+                                      updateLayer(layerIdx, "glassType", val);
+                                      const rawProds = PRODUCTS_BY_TYPE[val] || [];
+                                      const firstItem = rawProds[0];
+                                      if (firstItem) {
+                                        const firstProd = formatProductNameForUnit(
+                                          firstItem,
+                                          inputUnit,
+                                        );
+                                        updateLayer(layerIdx, "productName", firstProd);
+                                        updateLayer(layerIdx, "glassName", firstProd);
+                                        const thk = extractThicknessFromProductName(firstProd);
+                                        if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs w-full bg-background border-border font-medium">
+                                      <SelectValue placeholder="Select Glass Type" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-64">
+                                      {GLASS_TYPES.map((gType, gIdx) => (
+                                        <SelectItem key={gIdx} value={gType}>
+                                          {gType}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {/* 2. PRODUCT NAME Dropdown */}
+                                <div>
+                                  {isCustomMode ? (
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        autoFocus
+                                        className="h-7 text-xs w-full bg-background"
+                                        value={layer.productName ?? layer.glassName ?? ""}
+                                        placeholder="Enter custom product name..."
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          updateLayer(layerIdx, "productName", val);
+                                          updateLayer(layerIdx, "glassName", val);
+                                        }}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                                        title="Select from dropdown list"
+                                        onClick={() => {
+                                          updateLayer(layerIdx, "isCustomProduct", false);
+                                        }}
+                                      >
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Select
+                                      value={layer.productName || layer.glassName || ""}
+                                      onValueChange={(val) => {
+                                        if (val === "__custom__") {
+                                          updateLayer(layerIdx, "isCustomProduct", true);
+                                          updateLayer(layerIdx, "productName", "");
+                                          updateLayer(layerIdx, "glassName", "");
+                                        } else {
+                                          updateLayer(layerIdx, "productName", val);
+                                          updateLayer(layerIdx, "glassName", val);
+                                          const autoType = detectGlassTypeFromProduct(val);
+                                          updateLayer(layerIdx, "glassType", autoType);
+                                          const thk = extractThicknessFromProductName(val);
+                                          if (thk !== null) {
+                                            updateLayer(layerIdx, "thickness", thk);
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 text-xs w-full bg-background border-border">
+                                        <SelectValue placeholder="Select Product Name" />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-64">
+                                        {(() => {
+                                          const currentType =
+                                            layer.glassType ||
+                                            detectGlassTypeFromProduct(
+                                              layer.productName || layer.glassName || "",
+                                            );
+                                          const rawProds =
+                                            PRODUCTS_BY_TYPE[currentType] || BASE_GLASS_PRODUCTS;
+                                          return rawProds.map((baseName, pIdx) => {
+                                            const formattedName = formatProductNameForUnit(
+                                              baseName,
+                                              inputUnit,
+                                            );
+                                            return (
+                                              <SelectItem key={pIdx} value={formattedName}>
+                                                {formattedName}
+                                              </SelectItem>
+                                            );
+                                          });
+                                        })()}
+                                        <SelectItem
+                                          value="__custom__"
+                                          className="font-semibold text-primary"
+                                        >
+                                          + Type Custom Product Name...
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    className="h-7 text-xs font-mono w-full text-center"
+                                    value={layer.thickness || ""}
+                                    onChange={(e) =>
+                                      updateLayer(layerIdx, "thickness", Number(e.target.value))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    className="h-7 text-xs font-mono w-full text-center"
+                                    value={layer.rate || ""}
+                                    onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)}
+                                  />
+                                </div>
+                                <div className="flex justify-center">
+                                  <button
+                                    title="Remove"
+                                    className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                    onClick={() => removeLayer(layerIdx)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Items Grid per Layer - Directly Below this layer header */}
+                            <Section
+                              title={`ITEMS — ${layerName.toUpperCase()} (${prodInfo.toUpperCase()})`}
+                              headerRight={
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-[11px] px-2 gap-1"
+                                    onClick={() => setBulkOpenLayerIdx(layerIdx)}
+                                  >
+                                    <ClipboardPaste className="h-3 w-3" /> Bulk Entry
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[11px] px-2 gap-1"
+                                    onClick={() => addLayerItemRow(layerIdx)}
+                                  >
+                                    <Plus className="h-3 w-3" /> Add Row
+                                  </Button>
+                                </div>
+                              }
                             >
-                              <SelectTrigger className="h-7 text-xs w-full bg-background border-border font-medium">
-                                <SelectValue placeholder="Select Glass Type" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-64">
-                                {GLASS_TYPES.map((gType, gIdx) => (
-                                  <SelectItem key={gIdx} value={gType}>
-                                    {gType}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* 2. PRODUCT NAME Dropdown */}
-                          <div>
-                            {isCustomMode ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  autoFocus
-                                  className="h-7 text-xs w-full bg-background"
-                                  value={layer.productName ?? layer.glassName ?? ""}
-                                  placeholder="Enter custom product name..."
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    updateLayer(layerIdx, "productName", val);
-                                    updateLayer(layerIdx, "glassName", val);
-                                  }}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
-                                  title="Select from dropdown list"
-                                  onClick={() => {
-                                    updateLayer(layerIdx, "isCustomProduct", false);
+                              <div className="overflow-x-auto -mx-3 sm:-mx-4 border rounded-md border-emerald-600/20">
+                                <table
+                                  className="w-full text-[11px] border-collapse"
+                                  style={{
+                                    minWidth:
+                                      inputUnit === "mm"
+                                        ? "1200px"
+                                        : isFreqOn
+                                          ? "1380px"
+                                          : "1320px",
                                   }}
                                 >
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <Select
-                                value={layer.productName || layer.glassName || ""}
-                                onValueChange={(val) => {
-                                  if (val === "__custom__") {
-                                    updateLayer(layerIdx, "isCustomProduct", true);
-                                    updateLayer(layerIdx, "productName", "");
-                                    updateLayer(layerIdx, "glassName", "");
-                                  } else {
-                                    updateLayer(layerIdx, "productName", val);
-                                    updateLayer(layerIdx, "glassName", val);
-                                    const autoType = detectGlassTypeFromProduct(val);
-                                    updateLayer(layerIdx, "glassType", autoType);
-                                    const thk = extractThicknessFromProductName(val);
-                                    if (thk !== null) {
-                                      updateLayer(layerIdx, "thickness", thk);
-                                    }
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="h-7 text-xs w-full bg-background border-border">
-                                  <SelectValue placeholder="Select Product Name" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-64">
-                                  {(() => {
-                                    const currentType = layer.glassType || detectGlassTypeFromProduct(layer.productName || layer.glassName || "");
-                                    const rawProds = PRODUCTS_BY_TYPE[currentType] || BASE_GLASS_PRODUCTS;
-                                    return rawProds.map((baseName, pIdx) => {
-                                      const formattedName = formatProductNameForUnit(baseName, inputUnit);
-                                      return (
-                                        <SelectItem key={pIdx} value={formattedName}>
-                                          {formattedName}
-                                        </SelectItem>
-                                      );
-                                    });
-                                  })()}
-                                  <SelectItem value="__custom__" className="font-semibold text-primary">
-                                    + Type Custom Product Name...
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                          <div>
-                            <Input
-                              type="number"
-                              className="h-7 text-xs font-mono w-full text-center"
-                              value={layer.thickness || ""}
-                              onChange={(e) => updateLayer(layerIdx, "thickness", Number(e.target.value))}
-                            />
-                          </div>
-                          <div>
-                            <Input
-                              type="number"
-                              className="h-7 text-xs font-mono w-full text-center"
-                              value={layer.rate || ""}
-                              onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)}
-                            />
-                          </div>
-                          <div className="flex justify-center">
-                            <button
-                              title="Remove"
-                              className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                              onClick={() => removeLayer(layerIdx)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Items Grid per Layer - Directly Below this layer header */}
-                      <Section
-                        title={`ITEMS — ${layerName.toUpperCase()} (${prodInfo.toUpperCase()})`}
-                        headerRight={
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-[11px] px-2 gap-1"
-                              onClick={() => setBulkOpenLayerIdx(layerIdx)}
-                            >
-                              <ClipboardPaste className="h-3 w-3" /> Bulk Entry
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-6 text-[11px] px-2 gap-1"
-                              onClick={() => addLayerItemRow(layerIdx)}
-                            >
-                              <Plus className="h-3 w-3" /> Add Row
-                            </Button>
-                          </div>
-                        }
-                      >
-                        <div className="overflow-x-auto -mx-3 sm:-mx-4 border rounded-md border-emerald-600/20">
-                          <table className="w-full text-[11px] border-collapse" style={{ minWidth: inputUnit === "mm" ? "1200px" : isFreqOn ? "1380px" : "1320px" }}>
-                            <thead className="bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-300">
-                              <tr className="border-b border-emerald-600/30">
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle w-10">
-                                  SR NO
-                                </th>
-
-                                {inputUnit !== "mm" && (
-                                  <>
-                                    {isFreqOn && (
-                                      <th rowSpan={2} className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[55px]">
-                                        FREQ
+                                  <thead className="bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-300">
+                                    <tr className="border-b border-emerald-600/30">
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle w-10"
+                                      >
+                                        SR NO
                                       </th>
-                                    )}
-                                    <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]">
-                                      <div>L1 IN</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(INCH)</div>
-                                    </th>
-                                    <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]">
-                                      <div>L2 IN</div>
-                                      <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(INCH)</div>
-                                    </th>
-                                  </>
-                                )}
 
-                                <th colSpan={4} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
-                                  ACTUAL SIZE (ENTER)
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
-                                  HOLE
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]">
-                                  CUT OUT
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]">
-                                  <div>BIG</div>
-                                  <div>HOLE</div>
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[70px]">
-                                  <div>BIG</div>
-                                  <div>CUT OUT</div>
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]">
-                                  CSK
-                                </th>
-
-                                <th colSpan={4} className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20">
-                                  CHARGEABLE SIZE (MM)
-                                </th>
-
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-right border-r border-emerald-600/20 align-middle min-w-[75px]">
-                                  AMOUNT
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-left border-r border-emerald-600/20 align-middle min-w-[100px]">
-                                  REMARK
-                                </th>
-
-                                <th rowSpan={2} className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center align-middle w-[52px]">
-                                  
-                                </th>
-                              </tr>
-
-                              <tr className="border-b-2 border-emerald-600/40">
-                                {/* Under ACTUAL SIZE (ENTER) */}
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
-                                  <div>HEIGHT</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
-                                  <div>WIDTH</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
-                                  PCS
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                  <div>AREA</div>
-                                  <div className="text-[8px] font-normal lowercase tracking-normal">({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})</div>
-                                </th>
-
-                                {/* Under CHARGEABLE SIZE (MM) */}
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                  <div>HEIGHT</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                  <div>WIDTH</div>
-                                  <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">(MM)</div>
-                                  <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">{extraAreaLabel}</div>
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
-                                  PCS
-                                </th>
-                                <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
-                                  <div>AREA</div>
-                                  <div className="text-[8px] font-normal lowercase tracking-normal">({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})</div>
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/40">
-                              {layerItems.map((item: any, itemIdx: number) => {
-                                let flatOffset = 0;
-                                for (let k = 0; k < layerIdx; k++) {
-                                  flatOffset += (layers[k].items || []).length;
-                                }
-                                const flatIdx = flatOffset + itemIdx;
-                                const line = totals.lines?.[flatIdx];
-                                const areaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.totalSqft) : String(line.totalSqm)) : "—";
-                                const chargeAreaText = line?.ok ? (settings.rateUnit === "sqft" ? String(line.chargeAreaSqft) : String(line.chargeAreaSqm)) : "—";
-
-                                return (
-                                  <tr key={item.id || itemIdx} className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}>
-                                    {/* Sr No */}
-                                    <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
-                                      <span className="text-xs font-semibold">{itemIdx + 1}</span>
-                                    </td>
-
-                                    {/* Inch Inputs (L1 IN & L2 IN) */}
-                                    {inputUnit !== "mm" && (
-                                      <>
-                                        {isFreqOn && (
-                                          <td className="py-1.5 px-1">
-                                            <Select
-                                              value={String(item.freq || 8)}
-                                              onValueChange={(v) => updateLayerItem(layerIdx, itemIdx, "freq", Number(v))}
+                                      {inputUnit !== "mm" && (
+                                        <>
+                                          {isFreqOn && (
+                                            <th
+                                              rowSpan={2}
+                                              className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[55px]"
                                             >
-                                              <SelectTrigger className="h-8 text-xs font-mono text-center w-full px-1 focus:ring-1">
-                                                <SelectValue>{Number(item.freq) === 16 ? "1/16" : "1/8"}</SelectValue>
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="8">1/8</SelectItem>
-                                                <SelectItem value="16">1/16</SelectItem>
-                                              </SelectContent>
-                                            </Select>
+                                              FREQ
+                                            </th>
+                                          )}
+                                          <th
+                                            rowSpan={2}
+                                            className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]"
+                                          >
+                                            <div>L1 IN</div>
+                                            <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                              (INCH)
+                                            </div>
+                                          </th>
+                                          <th
+                                            rowSpan={2}
+                                            className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[80px]"
+                                          >
+                                            <div>L2 IN</div>
+                                            <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                              (INCH)
+                                            </div>
+                                          </th>
+                                        </>
+                                      )}
+
+                                      <th
+                                        colSpan={4}
+                                        className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20"
+                                      >
+                                        ACTUAL SIZE (ENTER)
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]"
+                                      >
+                                        HOLE
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]"
+                                      >
+                                        CUT OUT
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[60px]"
+                                      >
+                                        <div>BIG</div>
+                                        <div>HOLE</div>
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[70px]"
+                                      >
+                                        <div>BIG</div>
+                                        <div>CUT OUT</div>
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 align-middle min-w-[52px]"
+                                      >
+                                        CSK
+                                      </th>
+
+                                      <th
+                                        colSpan={4}
+                                        className="py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-center border-r border-b border-emerald-600/20"
+                                      >
+                                        CHARGEABLE SIZE (MM)
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-right border-r border-emerald-600/20 align-middle min-w-[75px]"
+                                      >
+                                        AMOUNT
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-2 text-[10px] font-bold uppercase tracking-wider text-left border-r border-emerald-600/20 align-middle min-w-[100px]"
+                                      >
+                                        REMARK
+                                      </th>
+
+                                      <th
+                                        rowSpan={2}
+                                        className="py-2 px-1 text-[10px] font-bold uppercase tracking-wider text-center align-middle w-[52px]"
+                                      ></th>
+                                    </tr>
+
+                                    <tr className="border-b-2 border-emerald-600/40">
+                                      {/* Under ACTUAL SIZE (ENTER) */}
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
+                                        <div>HEIGHT</div>
+                                        <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                          (MM)
+                                        </div>
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[70px]">
+                                        <div>WIDTH</div>
+                                        <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                          (MM)
+                                        </div>
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
+                                        PCS
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                        <div>AREA</div>
+                                        <div className="text-[8px] font-normal lowercase tracking-normal">
+                                          ({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})
+                                        </div>
+                                      </th>
+
+                                      {/* Under CHARGEABLE SIZE (MM) */}
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                        <div>HEIGHT</div>
+                                        <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                          (MM)
+                                        </div>
+                                        <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
+                                          {extraAreaLabel}
+                                        </div>
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                        <div>WIDTH</div>
+                                        <div className="text-[8px] font-normal text-emerald-800/80 dark:text-emerald-400">
+                                          (MM)
+                                        </div>
+                                        <div className="text-[8px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
+                                          {extraAreaLabel}
+                                        </div>
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[45px]">
+                                        PCS
+                                      </th>
+                                      <th className="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-center border-r border-emerald-600/20 min-w-[65px]">
+                                        <div>AREA</div>
+                                        <div className="text-[8px] font-normal lowercase tracking-normal">
+                                          ({settings.rateUnit === "sqft" ? "sq. ft." : "sq mtr."})
+                                        </div>
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border/40">
+                                    {layerItems.map((item: any, itemIdx: number) => {
+                                      let flatOffset = 0;
+                                      for (let k = 0; k < layerIdx; k++) {
+                                        flatOffset += (layers[k].items || []).length;
+                                      }
+                                      const flatIdx = flatOffset + itemIdx;
+                                      const line = totals.lines?.[flatIdx];
+                                      const areaText = line?.ok
+                                        ? settings.rateUnit === "sqft"
+                                          ? String(line.totalSqft)
+                                          : String(line.totalSqm)
+                                        : "—";
+                                      const chargeAreaText = line?.ok
+                                        ? settings.rateUnit === "sqft"
+                                          ? String(line.chargeAreaSqft)
+                                          : String(line.chargeAreaSqm)
+                                        : "—";
+
+                                      return (
+                                        <tr
+                                          key={item.id || itemIdx}
+                                          className={`hover:bg-muted/10 ${!line?.ok && (item.l1 || item.l2 || item.l1mm || item.l2mm) ? "bg-red-500/5" : ""}`}
+                                        >
+                                          {/* Sr No */}
+                                          <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-10">
+                                            <span className="text-xs font-semibold">
+                                              {itemIdx + 1}
+                                            </span>
                                           </td>
-                                        )}
-                                        <td className="py-1.5 px-1">
-                                          <Input
-                                            className="h-8 text-xs font-mono text-center w-full"
-                                            value={item.l1 || ""}
-                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1", e.target.value)}
-                                            placeholder={isFreqOn ? "36 2" : "36 3/8"}
-                                          />
-                                        </td>
-                                        <td className="py-1.5 px-1">
-                                          <Input
-                                            className="h-8 text-xs font-mono text-center w-full"
-                                            value={item.l2 || ""}
-                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2", e.target.value)}
-                                            placeholder={isFreqOn ? "32 2" : "13 3/8"}
-                                          />
-                                        </td>
-                                      </>
-                                    )}
 
-                                    {/* Actual Size Columns */}
-                                    {inputUnit === "mm" ? (
-                                      <>
-                                        <td className="py-1.5 px-1">
-                                          <Input
-                                            type="number"
-                                            className="h-8 text-xs font-mono text-center w-full"
-                                            value={item.l1mm ?? ""}
-                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l1mm", e.target.value)}
-                                            placeholder="60.3"
-                                            step="0.1"
-                                          />
-                                        </td>
-                                        <td className="py-1.5 px-1">
-                                          <Input
-                                            type="number"
-                                            className="h-8 text-xs font-mono text-center w-full"
-                                            value={item.l2mm ?? ""}
-                                            onChange={(e) => updateLayerItem(layerIdx, itemIdx, "l2mm", e.target.value)}
-                                            placeholder="51.2"
-                                            step="0.1"
-                                          />
-                                        </td>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
-                                          {line?.ok ? line.lMM : "—"}
-                                        </td>
-                                        <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
-                                          {line?.ok ? line.wMM : "—"}
-                                        </td>
-                                      </>
-                                    )}
+                                          {/* Inch Inputs (L1 IN & L2 IN) */}
+                                          {inputUnit !== "mm" && (
+                                            <>
+                                              {isFreqOn && (
+                                                <td className="py-1.5 px-1">
+                                                  <Select
+                                                    value={String(item.freq || 8)}
+                                                    onValueChange={(v) =>
+                                                      updateLayerItem(
+                                                        layerIdx,
+                                                        itemIdx,
+                                                        "freq",
+                                                        Number(v),
+                                                      )
+                                                    }
+                                                  >
+                                                    <SelectTrigger className="h-8 text-xs font-mono text-center w-full px-1 focus:ring-1">
+                                                      <SelectValue>
+                                                        {Number(item.freq) === 16 ? "1/16" : "1/8"}
+                                                      </SelectValue>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="8">1/8</SelectItem>
+                                                      <SelectItem value="16">1/16</SelectItem>
+                                                    </SelectContent>
+                                                  </Select>
+                                                </td>
+                                              )}
+                                              <td className="py-1.5 px-1">
+                                                <Input
+                                                  className="h-8 text-xs font-mono text-center w-full"
+                                                  value={item.l1 || ""}
+                                                  onChange={(e) =>
+                                                    updateLayerItem(
+                                                      layerIdx,
+                                                      itemIdx,
+                                                      "l1",
+                                                      e.target.value,
+                                                    )
+                                                  }
+                                                  placeholder={isFreqOn ? "36 2" : "36 3/8"}
+                                                />
+                                              </td>
+                                              <td className="py-1.5 px-1">
+                                                <Input
+                                                  className="h-8 text-xs font-mono text-center w-full"
+                                                  value={item.l2 || ""}
+                                                  onChange={(e) =>
+                                                    updateLayerItem(
+                                                      layerIdx,
+                                                      itemIdx,
+                                                      "l2",
+                                                      e.target.value,
+                                                    )
+                                                  }
+                                                  placeholder={isFreqOn ? "32 2" : "13 3/8"}
+                                                />
+                                              </td>
+                                            </>
+                                          )}
 
-                                    {/* PCS (Qty) */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.qty || ""}
-                                        min={1}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "qty", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Actual Size Columns */}
+                                          {inputUnit === "mm" ? (
+                                            <>
+                                              <td className="py-1.5 px-1">
+                                                <Input
+                                                  type="number"
+                                                  className="h-8 text-xs font-mono text-center w-full"
+                                                  value={item.l1mm ?? ""}
+                                                  onChange={(e) =>
+                                                    updateLayerItem(
+                                                      layerIdx,
+                                                      itemIdx,
+                                                      "l1mm",
+                                                      e.target.value,
+                                                    )
+                                                  }
+                                                  placeholder="60.3"
+                                                  step="0.1"
+                                                />
+                                              </td>
+                                              <td className="py-1.5 px-1">
+                                                <Input
+                                                  type="number"
+                                                  className="h-8 text-xs font-mono text-center w-full"
+                                                  value={item.l2mm ?? ""}
+                                                  onChange={(e) =>
+                                                    updateLayerItem(
+                                                      layerIdx,
+                                                      itemIdx,
+                                                      "l2mm",
+                                                      e.target.value,
+                                                    )
+                                                  }
+                                                  placeholder="51.2"
+                                                  step="0.1"
+                                                />
+                                              </td>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
+                                                {line?.ok ? line.lMM : "—"}
+                                              </td>
+                                              <td className="py-1.5 px-2 font-mono text-[11px] text-muted-foreground text-center whitespace-nowrap min-w-[70px]">
+                                                {line?.ok ? line.wMM : "—"}
+                                              </td>
+                                            </>
+                                          )}
 
-                                    {/* Actual Area */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[65px]">
-                                      {areaText}
-                                    </td>
+                                          {/* PCS (Qty) */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.qty || ""}
+                                              min={1}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "qty",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* Hole */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.holes || ""}
-                                        min={0}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "holes", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Actual Area */}
+                                          <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[65px]">
+                                            {areaText}
+                                          </td>
 
-                                    {/* Cut Out */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.cutouts || ""}
-                                        min={0}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "cutouts", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Hole */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.holes || ""}
+                                              min={0}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "holes",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* Big Hole */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.bigHoles || ""}
-                                        min={0}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "bigHoles", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Cut Out */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.cutouts || ""}
+                                              min={0}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "cutouts",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* Big Cut Out */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.bigCutouts || ""}
-                                        min={0}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "bigCutouts", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Big Hole */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.bigHoles || ""}
+                                              min={0}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "bigHoles",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* CSK */}
-                                    <td className="py-1.5 px-1">
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs font-mono text-center w-full"
-                                        value={item.csks || item.countersinks || ""}
-                                        min={0}
-                                        onChange={(e) => updateLayerItem(layerIdx, itemIdx, "csks", e.target.value === "" ? "" : Number(e.target.value))}
-                                      />
-                                    </td>
+                                          {/* Big Cut Out */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.bigCutouts || ""}
+                                              min={0}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "bigCutouts",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* Chargeable Height (MM) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
-                                      {line?.ok ? line.lChgMM : "—"}
-                                    </td>
+                                          {/* CSK */}
+                                          <td className="py-1.5 px-1">
+                                            <Input
+                                              type="number"
+                                              className="h-8 text-xs font-mono text-center w-full"
+                                              value={item.csks || item.countersinks || ""}
+                                              min={0}
+                                              onChange={(e) =>
+                                                updateLayerItem(
+                                                  layerIdx,
+                                                  itemIdx,
+                                                  "csks",
+                                                  e.target.value === ""
+                                                    ? ""
+                                                    : Number(e.target.value),
+                                                )
+                                              }
+                                            />
+                                          </td>
 
-                                    {/* Chargeable Width (MM) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
-                                      {line?.ok ? line.wChgMM : "—"}
-                                    </td>
+                                          {/* Chargeable Height (MM) */}
+                                          <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
+                                            {line?.ok ? line.lChgMM : "—"}
+                                          </td>
 
-                                    {/* Chargeable PCS */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[45px]">
-                                      {line?.ok ? item.qty : "—"}
-                                    </td>
+                                          {/* Chargeable Width (MM) */}
+                                          <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground whitespace-nowrap min-w-[65px]">
+                                            {line?.ok ? line.wChgMM : "—"}
+                                          </td>
 
-                                    {/* Chargeable Area (SQ MTR.) */}
-                                    <td className="py-1.5 px-2 font-mono text-[11px] text-center text-emerald-700 dark:text-emerald-400 font-medium min-w-[65px]">
-                                      {chargeAreaText}
-                                    </td>
+                                          {/* Chargeable PCS */}
+                                          <td className="py-1.5 px-2 font-mono text-[11px] text-center text-muted-foreground min-w-[45px]">
+                                            {line?.ok ? item.qty : "—"}
+                                          </td>
 
-                                    {/* Amount */}
-                                    <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap min-w-[75px]">
-                                      {line?.ok ? nf(line.amount) : <span className="text-muted-foreground/40">—</span>}
-                                    </td>
+                                          {/* Chargeable Area (SQ MTR.) */}
+                                          <td className="py-1.5 px-2 font-mono text-[11px] text-center text-emerald-700 dark:text-emerald-400 font-medium min-w-[65px]">
+                                            {chargeAreaText}
+                                          </td>
 
-                                    {/* Remark */}
-                                    <td className="py-1.5 px-1 min-w-[120px]">
-                                      <RemarkCell
-                                        value={item.remark || ""}
-                                        onChange={(val) => updateLayerItem(layerIdx, itemIdx, "remark", val)}
-                                      />
-                                    </td>
+                                          {/* Amount */}
+                                          <td className="py-1.5 px-2 font-mono font-semibold text-xs text-right whitespace-nowrap min-w-[75px]">
+                                            {line?.ok ? (
+                                              nf(line.amount)
+                                            ) : (
+                                              <span className="text-muted-foreground/40">—</span>
+                                            )}
+                                          </td>
 
-                                    {/* Actions */}
-                                    <td className="py-1.5 px-1 w-[52px]">
-                                      <div className="flex items-center gap-0.5">
-                                        <button title="Duplicate" className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" onClick={() => duplicateLayerItemRow(layerIdx, itemIdx)}>
-                                          <Copy className="h-3 w-3" />
-                                        </button>
-                                        <button title="Remove" className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeLayerItemRow(layerIdx, itemIdx)}>
-                                          <Trash2 className="h-3 w-3" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </Section>
+                                          {/* Remark */}
+                                          <td className="py-1.5 px-1 min-w-[120px]">
+                                            <RemarkCell
+                                              value={item.remark || ""}
+                                              onChange={(val) =>
+                                                updateLayerItem(layerIdx, itemIdx, "remark", val)
+                                              }
+                                            />
+                                          </td>
+
+                                          {/* Actions */}
+                                          <td className="py-1.5 px-1 w-[52px]">
+                                            <div className="flex items-center gap-0.5">
+                                              <button
+                                                title="Duplicate"
+                                                className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                onClick={() =>
+                                                  duplicateLayerItemRow(layerIdx, itemIdx)
+                                                }
+                                              >
+                                                <Copy className="h-3 w-3" />
+                                              </button>
+                                              <button
+                                                title="Remove"
+                                                className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                                onClick={() =>
+                                                  removeLayerItemRow(layerIdx, itemIdx)
+                                                }
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </Section>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
-                })}
-              </div>
-            );
-          })()}
-            </Section>
+                })()}
+              </Section>
 
-            {/* 6. Bottom Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-              <div>
-                <FieldLabel>Total Qty</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
-                  {totals.qty || 0}
+              {/* 6. Bottom Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                <div>
+                  <FieldLabel>Total Qty</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
+                    {totals.qty || 0}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Act. Area SQM</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqm ?? "0.000"}
+                <div>
+                  <FieldLabel>Act. Area SQM</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqm ?? "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Total Area SQM</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
-                  {totals.chargeSqm || totals.sqm || "0.000"}
+                <div>
+                  <FieldLabel>Total Area SQM</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
+                    {totals.chargeSqm || totals.sqm || "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Act. Area SQF</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqft ?? "0.000"}
+                <div>
+                  <FieldLabel>Act. Area SQF</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqft ?? "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Total Area SQF</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
-                  {totals.chargeSqft || totals.sqft || "0.000"}
+                <div>
+                  <FieldLabel>Total Area SQF</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
+                    {totals.chargeSqft || totals.sqft || "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Wastage</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.wastageArea ?? "0.000"}
+                <div>
+                  <FieldLabel>Wastage</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.wastageArea ?? "0.000"}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ════ RIGHT COLUMN: Totals Panel ════ */}
-          <div className="space-y-4">
-            <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14 shadow-sm">
-              <div className="px-3.5 py-2.5 border-b border-border bg-emerald-500/5 flex items-center justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                  <span className="w-1.5 h-3.5 rounded-full bg-emerald-500 inline-block" />
-                  Totals
-                </span>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                  • {settings.rateUnit === "sqft" ? "SQ.FT" : settings.rateUnit === "piece" ? "PIECE" : "SQ.MTR"} {settings.areaRounding === "round" ? "ROUND" : "EXACT"}
-                </span>
-              </div>
-
-              <div className="p-3 sm:p-4 text-xs space-y-2 font-sans">
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Pieces</span>
-                  <span className="font-mono font-semibold text-foreground">{totals.qty || 0}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Area (Sq.Mtr)</span>
-                  <span className="font-mono font-semibold text-foreground">{totals.sqm ?? "0.000"}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Sq.Ft/Sq.Mtr</span>
-                  <span className="font-mono font-semibold text-foreground">
-                    {totals.sqft ?? "0.000"} / {totals.sqm ?? "0.000"}
+            {/* ════ RIGHT COLUMN: Totals Panel ════ */}
+            <div className="space-y-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14 shadow-sm">
+                <div className="px-3.5 py-2.5 border-b border-border bg-emerald-500/5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <span className="w-1.5 h-3.5 rounded-full bg-emerald-500 inline-block" />
+                    Totals
+                  </span>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    •{" "}
+                    {settings.rateUnit === "sqft"
+                      ? "SQ.FT"
+                      : settings.rateUnit === "piece"
+                        ? "PIECE"
+                        : "SQ.MTR"}{" "}
+                    {settings.areaRounding === "round" ? "ROUND" : "EXACT"}
                   </span>
                 </div>
 
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Glass amount</span>
-                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.glassTotal ?? 0)}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Basic amount</span>
-                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.basicTotal ?? totals.subTotal ?? 0)}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Admin charge</span>
-                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.adminCharge ?? 0)}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-medium">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono text-foreground">₹ {nf(totals.taxableTotal ?? 0)}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Insurance {inv.insurancePct ?? 2}%</span>
-                  <span className="font-mono text-foreground">₹ {nf(totals.insuranceAmt ?? 0)}</span>
-                </div>
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-semibold">
-                  <span className="text-foreground">Assessable value</span>
-                  <span className="font-mono text-foreground">₹ {nf(totals.assessableVal ?? 0)}</span>
-                </div>
-
-                {inv.gstType === "igst" ? (
+                <div className="p-3 sm:p-4 text-xs space-y-2 font-sans">
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                    <span className="text-muted-foreground">I-GST {inv.taxPct ?? 18}%</span>
-                    <span className="font-mono text-foreground">₹ {nf(totals.taxAmt ?? 0)}</span>
+                    <span className="text-muted-foreground">Pieces</span>
+                    <span className="font-mono font-semibold text-foreground">
+                      {totals.qty || 0}
+                    </span>
                   </div>
-                ) : (
-                  <>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Area (Sq.Mtr)</span>
+                    <span className="font-mono font-semibold text-foreground">
+                      {totals.sqm ?? "0.000"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Sq.Ft/Sq.Mtr</span>
+                    <span className="font-mono font-semibold text-foreground">
+                      {totals.sqft ?? "0.000"} / {totals.sqm ?? "0.000"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Glass amount</span>
+                    <span className="font-mono font-medium text-foreground">
+                      ₹ {nf(totals.glassTotal ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Basic amount</span>
+                    <span className="font-mono font-medium text-foreground">
+                      ₹ {nf(totals.basicTotal ?? totals.subTotal ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Admin charge</span>
+                    <span className="font-mono font-medium text-foreground">
+                      ₹ {nf(totals.adminCharge ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-medium">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-mono text-foreground">
+                      ₹ {nf(totals.taxableTotal ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">
+                      Insurance {inv.insurancePct ?? 2}%
+                    </span>
+                    <span className="font-mono text-foreground">
+                      ₹ {nf(totals.insuranceAmt ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-semibold">
+                    <span className="text-foreground">Assessable value</span>
+                    <span className="font-mono text-foreground">
+                      ₹ {nf(totals.assessableVal ?? 0)}
+                    </span>
+                  </div>
+
+                  {inv.gstType === "igst" ? (
                     <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                      <span className="text-muted-foreground">C-GST {((inv.taxPct ?? 18) / 2)}%</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.cgstAmt ?? 0)}</span>
+                      <span className="text-muted-foreground">I-GST {inv.taxPct ?? 18}%</span>
+                      <span className="font-mono text-foreground">₹ {nf(totals.taxAmt ?? 0)}</span>
                     </div>
-                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                      <span className="text-muted-foreground">S-GST {((inv.taxPct ?? 18) / 2)}%</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.sgstAmt ?? 0)}</span>
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                        <span className="text-muted-foreground">
+                          C-GST {(inv.taxPct ?? 18) / 2}%
+                        </span>
+                        <span className="font-mono text-foreground">
+                          ₹ {nf(totals.cgstAmt ?? 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                        <span className="text-muted-foreground">
+                          S-GST {(inv.taxPct ?? 18) / 2}%
+                        </span>
+                        <span className="font-mono text-foreground">
+                          ₹ {nf(totals.sgstAmt ?? 0)}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
-                <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
-                  <span className="text-muted-foreground">Gross total</span>
-                  <span className="font-mono font-medium text-foreground">₹ {nf(totals.grossTotal ?? 0)}</span>
-                </div>
+                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                    <span className="text-muted-foreground">Gross total</span>
+                    <span className="font-mono font-medium text-foreground">
+                      ₹ {nf(totals.grossTotal ?? 0)}
+                    </span>
+                  </div>
 
-                <div className="flex justify-between items-center py-2 px-2.5 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-md border border-emerald-500/20 mt-3">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Grand total</span>
-                  <span className="font-mono font-bold text-lg text-emerald-600 dark:text-emerald-400">₹ {nf(totals.grandTotal ?? 0)}</span>
-                </div>
+                  <div className="flex justify-between items-center py-2 px-2.5 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-md border border-emerald-500/20 mt-3">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      Grand total
+                    </span>
+                    <span className="font-mono font-bold text-lg text-emerald-600 dark:text-emerald-400">
+                      ₹ {nf(totals.grandTotal ?? 0)}
+                    </span>
+                  </div>
 
-                <div className="pt-2 text-[11px] text-muted-foreground leading-normal border-t border-border/30 mt-3 font-medium">
-                  <span className="font-semibold text-foreground">Amount in words:</span> {totals.amountInWords}
-                </div>
+                  <div className="pt-2 text-[11px] text-muted-foreground leading-normal border-t border-border/30 mt-3 font-medium">
+                    <span className="font-semibold text-foreground">Amount in words:</span>{" "}
+                    {totals.amountInWords}
+                  </div>
 
-                <div className="pt-4 mt-4 border-t border-border">
-                  <Button
-                    size="lg"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
-                    onClick={() => {
-                      const ok = saveInvoice();
-                      if (ok && inv.id) {
-                        navigate({ to: "/invoice", search: { id: inv.id } });
-                      }
-                    }}
-                  >
-                    <Save className="h-4 w-4" /> Save Order Booking
-                  </Button>
+                  <div className="pt-4 mt-4 border-t border-border">
+                    <Button
+                      size="lg"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
+                      onClick={() => {
+                        const ok = saveInvoice();
+                        if (ok && inv.id) {
+                          navigate({ to: "/invoice", search: { id: inv.id } });
+                        }
+                      }}
+                    >
+                      <Save className="h-4 w-4" /> Save Order Booking
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Bulk Entry Modal */}

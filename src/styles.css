@@ -83,87 +83,87 @@
   --radius: 0.5rem;
 
   /* Content backgrounds — light gray-blue tint for dashboard feel */
-  --background:         oklch(0.965 0.005 260);   /* Light gray-blue (#f5f6fa) */
-  --foreground:         oklch(0.18 0.015 260);    /* Deep navy text */
-  --surface:            oklch(1 0 0);             /* Pure white for cards */
-  --card:               oklch(1 0 0);
-  --card-foreground:    oklch(0.145 0.012 265);
-  --popover:            oklch(1 0 0);
+  --background: oklch(0.965 0.005 260); /* Light gray-blue (#f5f6fa) */
+  --foreground: oklch(0.18 0.015 260); /* Deep navy text */
+  --surface: oklch(1 0 0); /* Pure white for cards */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.012 265);
+  --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.012 265);
 
   /* Primary — deep slate-indigo: authoritative, not flashy */
-  --primary:            oklch(0.30 0.06 260);
+  --primary: oklch(0.3 0.06 260);
   --primary-foreground: oklch(0.98 0.003 260);
 
   /* Secondary / muted */
-  --secondary:          oklch(0.960 0.005 275);
+  --secondary: oklch(0.96 0.005 275);
   --secondary-foreground: oklch(0.28 0.04 265);
-  --muted:              oklch(0.958 0.004 275);
-  --muted-foreground:   oklch(0.50 0.016 265);
-  --accent:             oklch(0.952 0.008 265);
-  --accent-foreground:  oklch(0.28 0.04 265);
+  --muted: oklch(0.958 0.004 275);
+  --muted-foreground: oklch(0.5 0.016 265);
+  --accent: oklch(0.952 0.008 265);
+  --accent-foreground: oklch(0.28 0.04 265);
 
   /* Semantic */
-  --destructive:        oklch(0.53 0.18 25);
+  --destructive: oklch(0.53 0.18 25);
   --destructive-foreground: oklch(0.98 0.003 25);
-  --success:            oklch(0.52 0.12 155);
+  --success: oklch(0.52 0.12 155);
   --success-foreground: oklch(0.98 0.003 155);
-  --warning:            oklch(0.66 0.13 68);
+  --warning: oklch(0.66 0.13 68);
   --warning-foreground: oklch(0.22 0.04 68);
 
   /* Borders & inputs — barely-there but precise */
-  --border:  oklch(0.904 0.007 268);
-  --input:   oklch(0.895 0.008 268);
-  --ring:    oklch(0.30 0.06 260);
+  --border: oklch(0.904 0.007 268);
+  --input: oklch(0.895 0.008 268);
+  --ring: oklch(0.3 0.06 260);
 
   /* Charts */
-  --chart-1: oklch(0.42 0.10 260);
-  --chart-2: oklch(0.52 0.10 195);
+  --chart-1: oklch(0.42 0.1 260);
+  --chart-2: oklch(0.52 0.1 195);
   --chart-3: oklch(0.52 0.09 150);
   --chart-4: oklch(0.64 0.12 68);
   --chart-5: oklch(0.55 0.14 22);
 
   /* Sidebar — Clean white theme */
-  --sidebar:                  oklch(1 0 0);             /* Pure white */
-  --sidebar-foreground:       oklch(0.35 0.02 260);     /* Slate gray text */
-  --sidebar-primary:          oklch(0.55 0.20 260);     /* Bright blue active */
+  --sidebar: oklch(1 0 0); /* Pure white */
+  --sidebar-foreground: oklch(0.35 0.02 260); /* Slate gray text */
+  --sidebar-primary: oklch(0.55 0.2 260); /* Bright blue active */
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent:           oklch(0.96 0.006 260);    /* Soft hover gray */
-  --sidebar-accent-foreground:oklch(0.15 0.02 260);
-  --sidebar-border:           oklch(0.92 0.006 260);    /* Subtle right border */
-  --sidebar-ring:             oklch(0.55 0.20 260);
+  --sidebar-accent: oklch(0.96 0.006 260); /* Soft hover gray */
+  --sidebar-accent-foreground: oklch(0.15 0.02 260);
+  --sidebar-border: oklch(0.92 0.006 260); /* Subtle right border */
+  --sidebar-ring: oklch(0.55 0.2 260);
 
   /* Shadows — sharp, purposeful */
-  --shadow-xs:    0 1px 2px oklch(0 0 0 / 0.06);
-  --shadow-sm:    0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.06);
-  --shadow-md:    0 4px 8px -1px oklch(0 0 0 / 0.08), 0 2px 4px -1px oklch(0 0 0 / 0.06);
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow-md: 0 4px 8px -1px oklch(0 0 0 / 0.08), 0 2px 4px -1px oklch(0 0 0 / 0.06);
 }
 
 /* ── Dark mode ───────────────────────────────────────────────────────────── */
 .dark {
-  --background:         oklch(0.145 0.014 262);
-  --foreground:         oklch(0.945 0.006 258);
-  --surface:            oklch(0.185 0.018 262);
-  --card:               oklch(0.185 0.018 262);
-  --card-foreground:    oklch(0.945 0.006 258);
-  --popover:            oklch(0.185 0.018 262);
+  --background: oklch(0.145 0.014 262);
+  --foreground: oklch(0.945 0.006 258);
+  --surface: oklch(0.185 0.018 262);
+  --card: oklch(0.185 0.018 262);
+  --card-foreground: oklch(0.945 0.006 258);
+  --popover: oklch(0.185 0.018 262);
   --popover-foreground: oklch(0.945 0.006 258);
 
-  --primary:            oklch(0.88 0.008 260);
+  --primary: oklch(0.88 0.008 260);
   --primary-foreground: oklch(0.16 0.014 262);
 
-  --secondary:          oklch(0.24 0.020 262);
+  --secondary: oklch(0.24 0.02 262);
   --secondary-foreground: oklch(0.92 0.006 258);
-  --muted:              oklch(0.235 0.018 262);
-  --muted-foreground:   oklch(0.62 0.016 260);
-  --accent:             oklch(0.255 0.022 262);
-  --accent-foreground:  oklch(0.94 0.006 258);
+  --muted: oklch(0.235 0.018 262);
+  --muted-foreground: oklch(0.62 0.016 260);
+  --accent: oklch(0.255 0.022 262);
+  --accent-foreground: oklch(0.94 0.006 258);
 
-  --destructive:        oklch(0.62 0.18 22);
+  --destructive: oklch(0.62 0.18 22);
   --destructive-foreground: oklch(0.96 0.003 22);
-  --border:  oklch(1 0 0 / 9%);
-  --input:   oklch(1 0 0 / 13%);
-  --ring:    oklch(0.88 0.008 260);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.88 0.008 260);
 
   --chart-1: oklch(0.62 0.14 260);
   --chart-2: oklch(0.62 0.12 195);
@@ -171,14 +171,14 @@
   --chart-4: oklch(0.72 0.13 68);
   --chart-5: oklch(0.62 0.16 22);
 
-  --sidebar:                  oklch(0.125 0.016 262);
-  --sidebar-foreground:       oklch(0.82 0.010 258);
-  --sidebar-primary:          oklch(0.72 0.09 260);
+  --sidebar: oklch(0.125 0.016 262);
+  --sidebar-foreground: oklch(0.82 0.01 258);
+  --sidebar-primary: oklch(0.72 0.09 260);
   --sidebar-primary-foreground: oklch(0.14 0.014 262);
-  --sidebar-accent:           oklch(0.195 0.020 262);
-  --sidebar-accent-foreground:oklch(0.94 0.006 258);
-  --sidebar-border:           oklch(1 0 0 / 8%);
-  --sidebar-ring:             oklch(0.58 0.12 260);
+  --sidebar-accent: oklch(0.195 0.02 262);
+  --sidebar-accent-foreground: oklch(0.94 0.006 258);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.58 0.12 260);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -221,22 +221,34 @@
 
 /* Subtle row animation for new items */
 @keyframes row-in {
-  from { opacity: 0; transform: translateY(-3px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @utility animate-row-in {
   animation: row-in 0.15s ease-out both;
 }
 
 /* ── Print / PDF ─────────────────────────────────────────────────────────── */
-#printroot { display: none; }
+#printroot {
+  display: none;
+}
 @media print {
   /* Default page box. printElement() injects a per-document @page rule over
      this one so the cut sheet can go landscape while the invoice stays
      portrait. */
-  @page { size: A4 portrait; margin: 6mm 4mm; }
+  @page {
+    size: A4 portrait;
+    margin: 6mm 4mm;
+  }
 
-  html, body {
+  html,
+  body {
     background: #fff !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -248,7 +260,9 @@
   /* Chrome drops backgrounds and background-colours when printing unless a page
      asks for them explicitly. Without this the yellow barcode sticker comes out
      white and the shaded table headers vanish. */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -378,7 +392,7 @@
     padding: 2px 4px !important;
     font-size: 7.5pt !important;
   }
-  .pdoc .items2 th, 
+  .pdoc .items2 th,
   .pdoc .items2 td {
     padding: 2px 4px !important;
     font-size: 7.5pt !important;
@@ -407,38 +421,185 @@
   }
 }
 
-.pdoc { width: 100%; color: #000; font-family: system-ui, -apple-system, sans-serif; }
-.pdoc .ph { display: flex; gap: 12px; align-items: center; border-bottom: 2px solid #000; padding-bottom: 6px; }
-.pdoc .plogo { height: 48px; width: auto; object-fit: contain; flex: none; }
-.pdoc .pco { flex: 1; text-align: center; }
-.pdoc .pco h1 { font-size: 15pt; letter-spacing: .01em; font-weight: 700; color: #000; margin: 0; }
-.pdoc .pco div { font-size: 8.4pt; line-height: 1.35; color: #111; }
-.pdoc .ptitle { text-align: center; font-weight: 700; font-size: 11pt; letter-spacing: .16em; padding: 4px 0; border-bottom: 1px solid #000; background: #fafafa; color: #000; }
-.pdoc table { width: 100%; border-collapse: collapse; color: #000; }
-.pdoc .meta td { border: 1px solid #000; padding: 4px 6px; font-size: 8.4pt; vertical-align: top; color: #000; }
-.pdoc .items2 { margin-top: 0; width: 100%; border-collapse: collapse; }
-.pdoc .items2 th, .pdoc .items2 td { border: 1px solid #000; padding: 3px 5px; font-size: 8pt; color: #000; }
-.pdoc .items2 th { background: #EDEDED; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .02em; font-weight: 700; color: #000; }
-.pdoc .items2 td.n { text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; }
-.pdoc .items2 td.c { text-align: center; }
-.pdoc thead { display: table-header-group; }
-.pdoc tr { break-inside: avoid; }
-.pdoc .foot { display: flex; gap: 0; border: 1px solid #000; border-top: 0; }
-.pdoc .foot .lft { flex: 1; padding: 6px 8px; font-size: 7.8pt; line-height: 1.45; border-right: 1px solid #000; color: #000; }
-.pdoc .foot .rgt { width: 44%; padding: 0; }
-.pdoc .foot .rgt table { width: 100%; border-collapse: collapse; }
-.pdoc .foot .rgt td { padding: 3px 6px; font-size: 8.4pt; border-bottom: 1px solid #000; color: #000; }
-.pdoc .foot .rgt td.n { text-align: right; font-family: monospace; }
-.pdoc .gt td { border-top: 2px solid #000 !important; font-weight: 700; font-size: 10pt !important; color: #000; }
-.pdoc .pay-row td { border-top: 1px dashed #000; }
-.pdoc .pay-paid td { font-weight: 700; color: #15803d; }
-.pdoc .pay-due td { font-weight: 700; }
-.pdoc .pay-status td { font-weight: 700; }
-.pdoc .words { border: 1px solid #000; border-top: 0; padding: 5px 8px; font-size: 8.5pt; color: #000; background: #fafafa; }
-.pdoc .terms { border: 1px solid #000; border-top: 0; padding: 6px 8px; font-size: 7.5pt; line-height: 1.45; color: #000; }
-.pdoc .sign { display: flex; justify-content: space-between; padding: 16px 8px 4px; font-size: 8.4pt; border: 1px solid #000; border-top: 0; color: #000; }
-.pdoc .pgno { text-align: right; font-size: 7.4pt; padding-top: 3px; color: #444; }
-.doc-preview .pdoc { background: #fff; padding: 12px; }
+.pdoc {
+  width: 100%;
+  color: #000;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+.pdoc .ph {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 2px solid #000;
+  padding-bottom: 6px;
+}
+.pdoc .plogo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  flex: none;
+}
+.pdoc .pco {
+  flex: 1;
+  text-align: center;
+}
+.pdoc .pco h1 {
+  font-size: 15pt;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+}
+.pdoc .pco div {
+  font-size: 8.4pt;
+  line-height: 1.35;
+  color: #111;
+}
+.pdoc .ptitle {
+  text-align: center;
+  font-weight: 700;
+  font-size: 11pt;
+  letter-spacing: 0.16em;
+  padding: 4px 0;
+  border-bottom: 1px solid #000;
+  background: #fafafa;
+  color: #000;
+}
+.pdoc table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #000;
+}
+.pdoc .meta td {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  font-size: 8.4pt;
+  vertical-align: top;
+  color: #000;
+}
+.pdoc .items2 {
+  margin-top: 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+.pdoc .items2 th,
+.pdoc .items2 td {
+  border: 1px solid #000;
+  padding: 3px 5px;
+  font-size: 8pt;
+  color: #000;
+}
+.pdoc .items2 th {
+  background: #ededed;
+  font-size: 7.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  color: #000;
+}
+.pdoc .items2 td.n {
+  text-align: right;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+}
+.pdoc .items2 td.c {
+  text-align: center;
+}
+.pdoc thead {
+  display: table-header-group;
+}
+.pdoc tr {
+  break-inside: avoid;
+}
+.pdoc .foot {
+  display: flex;
+  gap: 0;
+  border: 1px solid #000;
+  border-top: 0;
+}
+.pdoc .foot .lft {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 7.8pt;
+  line-height: 1.45;
+  border-right: 1px solid #000;
+  color: #000;
+}
+.pdoc .foot .rgt {
+  width: 44%;
+  padding: 0;
+}
+.pdoc .foot .rgt table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pdoc .foot .rgt td {
+  padding: 3px 6px;
+  font-size: 8.4pt;
+  border-bottom: 1px solid #000;
+  color: #000;
+}
+.pdoc .foot .rgt td.n {
+  text-align: right;
+  font-family: monospace;
+}
+.pdoc .gt td {
+  border-top: 2px solid #000 !important;
+  font-weight: 700;
+  font-size: 10pt !important;
+  color: #000;
+}
+.pdoc .pay-row td {
+  border-top: 1px dashed #000;
+}
+.pdoc .pay-paid td {
+  font-weight: 700;
+  color: #15803d;
+}
+.pdoc .pay-due td {
+  font-weight: 700;
+}
+.pdoc .pay-status td {
+  font-weight: 700;
+}
+.pdoc .words {
+  border: 1px solid #000;
+  border-top: 0;
+  padding: 5px 8px;
+  font-size: 8.5pt;
+  color: #000;
+  background: #fafafa;
+}
+.pdoc .terms {
+  border: 1px solid #000;
+  border-top: 0;
+  padding: 6px 8px;
+  font-size: 7.5pt;
+  line-height: 1.45;
+  color: #000;
+}
+.pdoc .sign {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 8px 4px;
+  font-size: 8.4pt;
+  border: 1px solid #000;
+  border-top: 0;
+  color: #000;
+}
+.pdoc .pgno {
+  text-align: right;
+  font-size: 7.4pt;
+  padding-top: 3px;
+  color: #444;
+}
+.doc-preview .pdoc {
+  background: #fff;
+  padding: 12px;
+}
 
 /* ── Hide number input spinners (up/down arrows) everywhere ── */
 input[type="number"] {
@@ -465,17 +626,22 @@ textarea::placeholder {
   }
 
   /* Ensure tap targets meet 44px minimum */
-  button, [role="button"], a {
+  button,
+  [role="button"],
+  a {
     min-height: 36px;
   }
 
   /* Improve input touch UX on mobile — prevent iOS zoom on focus (font-size >= 16px) */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-size: max(16px, 0.75rem);
   }
 
   /* Better scroll momentum on mobile */
-  .overflow-y-auto, .overflow-x-auto {
+  .overflow-y-auto,
+  .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
 
@@ -495,4 +661,3 @@ textarea::placeholder {
     padding-right: 0.5rem;
   }
 }
-

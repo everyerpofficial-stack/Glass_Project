@@ -16,84 +16,153 @@
    ===================================================================== */
 
 /* ---------- Configuration ---------- */
-var SPREADSHEET_ID = ''; // Leave empty to auto-create, or paste your Spreadsheet ID here
+var SPREADSHEET_ID = ""; // Leave empty to auto-create, or paste your Spreadsheet ID here
 
 /* ---------- Sheet Names ---------- */
-var SHEET_INVOICES   = 'Invoices';
-var SHEET_CUSTOMERS  = 'Customers';
-var SHEET_WORKORDERS = 'WorkOrders';
-var SHEET_PAYMENTS   = 'Payments';
+var SHEET_INVOICES = "Invoices";
+var SHEET_CUSTOMERS = "Customers";
+var SHEET_WORKORDERS = "WorkOrders";
+var SHEET_PAYMENTS = "Payments";
 
 /* ---------- Column Definitions ---------- */
 var INVOICE_HEADERS = [
-  'id', 'no', 'date', 'docType', 'status', 'customerName', 'customerGSTIN',
-  'customerPhone', 'customerEmail', 'customerAddr', 'customerShip',
-  'glassDesc', 'thickness', 'batchNo', 'defaultRate',
-  'salesPerson', 'orderNo', 'poNo', 'projectRemark', 'inputUnit',
-  'jobType', 'workOrderNo', 'freightType', 'productName',
-  'itemCount', 'totalQty', 'totalSqm', 'totalSqft', 'weightKg',
-  'glassAmount', 'basicAmount', 'adminCharge', 'subTotal',
-  'insurance', 'assessableValue', 'cgst', 'sgst', 'igst',
-  'grossTotal', 'roundOff', 'grandTotal', 'amountInWords',
-  'commission', 'sync', 'paidAmount', 'remainingBalance', 'paymentStatus',
-  'createdAt', 'updatedAt',
-  'fullJSON'
+  "id",
+  "no",
+  "date",
+  "docType",
+  "status",
+  "customerName",
+  "customerGSTIN",
+  "customerPhone",
+  "customerEmail",
+  "customerAddr",
+  "customerShip",
+  "glassDesc",
+  "thickness",
+  "batchNo",
+  "defaultRate",
+  "salesPerson",
+  "orderNo",
+  "poNo",
+  "projectRemark",
+  "inputUnit",
+  "jobType",
+  "workOrderNo",
+  "freightType",
+  "productName",
+  "itemCount",
+  "totalQty",
+  "totalSqm",
+  "totalSqft",
+  "weightKg",
+  "glassAmount",
+  "basicAmount",
+  "adminCharge",
+  "subTotal",
+  "insurance",
+  "assessableValue",
+  "cgst",
+  "sgst",
+  "igst",
+  "grossTotal",
+  "roundOff",
+  "grandTotal",
+  "amountInWords",
+  "commission",
+  "sync",
+  "paidAmount",
+  "remainingBalance",
+  "paymentStatus",
+  "createdAt",
+  "updatedAt",
+  "fullJSON",
 ];
 
 var CUSTOMER_HEADERS = [
-  'id', 'name', 'phone', 'email', 'gstin', 'addr', 'ship',
-  'city', 'status', 'clBalance', 'createdAt', 'updatedAt'
+  "id",
+  "name",
+  "phone",
+  "email",
+  "gstin",
+  "addr",
+  "ship",
+  "city",
+  "status",
+  "clBalance",
+  "createdAt",
+  "updatedAt",
 ];
 
 var WORKORDER_HEADERS = [
-  'id', 'woNo', 'orderId', 'orderNo', 'piNo', 'piDate',
-  'customer', 'dispatchTo', 'poNo', 'project',
-  'glassDesc', 'thickness', 'productName', 'jobType',
-  'totalPieces', 'totalQty', 'totalSqm', 'totalSqft', 'weightKg',
-  'createdAt',
-  'fullJSON'
+  "id",
+  "woNo",
+  "orderId",
+  "orderNo",
+  "piNo",
+  "piDate",
+  "customer",
+  "dispatchTo",
+  "poNo",
+  "project",
+  "glassDesc",
+  "thickness",
+  "productName",
+  "jobType",
+  "totalPieces",
+  "totalQty",
+  "totalSqm",
+  "totalSqft",
+  "weightKg",
+  "createdAt",
+  "fullJSON",
 ];
 
 var PAYMENT_HEADERS = [
-  'id', 'custName', 'invoiceNo', 'date', 'amount',
-  'mode', 'refNo', 'notes', 'createdAt'
+  "id",
+  "custName",
+  "invoiceNo",
+  "date",
+  "amount",
+  "mode",
+  "refNo",
+  "notes",
+  "createdAt",
 ];
-
 
 /* =====================================================================
    Web App Entry Points
    ===================================================================== */
 
 function doGet(e) {
-  var action = (e && e.parameter && e.parameter.action) || 'ping';
+  var action = (e && e.parameter && e.parameter.action) || "ping";
   var result;
 
   try {
     switch (action) {
-      case 'ping':
+      case "ping":
         result = handlePing_();
         break;
-      case 'getInvoices':
+      case "getInvoices":
         result = handleGetInvoices_();
         break;
-      case 'getCustomers':
+      case "getCustomers":
         result = handleGetCustomers_();
         break;
-      case 'getWorkOrders':
+      case "getWorkOrders":
         result = handleGetWorkOrders_();
         break;
-      case 'getPayments':
+      case "getPayments":
         result = handleGetPayments_();
         break;
-      case 'getAll':
+      case "getAll":
         result = handleGetAll_();
         break;
-      case 'format':
+      case "format":
         formatAllSheets_();
-        result = { success: true, action: 'format' };
+        result = { success: true, action: "format" };
         break;
       default:
-        result = { success: false, message: 'Unknown GET action: ' + action };
+        result = { success: false, message: "Unknown GET action: " + action };
     }
   } catch (err) {
     result = { success: false, message: err.message || String(err) };
@@ -124,7 +193,7 @@ function doPost(e) {
   if (lock && !lock.tryLock(WRITE_LOCK_TIMEOUT_MS)) {
     return jsonResponse_({
       success: false,
-      message: 'The sheet is busy with another save. Nothing was written — please try again.'
+      message: "The sheet is busy with another save. Nothing was written — please try again.",
     });
   }
 
@@ -133,50 +202,51 @@ function doPost(e) {
     if (e && e.postData && e.postData.contents) {
       body = JSON.parse(e.postData.contents);
     }
-    var action = body.action || 'saveInvoice';
+    var action = body.action || "saveInvoice";
 
     switch (action) {
-      case 'saveInvoice':
+      case "saveInvoice":
         result = handleSaveInvoice_(body.invoice);
         break;
-      case 'deleteInvoice':
+      case "deleteInvoice":
         result = handleDeleteInvoice_(body.id);
         break;
-      case 'deleteCustomer':
+      case "deleteCustomer":
         result = handleDeleteCustomer_(body.id);
         break;
-      case 'deleteWorkOrder':
+      case "deleteWorkOrder":
         result = handleDeleteWorkOrder_(body.id);
         break;
-      case 'deletePayment':
+      case "deletePayment":
         result = handleDeletePayment_(body.id);
         break;
-      case 'saveCustomer':
+      case "saveCustomer":
         result = handleSaveCustomer_(body.customer);
         break;
-      case 'saveWorkOrder':
+      case "saveWorkOrder":
         result = handleSaveWorkOrder_(body.workOrder);
         break;
-      case 'savePayment':
+      case "savePayment":
         result = handleSavePayment_(body.payment);
         break;
-      case 'syncAll':
+      case "syncAll":
         result = handleSyncAll_(body);
         break;
       default:
-        result = { success: false, message: 'Unknown POST action: ' + action };
+        result = { success: false, message: "Unknown POST action: " + action };
     }
   } catch (err) {
     result = { success: false, message: err.message || String(err) };
   } finally {
     if (lock) {
-      try { lock.releaseLock(); } catch (err2) {}
+      try {
+        lock.releaseLock();
+      } catch (err2) {}
     }
   }
 
   return jsonResponse_(result);
 }
-
 
 /* =====================================================================
    Handler Functions
@@ -189,52 +259,52 @@ function handlePing_() {
      when the columns actually need re-styling. */
   return {
     success: true,
-    status: 'OK',
-    version: '2.0',
+    status: "OK",
+    version: "2.0",
     timestamp: new Date().toISOString(),
     sheets: {
       invoices: getOrCreateSheet_(SHEET_INVOICES, INVOICE_HEADERS).getLastRow() - 1,
       customers: getOrCreateSheet_(SHEET_CUSTOMERS, CUSTOMER_HEADERS).getLastRow() - 1,
       workOrders: getOrCreateSheet_(SHEET_WORKORDERS, WORKORDER_HEADERS).getLastRow() - 1,
-      payments: getOrCreateSheet_(SHEET_PAYMENTS, PAYMENT_HEADERS).getLastRow() - 1
-    }
+      payments: getOrCreateSheet_(SHEET_PAYMENTS, PAYMENT_HEADERS).getLastRow() - 1,
+    },
   };
 }
 
 /* ---------- Save Invoice ---------- */
 function handleSaveInvoice_(invoice) {
   if (!invoice || !invoice.id) {
-    return { success: false, message: 'Invoice data with id is required' };
+    return { success: false, message: "Invoice data with id is required" };
   }
 
   var sheet = getOrCreateSheet_(SHEET_INVOICES, INVOICE_HEADERS);
   var existingRow = findRowById_(sheet, invoice.id);
 
   var row = [
-    invoice.id || '',
-    invoice.no || '',
-    invoice.date || '',
-    invoice.docType || 'pre_proforma',
-    invoice.status || 'draft',
-    (invoice.cust && invoice.cust.name) || '',
-    (invoice.cust && invoice.cust.gstin) || '',
-    (invoice.cust && invoice.cust.phone) || '',
-    (invoice.cust && invoice.cust.email) || '',
-    (invoice.cust && invoice.cust.addr) || '',
-    (invoice.cust && invoice.cust.ship) || '',
-    (invoice.glass && invoice.glass.desc) || '',
-    (invoice.glass && invoice.glass.thickness) || '',
-    (invoice.glass && invoice.glass.batchNo) || '',
+    invoice.id || "",
+    invoice.no || "",
+    invoice.date || "",
+    invoice.docType || "pre_proforma",
+    invoice.status || "draft",
+    (invoice.cust && invoice.cust.name) || "",
+    (invoice.cust && invoice.cust.gstin) || "",
+    (invoice.cust && invoice.cust.phone) || "",
+    (invoice.cust && invoice.cust.email) || "",
+    (invoice.cust && invoice.cust.addr) || "",
+    (invoice.cust && invoice.cust.ship) || "",
+    (invoice.glass && invoice.glass.desc) || "",
+    (invoice.glass && invoice.glass.thickness) || "",
+    (invoice.glass && invoice.glass.batchNo) || "",
     (invoice.glass && invoice.glass.defaultRate) || 0,
-    invoice.salesPerson || '',
-    invoice.orderNo || '',
-    invoice.poNo || '',
-    invoice.projectRemark || '',
-    invoice.inputUnit || 'inch',
-    invoice.jobType || '',
-    invoice.workOrderNo || '',
-    invoice.freightType || '',
-    invoice.productName || '',
+    invoice.salesPerson || "",
+    invoice.orderNo || "",
+    invoice.poNo || "",
+    invoice.projectRemark || "",
+    invoice.inputUnit || "inch",
+    invoice.jobType || "",
+    invoice.workOrderNo || "",
+    invoice.freightType || "",
+    invoice.productName || "",
     (invoice.items && invoice.items.length) || 0,
     (invoice.totals && invoice.totals.qty) || 0,
     (invoice.totals && invoice.totals.sqm) || 0,
@@ -252,15 +322,15 @@ function handleSaveInvoice_(invoice) {
     (invoice.totals && invoice.totals.grossTotal) || 0,
     (invoice.totals && invoice.totals.roundOff) || 0,
     (invoice.totals && invoice.totals.grandTotal) || 0,
-    (invoice.totals && invoice.totals.amountInWords) || '',
+    (invoice.totals && invoice.totals.amountInWords) || "",
     (invoice.totals && invoice.totals.commission) || 0,
-    'synced',
+    "synced",
     invoice.paidAmount || 0,
     invoice.remainingBalance || 0,
-    invoice.paymentStatus || '',
+    invoice.paymentStatus || "",
     invoice.createdAt || new Date().toISOString(),
     invoice.updatedAt || new Date().toISOString(),
-    safeJson_(invoice)
+    safeJson_(invoice),
   ];
 
   /* Document numbers are allocated on the device, from the records that device
@@ -277,11 +347,11 @@ function handleSaveInvoice_(invoice) {
     appendRowIndexed_(sheet, row);
   }
 
-  var out = { success: true, id: invoice.id, action: 'saved' };
+  var out = { success: true, id: invoice.id, action: "saved" };
   if (conflictId) {
-    out.numberConflict = { no: String(invoice.no || ''), existingId: conflictId };
+    out.numberConflict = { no: String(invoice.no || ""), existingId: conflictId };
   }
-  if (row[row.length - 1] === '' ) {
+  if (row[row.length - 1] === "") {
     out.oversized = true;
   }
   return out;
@@ -290,7 +360,9 @@ function handleSaveInvoice_(invoice) {
 /* Another row already using this document number, under a different id.
    Answered from the row index, so this stays O(1) per save. */
 function findNumberConflict_(sheet, invoice) {
-  var no = String(invoice.no == null ? '' : invoice.no).trim().toLowerCase();
+  var no = String(invoice.no == null ? "" : invoice.no)
+    .trim()
+    .toLowerCase();
   if (!no) return null;
 
   var owner = getRowIndex_(sheet).ownerId[no];
@@ -311,13 +383,13 @@ function handleGetInvoices_() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var fullJsonIdx = INVOICE_HEADERS.indexOf('fullJSON');
+    var fullJsonIdx = INVOICE_HEADERS.indexOf("fullJSON");
     var fullJson = row[fullJsonIdx];
 
     if (fullJson && String(fullJson).trim()) {
       try {
         var inv = JSON.parse(fullJson);
-        inv.sync = 'synced';
+        inv.sync = "synced";
         invoices.push(inv);
         continue;
       } catch (e) {
@@ -330,21 +402,21 @@ function handleGetInvoices_() {
       id: row[0],
       no: row[1],
       date: cellDate_(row[2]),
-      docType: row[3] || 'pre_proforma',
-      status: row[4] || 'draft',
+      docType: row[3] || "pre_proforma",
+      status: row[4] || "draft",
       cust: {
         name: row[5],
         gstin: row[6],
         phone: row[7],
         email: row[8],
         addr: row[9],
-        ship: row[10]
+        ship: row[10],
       },
       glass: {
         desc: row[11],
         thickness: row[12],
         batchNo: row[13],
-        defaultRate: row[14]
+        defaultRate: row[14],
       },
       salesPerson: row[15],
       orderNo: row[16],
@@ -373,15 +445,15 @@ function handleGetInvoices_() {
         roundOff: row[39],
         grandTotal: row[40],
         amountInWords: row[41],
-        commission: row[42]
+        commission: row[42],
       },
-      sync: 'synced',
+      sync: "synced",
       items: [],
       paidAmount: row[44],
       remainingBalance: row[45],
       paymentStatus: row[46],
       createdAt: cellStamp_(row[47]),
-      updatedAt: cellStamp_(row[48])
+      updatedAt: cellStamp_(row[48]),
     });
   }
 
@@ -390,7 +462,7 @@ function handleGetInvoices_() {
 
 /* ---------- Delete Invoice ---------- */
 function handleDeleteInvoice_(id) {
-  if (!id) return { success: false, message: 'Invoice id is required' };
+  if (!id) return { success: false, message: "Invoice id is required" };
 
   var sheet = getOrCreateSheet_(SHEET_INVOICES, INVOICE_HEADERS);
   var rowNum = findRowById_(sheet, id);
@@ -398,73 +470,75 @@ function handleDeleteInvoice_(id) {
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
     invalidateRowIndex_(sheet);
-    return { success: true, id: id, action: 'deleted' };
+    return { success: true, id: id, action: "deleted" };
   }
 
-  return { success: false, message: 'Invoice not found: ' + id };
+  return { success: false, message: "Invoice not found: " + id };
 }
 
 /* ---------- Delete Customer ---------- */
 function handleDeleteCustomer_(id) {
-  if (!id) return { success: false, message: 'Customer id is required' };
+  if (!id) return { success: false, message: "Customer id is required" };
   var sheet = getOrCreateSheet_(SHEET_CUSTOMERS, CUSTOMER_HEADERS);
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
     invalidateRowIndex_(sheet);
-    return { success: true, id: id, action: 'deleted' };
+    return { success: true, id: id, action: "deleted" };
   }
-  return { success: false, message: 'Customer not found: ' + id };
+  return { success: false, message: "Customer not found: " + id };
 }
 
 /* ---------- Delete Work Order ---------- */
 function handleDeleteWorkOrder_(id) {
-  if (!id) return { success: false, message: 'Work order id is required' };
+  if (!id) return { success: false, message: "Work order id is required" };
   var sheet = getOrCreateSheet_(SHEET_WORKORDERS, WORKORDER_HEADERS);
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
     invalidateRowIndex_(sheet);
-    return { success: true, id: id, action: 'deleted' };
+    return { success: true, id: id, action: "deleted" };
   }
-  return { success: false, message: 'Work order not found: ' + id };
+  return { success: false, message: "Work order not found: " + id };
 }
 
 /* ---------- Delete Payment ---------- */
 function handleDeletePayment_(id) {
-  if (!id) return { success: false, message: 'Payment id is required' };
+  if (!id) return { success: false, message: "Payment id is required" };
   var sheet = getOrCreateSheet_(SHEET_PAYMENTS, PAYMENT_HEADERS);
   var rowNum = findRowById_(sheet, id);
   if (rowNum > 0) {
     sheet.deleteRow(rowNum);
     invalidateRowIndex_(sheet);
-    return { success: true, id: id, action: 'deleted' };
+    return { success: true, id: id, action: "deleted" };
   }
-  return { success: false, message: 'Payment not found: ' + id };
+  return { success: false, message: "Payment not found: " + id };
 }
 
 /* ---------- Save Customer ---------- */
 function handleSaveCustomer_(customer) {
   if (!customer || (!customer.id && !customer.name)) {
-    return { success: false, message: 'Customer data with id or name is required' };
+    return { success: false, message: "Customer data with id or name is required" };
   }
 
   var sheet = getOrCreateSheet_(SHEET_CUSTOMERS, CUSTOMER_HEADERS);
-  var existingRow = customer.id ? findRowById_(sheet, customer.id) : findRowByName_(sheet, customer.name);
+  var existingRow = customer.id
+    ? findRowById_(sheet, customer.id)
+    : findRowByName_(sheet, customer.name);
 
   var row = [
-    customer.id || '',
-    customer.name || '',
-    customer.phone || '',
-    customer.email || '',
-    customer.gstin || '',
-    customer.addr || '',
-    customer.ship || '',
-    customer.city || '',
-    customer.status || 'active',
+    customer.id || "",
+    customer.name || "",
+    customer.phone || "",
+    customer.email || "",
+    customer.gstin || "",
+    customer.addr || "",
+    customer.ship || "",
+    customer.city || "",
+    customer.status || "active",
     customer.clBalance || 0,
     customer.createdAt || new Date().toISOString(),
-    new Date().toISOString()
+    new Date().toISOString(),
   ];
 
   if (existingRow > 0) {
@@ -473,7 +547,7 @@ function handleSaveCustomer_(customer) {
     appendRowIndexed_(sheet, row);
   }
 
-  return { success: true, action: 'saved' };
+  return { success: true, action: "saved" };
 }
 
 /* ---------- Get All Customers ---------- */
@@ -498,10 +572,10 @@ function handleGetCustomers_() {
       addr: row[5],
       ship: row[6],
       city: row[7],
-      status: row[8] || 'active',
+      status: row[8] || "active",
       clBalance: row[9] || 0,
       createdAt: cellStamp_(row[10]),
-      updatedAt: cellStamp_(row[11])
+      updatedAt: cellStamp_(row[11]),
     });
   }
 
@@ -511,34 +585,34 @@ function handleGetCustomers_() {
 /* ---------- Save Work Order ---------- */
 function handleSaveWorkOrder_(wo) {
   if (!wo || !wo.id) {
-    return { success: false, message: 'Work order data with id is required' };
+    return { success: false, message: "Work order data with id is required" };
   }
 
   var sheet = getOrCreateSheet_(SHEET_WORKORDERS, WORKORDER_HEADERS);
   var existingRow = findRowById_(sheet, wo.id);
 
   var row = [
-    wo.id || '',
-    wo.woNo || '',
-    wo.orderId || '',
-    wo.orderNo || '',
-    wo.piNo || '',
-    wo.piDate || '',
-    wo.customer || '',
-    wo.dispatchTo || '',
-    wo.poNo || '',
-    wo.project || '',
-    wo.glassDesc || '',
-    wo.thickness || '',
-    wo.productName || '',
-    wo.jobType || '',
+    wo.id || "",
+    wo.woNo || "",
+    wo.orderId || "",
+    wo.orderNo || "",
+    wo.piNo || "",
+    wo.piDate || "",
+    wo.customer || "",
+    wo.dispatchTo || "",
+    wo.poNo || "",
+    wo.project || "",
+    wo.glassDesc || "",
+    wo.thickness || "",
+    wo.productName || "",
+    wo.jobType || "",
     wo.totalPieces || 0,
     wo.totalQty || 0,
     wo.totalSqm || 0,
     wo.totalSqft || 0,
     wo.weightKg || 0,
     wo.createdAt || new Date().toISOString(),
-    safeJson_(wo)
+    safeJson_(wo),
   ];
 
   if (existingRow > 0) {
@@ -547,7 +621,7 @@ function handleSaveWorkOrder_(wo) {
     appendRowIndexed_(sheet, row);
   }
 
-  return { success: true, action: 'saved' };
+  return { success: true, action: "saved" };
 }
 
 /* ---------- Get All Work Orders ---------- */
@@ -563,7 +637,7 @@ function handleGetWorkOrders_() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var fullJsonIdx = WORKORDER_HEADERS.indexOf('fullJSON');
+    var fullJsonIdx = WORKORDER_HEADERS.indexOf("fullJSON");
     var fullJson = row[fullJsonIdx];
 
     if (fullJson && String(fullJson).trim()) {
@@ -596,7 +670,7 @@ function handleGetWorkOrders_() {
       totalSqft: row[17],
       weightKg: row[18],
       pieces: [],
-      createdAt: cellStamp_(row[19])
+      createdAt: cellStamp_(row[19]),
     });
   }
 
@@ -606,22 +680,22 @@ function handleGetWorkOrders_() {
 /* ---------- Save Payment ---------- */
 function handleSavePayment_(payment) {
   if (!payment || !payment.id) {
-    return { success: false, message: 'Payment data with id is required' };
+    return { success: false, message: "Payment data with id is required" };
   }
 
   var sheet = getOrCreateSheet_(SHEET_PAYMENTS, PAYMENT_HEADERS);
   var existingRow = findRowById_(sheet, payment.id);
 
   var row = [
-    payment.id || '',
-    payment.custName || '',
-    payment.invoiceNo || '',
-    payment.date || '',
+    payment.id || "",
+    payment.custName || "",
+    payment.invoiceNo || "",
+    payment.date || "",
     payment.amount || 0,
-    payment.mode || '',
-    payment.refNo || '',
-    payment.notes || '',
-    payment.createdAt || new Date().toISOString()
+    payment.mode || "",
+    payment.refNo || "",
+    payment.notes || "",
+    payment.createdAt || new Date().toISOString(),
   ];
 
   if (existingRow > 0) {
@@ -630,7 +704,7 @@ function handleSavePayment_(payment) {
     appendRowIndexed_(sheet, row);
   }
 
-  return { success: true, action: 'saved' };
+  return { success: true, action: "saved" };
 }
 
 /* ---------- Get All Payments ---------- */
@@ -655,7 +729,7 @@ function handleGetPayments_() {
       mode: row[5],
       refNo: row[6],
       notes: row[7],
-      createdAt: cellStamp_(row[8])
+      createdAt: cellStamp_(row[8]),
     });
   }
 
@@ -678,10 +752,10 @@ function handleGetAll_() {
   var out = { success: true, errors: [], failed: {} };
 
   var tabs = [
-    { key: 'invoices',   fn: handleGetInvoices_ },
-    { key: 'customers',  fn: handleGetCustomers_ },
-    { key: 'workOrders', fn: handleGetWorkOrders_ },
-    { key: 'payments',   fn: handleGetPayments_ }
+    { key: "invoices", fn: handleGetInvoices_ },
+    { key: "customers", fn: handleGetCustomers_ },
+    { key: "workOrders", fn: handleGetWorkOrders_ },
+    { key: "payments", fn: handleGetPayments_ },
   ];
 
   for (var i = 0; i < tabs.length; i++) {
@@ -692,7 +766,7 @@ function handleGetAll_() {
       var msg = err.message || String(err);
       out[tabs[i].key] = [];
       out.failed[tabs[i].key] = msg;
-      out.errors.push(tabs[i].key + ': ' + msg);
+      out.errors.push(tabs[i].key + ": " + msg);
     }
   }
 
@@ -709,10 +783,10 @@ function handleSyncAll_(body) {
   var failures = [];
 
   var groups = [
-    { key: 'invoices',   rows: body.invoices,   fn: handleSaveInvoice_ },
-    { key: 'customers',  rows: body.customers,  fn: handleSaveCustomer_ },
-    { key: 'workOrders', rows: body.workOrders, fn: handleSaveWorkOrder_ },
-    { key: 'payments',   rows: body.payments,   fn: handleSavePayment_ }
+    { key: "invoices", rows: body.invoices, fn: handleSaveInvoice_ },
+    { key: "customers", rows: body.customers, fn: handleSaveCustomer_ },
+    { key: "workOrders", rows: body.workOrders, fn: handleSaveWorkOrder_ },
+    { key: "payments", rows: body.payments, fn: handleSavePayment_ },
   ];
 
   for (var g = 0; g < groups.length; g++) {
@@ -728,15 +802,15 @@ function handleSyncAll_(body) {
         } else {
           failures.push({
             collection: groups[g].key,
-            id: (row && row.id) || '',
-            message: (res && res.message) || 'rejected by the sheet'
+            id: (row && row.id) || "",
+            message: (res && res.message) || "rejected by the sheet",
           });
         }
       } catch (err) {
         failures.push({
           collection: groups[g].key,
-          id: (row && row.id) || '',
-          message: err.message || String(err)
+          id: (row && row.id) || "",
+          message: err.message || String(err),
         });
       }
     }
@@ -744,13 +818,12 @@ function handleSyncAll_(body) {
 
   return {
     success: true,
-    action: 'syncAll',
+    action: "syncAll",
     results: results,
     failures: failures,
-    failureCount: failures.length
+    failureCount: failures.length,
   };
 }
-
 
 /* =====================================================================
    Utility Functions
@@ -777,8 +850,8 @@ function getSpreadsheet_() {
   }
   if (!CACHED_SS_) {
     // Not bound — create a new one
-    CACHED_SS_ = SpreadsheetApp.create('Glass Quote Pro — Database');
-    Logger.log('Created new spreadsheet: ' + CACHED_SS_.getUrl());
+    CACHED_SS_ = SpreadsheetApp.create("Glass Quote Pro — Database");
+    Logger.log("Created new spreadsheet: " + CACHED_SS_.getUrl());
   }
   return CACHED_SS_;
 }
@@ -793,12 +866,12 @@ function formatSheetColumns_(sheet, headers) {
     sheet.setRowHeight(1, 32);
     var headerRange = sheet.getRange(1, 1, 1, lastCol);
     headerRange
-      .setFontWeight('bold')
-      .setBackground('#1a1f2e')
-      .setFontColor('#ffffff')
+      .setFontWeight("bold")
+      .setBackground("#1a1f2e")
+      .setFontColor("#ffffff")
       .setFontSize(10)
-      .setVerticalAlignment('middle')
-      .setHorizontalAlignment('center');
+      .setVerticalAlignment("middle")
+      .setHorizontalAlignment("center");
 
     sheet.setFrozenRows(1);
   } catch (e) {}
@@ -809,19 +882,73 @@ function formatSheetColumns_(sheet, headers) {
     var w = 140;
 
     var hLower = h.toLowerCase();
-    if (hLower === 'id') w = 170;
-    else if (hLower === 'no' || hLower.indexOf('wono') > -1 || hLower.indexOf('pino') > -1 || hLower.indexOf('orderno') > -1 || hLower.indexOf('pono') > -1) w = 130;
-    else if (hLower.indexOf('date') > -1 || hLower.indexOf('createdat') > -1 || hLower.indexOf('updatedat') > -1) w = 150;
-    else if (hLower.indexOf('doctype') > -1 || hLower.indexOf('status') > -1 || hLower.indexOf('unit') > -1 || hLower.indexOf('jobtype') > -1 || hLower.indexOf('freight') > -1) w = 140;
-    else if (hLower.indexOf('name') > -1 || hLower.indexOf('customer') > -1 || hLower.indexOf('person') > -1) w = 200;
-    else if (hLower.indexOf('email') > -1) w = 220;
-    else if (hLower.indexOf('phone') > -1 || hLower.indexOf('gstin') > -1 || hLower.indexOf('refno') > -1) w = 160;
-    else if (hLower.indexOf('addr') > -1 || hLower.indexOf('ship') > -1 || hLower.indexOf('dispatch') > -1 || hLower.indexOf('project') > -1 || hLower.indexOf('notes') > -1) w = 260;
-    else if (hLower.indexOf('desc') > -1 || hLower.indexOf('product') > -1) w = 230;
-    else if (hLower.indexOf('words') > -1) w = 320;
-    else if (hLower.indexOf('fulljson') > -1) w = 160;
-    else if (hLower.indexOf('qty') > -1 || hLower.indexOf('pieces') > -1 || hLower.indexOf('count') > -1 || hLower.indexOf('thickness') > -1) w = 110;
-    else if (hLower.indexOf('amount') > -1 || hLower.indexOf('total') > -1 || hLower.indexOf('charge') > -1 || hLower.indexOf('value') > -1 || hLower.indexOf('rate') > -1 || hLower.indexOf('gst') > -1 || hLower.indexOf('balance') > -1 || hLower.indexOf('kg') > -1 || hLower.indexOf('sqm') > -1 || hLower.indexOf('sqft') > -1) w = 135;
+    if (hLower === "id") w = 170;
+    else if (
+      hLower === "no" ||
+      hLower.indexOf("wono") > -1 ||
+      hLower.indexOf("pino") > -1 ||
+      hLower.indexOf("orderno") > -1 ||
+      hLower.indexOf("pono") > -1
+    )
+      w = 130;
+    else if (
+      hLower.indexOf("date") > -1 ||
+      hLower.indexOf("createdat") > -1 ||
+      hLower.indexOf("updatedat") > -1
+    )
+      w = 150;
+    else if (
+      hLower.indexOf("doctype") > -1 ||
+      hLower.indexOf("status") > -1 ||
+      hLower.indexOf("unit") > -1 ||
+      hLower.indexOf("jobtype") > -1 ||
+      hLower.indexOf("freight") > -1
+    )
+      w = 140;
+    else if (
+      hLower.indexOf("name") > -1 ||
+      hLower.indexOf("customer") > -1 ||
+      hLower.indexOf("person") > -1
+    )
+      w = 200;
+    else if (hLower.indexOf("email") > -1) w = 220;
+    else if (
+      hLower.indexOf("phone") > -1 ||
+      hLower.indexOf("gstin") > -1 ||
+      hLower.indexOf("refno") > -1
+    )
+      w = 160;
+    else if (
+      hLower.indexOf("addr") > -1 ||
+      hLower.indexOf("ship") > -1 ||
+      hLower.indexOf("dispatch") > -1 ||
+      hLower.indexOf("project") > -1 ||
+      hLower.indexOf("notes") > -1
+    )
+      w = 260;
+    else if (hLower.indexOf("desc") > -1 || hLower.indexOf("product") > -1) w = 230;
+    else if (hLower.indexOf("words") > -1) w = 320;
+    else if (hLower.indexOf("fulljson") > -1) w = 160;
+    else if (
+      hLower.indexOf("qty") > -1 ||
+      hLower.indexOf("pieces") > -1 ||
+      hLower.indexOf("count") > -1 ||
+      hLower.indexOf("thickness") > -1
+    )
+      w = 110;
+    else if (
+      hLower.indexOf("amount") > -1 ||
+      hLower.indexOf("total") > -1 ||
+      hLower.indexOf("charge") > -1 ||
+      hLower.indexOf("value") > -1 ||
+      hLower.indexOf("rate") > -1 ||
+      hLower.indexOf("gst") > -1 ||
+      hLower.indexOf("balance") > -1 ||
+      hLower.indexOf("kg") > -1 ||
+      hLower.indexOf("sqm") > -1 ||
+      hLower.indexOf("sqft") > -1
+    )
+      w = 135;
 
     try {
       sheet.setColumnWidth(col, w);
@@ -835,7 +962,7 @@ function formatAllSheets_() {
     { name: SHEET_INVOICES, headers: INVOICE_HEADERS },
     { name: SHEET_CUSTOMERS, headers: CUSTOMER_HEADERS },
     { name: SHEET_WORKORDERS, headers: WORKORDER_HEADERS },
-    { name: SHEET_PAYMENTS, headers: PAYMENT_HEADERS }
+    { name: SHEET_PAYMENTS, headers: PAYMENT_HEADERS },
   ];
 
   for (var i = 0; i < sheetsToFormat.length; i++) {
@@ -889,8 +1016,8 @@ function getRowIndex_(sheet) {
   if (lastRow > 1) {
     var rows = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
     for (var i = 0; i < rows.length; i++) {
-      var id = String(rows[i][0] == null ? '' : rows[i][0]);
-      var raw = String(rows[i][1] == null ? '' : rows[i][1]).trim();
+      var id = String(rows[i][0] == null ? "" : rows[i][0]);
+      var raw = String(rows[i][1] == null ? "" : rows[i][1]).trim();
       var nm = raw.toLowerCase();
       /* First occurrence wins so a pre-existing duplicate keeps resolving to the
          same row instead of alternating between them. */
@@ -916,8 +1043,10 @@ function appendRowIndexed_(sheet, row) {
   var idx = ROW_INDEX_[sheet.getName()];
   if (idx) {
     var rowNum = sheet.getLastRow();
-    var id = String(row[0] == null ? '' : row[0]);
-    var nm = String(row[1] == null ? '' : row[1]).trim().toLowerCase();
+    var id = String(row[0] == null ? "" : row[0]);
+    var nm = String(row[1] == null ? "" : row[1])
+      .trim()
+      .toLowerCase();
     if (id && !idx.byId.hasOwnProperty(id)) idx.byId[id] = rowNum;
     if (nm && !idx.byName.hasOwnProperty(nm)) {
       idx.byName[nm] = rowNum;
@@ -954,7 +1083,7 @@ function safeJson_(obj) {
   try {
     json = JSON.stringify(obj);
   } catch (err) {
-    return '';
+    return "";
   }
   if (json.length <= CELL_CHAR_LIMIT_) return json;
 
@@ -967,7 +1096,7 @@ function safeJson_(obj) {
 
   /* Still too big — leave the cell empty so the typed columns are used on read.
      A partial record beats a failed write. */
-  return '';
+  return "";
 }
 
 /* ---------- Cell value normalisation ----------
@@ -980,24 +1109,26 @@ function safeJson_(obj) {
    the kind of thing that silently reports false and lets a raw
    '2026-03-15T18:30:00.000Z' through to the invoice screen. */
 function isDateValue_(v) {
-  return Boolean(v) && typeof v === 'object' && typeof v.getTime === 'function' && !isNaN(v.getTime());
+  return (
+    Boolean(v) && typeof v === "object" && typeof v.getTime === "function" && !isNaN(v.getTime())
+  );
 }
 
 function cellDate_(v) {
   if (isDateValue_(v)) {
-    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
-  return v == null ? '' : String(v);
+  return v == null ? "" : String(v);
 }
 
 function cellStamp_(v) {
   if (isDateValue_(v)) return v.toISOString();
-  return v == null ? '' : String(v);
+  return v == null ? "" : String(v);
 }
 
 /* Create a JSON response */
 function jsonResponse_(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON,
+  );
 }

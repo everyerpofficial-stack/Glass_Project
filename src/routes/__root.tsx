@@ -81,7 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Glass Quote Pro" },
-      { name: "description", content: "Professional glass quotation and proforma invoice management system with precise calculation engine." },
+      {
+        name: "description",
+        content:
+          "Professional glass quotation and proforma invoice management system with precise calculation engine.",
+      },
       { name: "author", content: "Glass Quote Pro" },
       { property: "og:title", content: "Glass Quote Pro" },
       { property: "og:description", content: "Professional glass quotation management" },

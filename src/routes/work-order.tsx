@@ -26,7 +26,9 @@ import { printElement } from "@/lib/print";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/work-order")({
-  validateSearch: (search: Record<string, unknown>): { tab?: string | undefined; woId?: string | undefined } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: string | undefined; woId?: string | undefined } => ({
     tab: typeof search["tab"] === "string" ? (search["tab"] as string) : undefined,
     woId: typeof search["woId"] === "string" ? (search["woId"] as string) : undefined,
   }),
@@ -36,38 +38,101 @@ export const Route = createFileRoute("/work-order")({
 /* ── Pure JS Code128B barcode SVG generator ────────────────────────── */
 function generateBarcodeSVG(text: string, height = 36, barWidth = 1.2): string {
   const CODE128B: Record<string, string> = {
-    " ": "11011001100", "!": "11001101100", '"': "11001100110",
-    "#": "10010011000", "$": "10010001100", "%": "10001001100",
-    "&": "10011001000", "'": "10011000100", "(": "10001100100",
-    ")": "11001001000", "*": "11001000100", "+": "11000100100",
-    ",": "10110011100", "-": "10011011100", ".": "10011001110",
-    "/": "10111001100", "0": "10011101100", "1": "10011100110",
-    "2": "11001110010", "3": "11001011100", "4": "11001001110",
-    "5": "11011100100", "6": "11001110100", "7": "11101101110",
-    "8": "11101001100", "9": "11100101100", ":": "11100100110",
-    ";": "11101100100", "<": "11100110100", "=": "11100110010",
-    ">": "11011011000", "?": "11011000110", "@": "11000110110",
-    A: "10100011000", B: "10001011000", C: "10001000110",
-    D: "10110001000", E: "10001101000", F: "10001100010",
-    G: "11010001000", H: "11000101000", I: "11000100010",
-    J: "10110111000", K: "10110001110", L: "10001101110",
-    M: "10111011000", N: "10111000110", O: "10001110110",
-    P: "11101110110", Q: "11010001110", R: "11000101110",
-    S: "11011101000", T: "11011100010", U: "11011101110",
-    V: "11101011000", W: "11101000110", X: "11100010110",
-    Y: "11101101000", Z: "11101100010", "[": "11100011010",
-    "\\": "11101111010", "]": "11001000010", "^": "11110001010",
-    _: "10100110000", "`": "10100001100", a: "10010110000",
-    b: "10010000110", c: "10000101100", d: "10000100110",
-    e: "10110010000", f: "10110000100", g: "10011010000",
-    h: "10011000010", i: "10000110100", j: "10000110010",
-    k: "11000010010", l: "11001010000", m: "11110111010",
-    n: "11000010100", o: "10001111010", p: "10100111100",
-    q: "10010111100", r: "10010011110", s: "10111100100",
-    t: "10011110100", u: "10011110010", v: "11110100100",
-    w: "11110010100", x: "11110010010", y: "11011011110",
-    z: "11011110110", "{": "11110110110", "|": "10101111000",
-    "}": "10100011110", "~": "10001011110",
+    " ": "11011001100",
+    "!": "11001101100",
+    '"': "11001100110",
+    "#": "10010011000",
+    $: "10010001100",
+    "%": "10001001100",
+    "&": "10011001000",
+    "'": "10011000100",
+    "(": "10001100100",
+    ")": "11001001000",
+    "*": "11001000100",
+    "+": "11000100100",
+    ",": "10110011100",
+    "-": "10011011100",
+    ".": "10011001110",
+    "/": "10111001100",
+    "0": "10011101100",
+    "1": "10011100110",
+    "2": "11001110010",
+    "3": "11001011100",
+    "4": "11001001110",
+    "5": "11011100100",
+    "6": "11001110100",
+    "7": "11101101110",
+    "8": "11101001100",
+    "9": "11100101100",
+    ":": "11100100110",
+    ";": "11101100100",
+    "<": "11100110100",
+    "=": "11100110010",
+    ">": "11011011000",
+    "?": "11011000110",
+    "@": "11000110110",
+    A: "10100011000",
+    B: "10001011000",
+    C: "10001000110",
+    D: "10110001000",
+    E: "10001101000",
+    F: "10001100010",
+    G: "11010001000",
+    H: "11000101000",
+    I: "11000100010",
+    J: "10110111000",
+    K: "10110001110",
+    L: "10001101110",
+    M: "10111011000",
+    N: "10111000110",
+    O: "10001110110",
+    P: "11101110110",
+    Q: "11010001110",
+    R: "11000101110",
+    S: "11011101000",
+    T: "11011100010",
+    U: "11011101110",
+    V: "11101011000",
+    W: "11101000110",
+    X: "11100010110",
+    Y: "11101101000",
+    Z: "11101100010",
+    "[": "11100011010",
+    "\\": "11101111010",
+    "]": "11001000010",
+    "^": "11110001010",
+    _: "10100110000",
+    "`": "10100001100",
+    a: "10010110000",
+    b: "10010000110",
+    c: "10000101100",
+    d: "10000100110",
+    e: "10110010000",
+    f: "10110000100",
+    g: "10011010000",
+    h: "10011000010",
+    i: "10000110100",
+    j: "10000110010",
+    k: "11000010010",
+    l: "11001010000",
+    m: "11110111010",
+    n: "11000010100",
+    o: "10001111010",
+    p: "10100111100",
+    q: "10010111100",
+    r: "10010011110",
+    s: "10111100100",
+    t: "10011110100",
+    u: "10011110010",
+    v: "11110100100",
+    w: "11110010100",
+    x: "11110010010",
+    y: "11011011110",
+    z: "11011110110",
+    "{": "11110110110",
+    "|": "10101111000",
+    "}": "10100011110",
+    "~": "10001011110",
   };
   const START_B = "11010010000";
   const STOP = "1100011101011";
@@ -128,11 +193,7 @@ function SearchableOrderSelector({
       const phone = String(o.cust?.phone || "").toLowerCase();
 
       const matchesSearch =
-        !q ||
-        custName.includes(q) ||
-        orderNo.includes(q) ||
-        poNo.includes(q) ||
-        phone.includes(q);
+        !q || custName.includes(q) || orderNo.includes(q) || poNo.includes(q) || phone.includes(q);
 
       const matchesCust =
         selectedCustFilter === "all" ||
@@ -144,7 +205,7 @@ function SearchableOrderSelector({
 
   const selectedOrder = useMemo(
     () => confirmedOrders.find((o) => o.id === selectedOrderId),
-    [confirmedOrders, selectedOrderId]
+    [confirmedOrders, selectedOrderId],
   );
 
   return (
@@ -194,7 +255,9 @@ function SearchableOrderSelector({
               {/* Filter by Customer dropdown */}
               {uniqueCustomers.length > 0 && (
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-muted-foreground shrink-0 font-medium">Filter Customer:</span>
+                  <span className="text-muted-foreground shrink-0 font-medium">
+                    Filter Customer:
+                  </span>
                   <select
                     className="flex-1 bg-background border border-border rounded px-2 py-1 text-xs outline-none font-medium truncate"
                     value={selectedCustFilter}
@@ -243,7 +306,9 @@ function SearchableOrderSelector({
                         {o.cust?.name || "Unnamed Customer"}
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1">
-                        <span>{o.items?.length || 0} items {o.poNo ? `• PO: ${o.poNo}` : ""}</span>
+                        <span>
+                          {o.items?.length || 0} items {o.poNo ? `• PO: ${o.poNo}` : ""}
+                        </span>
                         <span className="font-mono text-emerald-600 font-semibold">
                           ₹ {nf(o.totals?.grandTotal || 0)}
                         </span>
@@ -275,7 +340,7 @@ function WorkOrderPage() {
   } = useGQ();
 
   const [activeTab, setActiveTab] = useState<"cutsheet" | "stickers">(
-    searchParams?.tab === "stickers" ? "stickers" : "cutsheet"
+    searchParams?.tab === "stickers" ? "stickers" : "cutsheet",
   );
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [activeWO, setActiveWO] = useState<any>(null);
@@ -289,7 +354,13 @@ function WorkOrderPage() {
 
   /* Get confirmed or proforma orders available for work order workflow */
   const confirmedOrders = useMemo(
-    () => invoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated" || x.docType === "proforma"),
+    () =>
+      invoices.filter(
+        (x) =>
+          x.status === "order_confirmed" ||
+          x.status === "work_order_generated" ||
+          x.docType === "proforma",
+      ),
     [invoices],
   );
 
@@ -321,7 +392,11 @@ function WorkOrderPage() {
     (key: string) =>
       availableWorkOrders.find(
         (x: any) =>
-          x.id === key || x.woNo === key || x.orderId === key || x.orderNo === key || x.piNo === key,
+          x.id === key ||
+          x.woNo === key ||
+          x.orderId === key ||
+          x.orderNo === key ||
+          x.piNo === key,
       ),
     [availableWorkOrders],
   );
@@ -440,9 +515,11 @@ function WorkOrderPage() {
      paper, sidebar and toolbar included. */
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = () => {
-    if (!printElement(printRef.current, {
-      orientation: activeTab === "cutsheet" ? "landscape" : "portrait",
-    })) {
+    if (
+      !printElement(printRef.current, {
+        orientation: activeTab === "cutsheet" ? "landscape" : "portrait",
+      })
+    ) {
       toast.error("Nothing to print yet.");
     }
   };
@@ -452,8 +529,9 @@ function WorkOrderPage() {
     if (!activeWO || !activeWO.pieces) return [];
     const map = new Map<string, { title: string; pieces: any[] }>();
     activeWO.pieces.forEach((p: any) => {
-      const key = String(p.layerIdx !== undefined ? p.layerIdx : (p.productName || "0"));
-      const title = p.productName || p.layerNo || activeWO.glassDesc || `${activeWO.thickness || 5}mm Glass`;
+      const key = String(p.layerIdx !== undefined ? p.layerIdx : p.productName || "0");
+      const title =
+        p.productName || p.layerNo || activeWO.glassDesc || `${activeWO.thickness || 5}mm Glass`;
       if (!map.has(key)) {
         map.set(key, { title, pieces: [] });
       }
@@ -471,7 +549,8 @@ function WorkOrderPage() {
       woNo: activeWO.woNo?.replace("WO-", "") || activeWO.orderNo,
       size: `${piece.heightMM} X ${piece.widthMM}`,
       sn: piece.sr,
-      glassType: activeWO.glassDesc || `${activeWO.thickness || 5}mm ${activeWO.productName || "Glass"}`,
+      glassType:
+        activeWO.glassDesc || `${activeWO.thickness || 5}mm ${activeWO.productName || "Glass"}`,
       pieceOf: piece.pieceOf || `1 of ${activeWO.pieces.length}`,
       shape: piece.shape || "BLOCK",
       code: `${idx + 1} ${piece.shape === "BLOCK" ? "W1" : "SD1"}`,
@@ -485,7 +564,9 @@ function WorkOrderPage() {
       {/* ── UNIFIED TABS TOP BAR ───────────────────────── */}
       <div className="bg-muted/40 border-b border-border px-3 sm:px-6 py-2 flex items-center justify-between gap-2 text-xs font-semibold flex-wrap print:hidden">
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">Production Section:</span>
+          <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">
+            Production Section:
+          </span>
           <button
             onClick={() => setActiveTab("cutsheet")}
             className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
@@ -525,7 +606,9 @@ function WorkOrderPage() {
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-              <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+              <Link to="/" className="hover:text-foreground transition-colors">
+                Home
+              </Link>
               {" / "}
               <span className="text-primary">Work Order & Stickers</span>
             </div>
@@ -541,7 +624,9 @@ function WorkOrderPage() {
                   Barcode Sticker Labels
                 </>
               )}
-              {activeWO && <span className="text-amber-500 text-sm font-mono">#{activeWO.woNo}</span>}
+              {activeWO && (
+                <span className="text-amber-500 text-sm font-mono">#{activeWO.woNo}</span>
+              )}
             </h1>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -563,7 +648,10 @@ function WorkOrderPage() {
 
             {/* Sticker Layout Selector (Only shown on Stickers tab) */}
             {activeTab === "stickers" && (
-              <Select value={String(labelsPerRow)} onValueChange={(v) => setLabelsPerRow(Number(v))}>
+              <Select
+                value={String(labelsPerRow)}
+                onValueChange={(v) => setLabelsPerRow(Number(v))}
+              >
                 <SelectTrigger className="h-8 text-xs w-28">
                   <SelectValue />
                 </SelectTrigger>
@@ -592,8 +680,6 @@ function WorkOrderPage() {
             )}
           </div>
         </div>
-
-
       </div>
 
       {/* ── MAIN CONTENT AREA ──────────────────────────── */}
@@ -605,7 +691,8 @@ function WorkOrderPage() {
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">No Work Order Selected</h2>
             <p className="text-sm text-muted-foreground max-w-md">
-              Search & select a confirmed order from the dropdown above to create a work order and barcode stickers.
+              Search & select a confirmed order from the dropdown above to create a work order and
+              barcode stickers.
             </p>
           </div>
         ) : activeTab === "cutsheet" ? (
@@ -618,27 +705,52 @@ function WorkOrderPage() {
             <div className="border-b-2 border-black p-4 print:p-3">
               <div className="flex justify-between items-start">
                 <div className="text-[11px] space-y-0.5">
-                  <div><span className="font-bold">Customer :</span> {activeWO.customer}</div>
-                  <div><span className="font-bold">PI No. :</span> {activeWO.piNo}</div>
-                  <div><span className="font-bold">PI Date :</span> {dmy(activeWO.piDate)}</div>
-                  <div><span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}</div>
+                  <div>
+                    <span className="font-bold">Customer :</span> {activeWO.customer}
+                  </div>
+                  <div>
+                    <span className="font-bold">PI No. :</span> {activeWO.piNo}
+                  </div>
+                  <div>
+                    <span className="font-bold">PI Date :</span> {dmy(activeWO.piDate)}
+                  </div>
+                  <div>
+                    <span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-black tracking-wide text-black">WORK ORDER</div>
                   <div className="text-[11px] mt-1 space-y-0.5">
-                    <div><span className="font-bold">Order No :</span> <span className="font-mono text-sm font-bold">{formatOrderId(activeWO.orderNo)}</span></div>
-                    <div><span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}</div>
-                    <div><span className="font-bold">Del Date :</span> —</div>
+                    <div>
+                      <span className="font-bold">Order No :</span>{" "}
+                      <span className="font-mono text-sm font-bold">
+                        {formatOrderId(activeWO.orderNo)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}
+                    </div>
+                    <div>
+                      <span className="font-bold">Del Date :</span> —
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
-                <div><span className="font-bold">PO No. :</span> {activeWO.poNo || "—"} &nbsp;&nbsp; <span className="font-bold">Project :</span> {activeWO.project || "—"}</div>
-                <div className="mt-1 font-bold text-sm">{activeWO.glassDesc || `${activeWO.thickness}mm ${activeWO.productName}`}</div>
+                <div>
+                  <span className="font-bold">PO No. :</span> {activeWO.poNo || "—"} &nbsp;&nbsp;{" "}
+                  <span className="font-bold">Project :</span> {activeWO.project || "—"}
+                </div>
+                <div className="mt-1 font-bold text-sm">
+                  {activeWO.glassDesc || `${activeWO.thickness}mm ${activeWO.productName}`}
+                </div>
                 {activeWO.layerInfo?.length > 0 && (
                   <div className="text-[10px] text-gray-600 mt-0.5">
                     {activeWO.layerInfo.map((l: any, i: number) => (
-                      <span key={i}>{l.layerNo}: {l.productName} {l.thickness}mm{i < activeWO.layerInfo.length - 1 ? " | " : ""}</span>
+                      <span key={i}>
+                        {l.layerNo}: {l.productName} {l.thickness}mm
+                        {i < activeWO.layerInfo.length - 1 ? " | " : ""}
+                      </span>
                     ))}
                   </div>
                 )}
@@ -648,52 +760,118 @@ function WorkOrderPage() {
             {/* WO Product-Grouped Tables */}
             <div className="overflow-x-auto space-y-4">
               {woProductGroups.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">No pieces recorded</div>
+                <div className="p-4 text-center text-xs text-muted-foreground">
+                  No pieces recorded
+                </div>
               ) : (
                 woProductGroups.map((grp: any, gIdx: number) => {
-                  const grpSqm = grp.pieces.reduce((sum: number, p: any) => sum + (Number(p.area) || 0), 0);
+                  const grpSqm = grp.pieces.reduce(
+                    (sum: number, p: any) => sum + (Number(p.area) || 0),
+                    0,
+                  );
                   const grpPcs = grp.pieces.length;
                   return (
                     <div key={gIdx} className="border border-black overflow-hidden">
                       {/* Product Banner Header */}
                       <div className="bg-gray-100 border-b border-black px-3 py-1.5 font-bold text-[11px] uppercase flex items-center justify-between">
-                        <span>Item {gIdx + 1}: {grp.title}</span>
-                        <span className="text-[10px] font-mono font-normal">{grpPcs} Pcs • {nf(grpSqm, 3)} SQM</span>
+                        <span>
+                          Item {gIdx + 1}: {grp.title}
+                        </span>
+                        <span className="text-[10px] font-mono font-normal">
+                          {grpPcs} Pcs • {nf(grpSqm, 3)} SQM
+                        </span>
                       </div>
 
-                      <table className="w-full text-[10px] border-collapse" style={{ minWidth: "900px" }}>
+                      <table
+                        className="w-full text-[10px] border-collapse"
+                        style={{ minWidth: "900px" }}
+                      >
                         <thead>
                           <tr className="bg-gray-50 border-b border-black">
-                            {["SR\nNo", "L1-Inch", "L2-Inch", "Height\nMM", "Width\nMM", "Qty", "Act Totl", "Hole", "Big\nHole", "Cut Out", "Big\nCutout", "Shape", "Barcode", "Remark"].map((h, i) => (
-                              <th key={i} className="border border-gray-400 px-1.5 py-1 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center">{h}</th>
+                            {[
+                              "SR\nNo",
+                              "L1-Inch",
+                              "L2-Inch",
+                              "Height\nMM",
+                              "Width\nMM",
+                              "Qty",
+                              "Act Totl",
+                              "Hole",
+                              "Big\nHole",
+                              "Cut Out",
+                              "Big\nCutout",
+                              "Shape",
+                              "Barcode",
+                              "Remark",
+                            ].map((h, i) => (
+                              <th
+                                key={i}
+                                className="border border-gray-400 px-1.5 py-1 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center"
+                              >
+                                {h}
+                              </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {grp.pieces.map((piece: any, idx: number) => (
                             <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">{piece.sr}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">{piece.l1 || "—"}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">{piece.l2 || "—"}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">{piece.heightMM}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">{piece.widthMM}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">{piece.qty}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">{nf(piece.area, 3)}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.hole || ""}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.bigHole || ""}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.cutOut || ""}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">{piece.bigCutout || ""}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">{piece.shape}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">{piece.barcode}</td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">{piece.remark}</td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                {piece.sr}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                {piece.l1 || "—"}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                {piece.l2 || "—"}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                {piece.heightMM}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                {piece.widthMM}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                {piece.qty}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
+                                {nf(piece.area, 3)}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                {piece.hole || ""}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                {piece.bigHole || ""}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                {piece.cutOut || ""}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                {piece.bigCutout || ""}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                {piece.shape}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
+                                {piece.barcode}
+                              </td>
+                              <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
+                                {piece.remark}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
                           <tr className="bg-gray-100 border-t border-black font-bold">
-                            <td colSpan={5} className="border border-gray-400 px-2 py-1 text-right">Subtotal (Item {gIdx + 1})</td>
-                            <td className="border border-gray-400 px-1.5 py-1 text-center">{grpPcs}</td>
-                            <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">{nf(grpSqm, 3)}</td>
+                            <td colSpan={5} className="border border-gray-400 px-2 py-1 text-right">
+                              Subtotal (Item {gIdx + 1})
+                            </td>
+                            <td className="border border-gray-400 px-1.5 py-1 text-center">
+                              {grpPcs}
+                            </td>
+                            <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
+                              {nf(grpSqm, 3)}
+                            </td>
                             <td colSpan={7} className="border border-gray-400 px-2 py-1"></td>
                           </tr>
                         </tfoot>
@@ -706,7 +884,10 @@ function WorkOrderPage() {
               {/* Overall Work Order Grand Summary Footer */}
               <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex justify-between">
                 <div>Grand Total: {activeWO.totalPieces} Pcs</div>
-                <div>{nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)} SQFT &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg</div>
+                <div>
+                  {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)} SQFT
+                  &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
+                </div>
               </div>
             </div>
 
@@ -717,9 +898,7 @@ function WorkOrderPage() {
                 <span className="font-bold">Total Pcs :</span> {activeWO.totalPieces} &nbsp;&nbsp;
                 <span className="font-bold">Weight :</span> {activeWO.weightKg || "—"} kg
               </div>
-              <div className="text-right text-gray-500">
-                Page 1
-              </div>
+              <div className="text-right text-gray-500">Page 1</div>
             </div>
           </div>
         ) : (
@@ -727,8 +906,12 @@ function WorkOrderPage() {
           <div ref={printRef} className="sticker-print-area">
             {/* Info bar */}
             <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground print:hidden">
-              <span className="font-semibold">{labels.length} label(s) generated for {activeWO.customer}</span>
-              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">WO: {activeWO.woNo}</span>
+              <span className="font-semibold">
+                {labels.length} label(s) generated for {activeWO.customer}
+              </span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                WO: {activeWO.woNo}
+              </span>
             </div>
 
             {/* Labels Grid */}
@@ -751,21 +934,36 @@ function WorkOrderPage() {
 
                   {/* PI / WO / Size / SN row */}
                   <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
-                    <div><span className="font-bold">PI :</span> <span className="font-mono">{label.piNo}</span></div>
-                    <div><span className="font-bold">WO :</span> <span className="font-mono">{label.woNo}</span></div>
-                    <div><span className="font-bold">Size :</span> <span className="font-mono font-bold">{label.size}</span></div>
-                    <div><span className="font-bold">SN :</span> <span className="font-mono">{label.sn}</span></div>
+                    <div>
+                      <span className="font-bold">PI :</span>{" "}
+                      <span className="font-mono">{label.piNo}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">WO :</span>{" "}
+                      <span className="font-mono">{label.woNo}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">Size :</span>{" "}
+                      <span className="font-mono font-bold">{label.size}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold">SN :</span>{" "}
+                      <span className="font-mono">{label.sn}</span>
+                    </div>
                   </div>
 
                   {/* Glass type */}
                   <div className="text-[9px] uppercase leading-tight truncate">
-                    {label.glassType} <span className="font-bold">of {label.pieceOf?.split(" of ")[1] || "1"}</span>
+                    {label.glassType}{" "}
+                    <span className="font-bold">of {label.pieceOf?.split(" of ")[1] || "1"}</span>
                   </div>
 
                   {/* Shape + Code */}
                   <div className="flex items-center justify-between text-[10px]">
                     <div className="font-black text-sm">{label.shape}</div>
-                    <div className="text-[9px]"><span className="font-bold">Code :</span> {label.code}</div>
+                    <div className="text-[9px]">
+                      <span className="font-bold">Code :</span> {label.code}
+                    </div>
                   </div>
 
                   {/* Party WO */}

@@ -43,7 +43,17 @@ import {
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { nf, dmy, getPaymentDueDateInfo, nextSeqForPrefix, getNextProformaNo, uid, workOrderBelongsTo, formatOrderId } from "@/lib/gq";
+import {
+  nf,
+  dmy,
+  getPaymentDueDateInfo,
+  nextSeqForPrefix,
+  getNextProformaNo,
+  uid,
+  workOrderBelongsTo,
+  formatOrderId,
+  formatPiNo,
+} from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
 
@@ -76,7 +86,9 @@ function Section({
 }) {
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
-      <div className={`flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border gap-2 flex-wrap ${accent || "bg-muted/30"}`}>
+      <div
+        className={`flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border gap-2 flex-wrap ${accent || "bg-muted/30"}`}
+      >
         <span className="text-[11px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5">
           <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
           {title}
@@ -87,8 +99,6 @@ function Section({
     </div>
   );
 }
-
-
 
 /* ─── Confirm Payment & Order Modal ──────────────────────────────────────
    Split in two on purpose. The visibility check lives in this hook-free outer
@@ -133,15 +143,13 @@ function ConfirmPaymentModalBody({
   const [paidAmountStr, setPaidAmountStr] = useState<string>(
     invoice.paidAmount !== undefined && invoice.paidAmount !== null
       ? String(invoice.paidAmount)
-      : "0"
+      : "0",
   );
-  const [paymentType, setPaymentType] = useState<string>(
-    invoice.delivery?.paymentType || "Credit"
-  );
+  const [paymentType, setPaymentType] = useState<string>(invoice.delivery?.paymentType || "Credit");
   const [refNo, setRefNo] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>(
-    invoice.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+    invoice.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
   );
 
   const numericPaid = Number(paidAmountStr) || 0;
@@ -204,7 +212,8 @@ function ConfirmPaymentModalBody({
               Record Payment & Confirm Order
             </h3>
             <div className="text-xs text-emerald-100/90 font-mono mt-0.5">
-              PI No: <span className="font-bold underline">{invoice.no || invoice.orderNo}</span> · {invoice.cust?.name || "Customer"}
+              PI No: <span className="font-bold underline">{invoice.no || invoice.orderNo}</span> ·{" "}
+              {invoice.cust?.name || "Customer"}
             </div>
           </div>
           <button
@@ -252,9 +261,7 @@ function ConfirmPaymentModalBody({
                     : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                 }`}
               >
-                <span className="text-[9px] font-bold uppercase block">
-                  Remaining
-                </span>
+                <span className="text-[9px] font-bold uppercase block">Remaining</span>
                 <span className="font-mono text-sm font-bold block mt-0.5">
                   ₹ {nf(remainingBalance)}
                 </span>
@@ -450,20 +457,25 @@ function OrderPage() {
 
   const proformaInvoices = useMemo(
     () => invoices.filter((x: any) => x.docType === "proforma"),
-    [invoices]
+    [invoices],
   );
 
   const pendingCount = useMemo(
-    () => proformaInvoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent").length,
-    [proformaInvoices]
+    () =>
+      proformaInvoices.filter((x) => !x.status || x.status === "draft" || x.status === "pi_sent")
+        .length,
+    [proformaInvoices],
   );
   const confirmedCount = useMemo(
-    () => proformaInvoices.filter((x) => x.status === "order_confirmed" || x.status === "work_order_generated").length,
-    [proformaInvoices]
+    () =>
+      proformaInvoices.filter(
+        (x) => x.status === "order_confirmed" || x.status === "work_order_generated",
+      ).length,
+    [proformaInvoices],
   );
   const totalSavedValue = useMemo(
     () => proformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
-    [proformaInvoices]
+    [proformaInvoices],
   );
 
   const filteredSavedInvoices = useMemo(
@@ -481,7 +493,7 @@ function OrderPage() {
           formatOrderId(item.preProformaNo).toLowerCase().includes(query)
         );
       }),
-    [proformaInvoices, savedSearch]
+    [proformaInvoices, savedSearch],
   );
 
   /* Get Order Bookings available for loading into Proforma Invoice */
@@ -511,11 +523,8 @@ function OrderPage() {
 
   /* ── customer search ── */
   const filteredCustomers = useMemo(
-    () =>
-      customers.filter((c: any) =>
-        c.name?.toLowerCase().includes(custSearch.toLowerCase())
-      ),
-    [customers, custSearch]
+    () => customers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
+    [customers, custSearch],
   );
 
   const selectCustomer = (c: any) => {
@@ -564,7 +573,9 @@ function OrderPage() {
       return;
     }
     if (target.status === "work_order_generated") {
-      toast.warning("This Proforma Invoice has already been sent to Work Order workflow and is locked from editing.");
+      toast.warning(
+        "This Proforma Invoice has already been sent to Work Order workflow and is locked from editing.",
+      );
       return;
     }
     if (target === inv && !inv._saved) {
@@ -593,9 +604,7 @@ function OrderPage() {
        append rather than update — confirming a second time (a double-click, or
        re-confirming after an edit) piled up duplicate work orders. The list
        view already guarded this; the modal did not. */
-    const existingWO = workOrders.find((w: any) =>
-      workOrderBelongsTo(w, targetConfirmInvoice),
-    );
+    const existingWO = workOrders.find((w: any) => workOrderBelongsTo(w, targetConfirmInvoice));
     if (!existingWO) {
       const wo = generateWorkOrder(targetConfirmInvoice.id);
       if (wo) {
@@ -607,7 +616,9 @@ function OrderPage() {
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
     setShowForm(false);
-    toast.success(`Proforma Invoice ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} saved & confirmed successfully!`);
+    toast.success(
+      `Proforma Invoice ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} saved & confirmed successfully!`,
+    );
     navigate({ to: "/invoice", search: { id: confirmedId } });
   };
 
@@ -621,7 +632,9 @@ function OrderPage() {
     <div className="min-h-screen bg-background">
       {/* ── UNIFIED SECTION TABS ───────────────────────── */}
       <div className="bg-muted/40 border-b border-border px-3 sm:px-6 py-2 flex items-center gap-2 text-xs font-semibold flex-wrap">
-        <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">Proforma Section:</span>
+        <span className="text-muted-foreground mr-1 text-[11px] font-bold uppercase tracking-wider">
+          Proforma Section:
+        </span>
         <Link
           to="/booking"
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
@@ -643,7 +656,10 @@ function OrderPage() {
         <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 sm:px-6 py-2 flex items-center justify-between gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 shrink-0 text-amber-600" />
-            <span>This Proforma Invoice has been sent to Work Order workflow. It is locked from further editing.</span>
+            <span>
+              This Proforma Invoice has been sent to Work Order workflow. It is locked from further
+              editing.
+            </span>
           </div>
           <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-bold uppercase">
             WORKFLOW LOCKED
@@ -656,10 +672,15 @@ function OrderPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-              <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+              <Link to="/" className="hover:text-foreground transition-colors">
+                Home
+              </Link>
               {" / "}
               {showForm ? (
-                <button onClick={() => setShowForm(false)} className="hover:text-foreground transition-colors">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="hover:text-foreground transition-colors"
+                >
                   Proforma Invoice
                 </button>
               ) : (
@@ -676,7 +697,11 @@ function OrderPage() {
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground leading-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              {showForm ? (inv._saved ? "Edit Proforma Invoice" : "New Invoice") : "Proforma Invoice Management"}
+              {showForm
+                ? inv._saved
+                  ? "Edit Proforma Invoice"
+                  : "New Invoice"
+                : "Proforma Invoice Management"}
               {inv._saved && showForm && (
                 <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {inv.no}
@@ -720,31 +745,45 @@ function OrderPage() {
         {!showForm && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Saved</div>
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Total Saved
+              </div>
               {/* Counted every record in the store — bookings included — while
                   claiming to count proforma records, so it never agreed with
                   the table right below it. */}
-              <div className="text-xl font-bold text-foreground mt-0.5">{proformaInvoices.length}</div>
+              <div className="text-xl font-bold text-foreground mt-0.5">
+                {proformaInvoices.length}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
             </div>
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
                 <Clock className="h-3 w-3" /> Pending Order
               </div>
-              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">{pendingCount}</div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                {pendingCount}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Ready for workflow</div>
             </div>
             <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
               <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
                 <CheckCircle2 className="h-3 w-3" /> Order Confirmed
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{confirmedCount}</div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {confirmedCount}
+              </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">In workflow</div>
             </div>
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Value</div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">₹ {nf(totalSavedValue)}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Proforma invoices value</div>
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Total Value
+              </div>
+              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
+                ₹ {nf(totalSavedValue)}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                Proforma invoices value
+              </div>
             </div>
           </div>
         )}
@@ -767,7 +806,8 @@ function OrderPage() {
                   />
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">
-                  <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span> total records
+                  <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span>{" "}
+                  total records
                 </span>
               </div>
             }
@@ -776,7 +816,11 @@ function OrderPage() {
               <TableSkeleton rows={6} cols={6} />
             ) : filteredSavedInvoices.length === 0 ? (
               <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
-                <p>{savedSearch ? "No matching Proforma Invoices found." : "No Proforma Invoices found."}</p>
+                <p>
+                  {savedSearch
+                    ? "No matching Proforma Invoices found."
+                    : "No Proforma Invoices found."}
+                </p>
                 <Button
                   size="sm"
                   className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
@@ -790,7 +834,10 @@ function OrderPage() {
               </div>
             ) : (
               <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-xs text-left border-collapse" style={{ minWidth: "1050px" }}>
+                <table
+                  className="w-full text-xs text-left border-collapse"
+                  style={{ minWidth: "1050px" }}
+                >
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">PI No</th>
@@ -807,12 +854,14 @@ function OrderPage() {
                   </thead>
                   <tbody className="divide-y divide-border/40 text-xs">
                     {filteredSavedInvoices.map((item: any) => {
-                      const isConfirmed = item.status === "order_confirmed" || item.status === "work_order_generated";
+                      const isConfirmed =
+                        item.status === "order_confirmed" || item.status === "work_order_generated";
                       const dueInfo = getPaymentDueDateInfo(item);
                       const grandTotal = Number(item.totals?.grandTotal || 0);
                       const paidAmount = Number(item.paidAmount || 0);
                       const remainingBalance = Math.max(0, grandTotal - paidAmount);
-                      const rawOrder = item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
+                      const rawOrder =
+                        item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
                       const orderId = formatOrderId(rawOrder);
 
                       const isDelivered = Boolean(item.delivered);
@@ -827,9 +876,7 @@ function OrderPage() {
                           }}
                         >
                           <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <span className="hover:underline font-bold">
-                              {item.no}
-                            </span>
+                            <span className="hover:underline font-bold">{formatPiNo(item.no)}</span>
                           </td>
                           <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
                             {orderId !== "—" ? (
@@ -843,12 +890,16 @@ function OrderPage() {
                           <td className="py-2.5 px-3 font-mono text-[11px] leading-tight">
                             <div>{dmy(item.date)}</div>
                             <div className="mt-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ${dueInfo.badgeClass}`}>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ${dueInfo.badgeClass}`}
+                              >
                                 {dueInfo.label}
                               </span>
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 font-medium text-foreground">{item.cust?.name || "—"}</td>
+                          <td className="py-2.5 px-3 font-medium text-foreground">
+                            {item.cust?.name || "—"}
+                          </td>
                           <td className="py-2.5 px-3 font-mono text-muted-foreground">
                             {item.cust?.phone || "—"}
                           </td>
@@ -859,11 +910,20 @@ function OrderPage() {
                             ₹ {nf(paidAmount)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono font-bold">
-                            <span className={remainingBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}>
+                            <span
+                              className={
+                                remainingBalance > 0
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }
+                            >
                               ₹ {nf(remainingBalance)}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="py-2.5 px-3 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {isDelivered ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
                                 <CheckCircle2 className="h-3 w-3" /> Yes
@@ -878,7 +938,10 @@ function OrderPage() {
                               </button>
                             )}
                           </td>
-                          <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="py-2.5 px-3 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="outline"
@@ -935,398 +998,578 @@ function OrderPage() {
       ) : (
         /* ── PROFORMA INVOICE CREATION / EDITING FORM SECTION ───────────── */
         <div id="proforma-form" className="p-3 sm:p-4 w-full">
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 w-full">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 w-full">
+            {/* ════ LEFT COLUMN ════ */}
+            <div className="space-y-4 min-w-0">
+              {/* 1. Order Header */}
+              <Section title="Proforma Invoice Details" accent="bg-emerald-500/5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <FieldLabel>Order / Invoice No</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono bg-emerald-500/5"
+                      value={inv.orderNo || inv.no || ""}
+                      onChange={(e) => updateInvField("orderNo", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Invoice Date</FieldLabel>
+                    <Input
+                      type="date"
+                      className="h-8 text-xs"
+                      value={inv.date || ""}
+                      onChange={(e) => updateInvField("date", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Sales Person</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.salesPerson || ""}
+                      onChange={(e) => updateInvField("salesPerson", e.target.value)}
+                      placeholder="Office"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>P.O. No.</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.poNo || ""}
+                      onChange={(e) => updateInvField("poNo", e.target.value)}
+                      placeholder="PO-1234"
+                    />
+                  </div>
+                </div>
+              </Section>
 
-          {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-4 min-w-0">
-
-            {/* 1. Order Header */}
-            <Section title="Proforma Invoice Details" accent="bg-emerald-500/5">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <FieldLabel>Order / Invoice No</FieldLabel>
-                  <Input className="h-8 text-xs font-mono bg-emerald-500/5" value={inv.orderNo || inv.no || ""} onChange={(e) => updateInvField("orderNo", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Invoice Date</FieldLabel>
-                  <Input type="date" className="h-8 text-xs" value={inv.date || ""} onChange={(e) => updateInvField("date", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Sales Person</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} placeholder="Office" />
-                </div>
-                <div>
-                  <FieldLabel>P.O. No.</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.poNo || ""} onChange={(e) => updateInvField("poNo", e.target.value)} placeholder="PO-1234" />
-                </div>
-              </div>
-            </Section>
-
-            {/* 2. Customer Details */}
-            <Section
-              title="Customer Details"
-              headerRight={
-                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                  <div className="relative">
-                    <div className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => setCustDropOpen((v) => !v)}>
-                      <Search className="h-3 w-3 text-muted-foreground" />
-                      <input
-                        className="w-28 sm:w-36 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
-                        placeholder="Search saved"
-                        value={custSearch}
-                        onChange={(e) => { setCustSearch(e.target.value); setCustDropOpen(true); }}
-                        onFocus={() => setCustDropOpen(true)}
-                      />
-                    </div>
-                    {custDropOpen && filteredCustomers.length > 0 && (
-                      <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-52 max-h-48 overflow-y-auto">
-                        {filteredCustomers.map((c: any) => (
-                          <div
-                            key={c.id || c.name}
-                            className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground"
-                            onMouseDown={() => selectCustomer(c)}
-                          >
-                            {c.name}
-                          </div>
-                        ))}
+              {/* 2. Customer Details */}
+              <Section
+                title="Customer Details"
+                headerRight={
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <div className="relative">
+                      <div
+                        className="flex items-center border border-border rounded-md h-7 px-2 gap-1.5 bg-background text-xs cursor-pointer hover:border-primary/50 transition-colors"
+                        onClick={() => setCustDropOpen((v) => !v)}
+                      >
+                        <Search className="h-3 w-3 text-muted-foreground" />
+                        <input
+                          className="w-28 sm:w-36 bg-transparent outline-none text-xs placeholder:text-muted-foreground"
+                          placeholder="Search saved"
+                          value={custSearch}
+                          onChange={(e) => {
+                            setCustSearch(e.target.value);
+                            setCustDropOpen(true);
+                          }}
+                          onFocus={() => setCustDropOpen(true)}
+                        />
                       </div>
-                    )}
+                      {custDropOpen && filteredCustomers.length > 0 && (
+                        <div className="absolute right-0 top-8 z-50 bg-popover border border-border rounded-md shadow-lg w-52 max-h-48 overflow-y-auto">
+                          {filteredCustomers.map((c: any) => (
+                            <div
+                              key={c.id || c.name}
+                              className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground"
+                              onMouseDown={() => selectCustomer(c)}
+                            >
+                              {c.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              }
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="sm:col-span-2">
-                  <FieldLabel>Customer / M/S. Name</FieldLabel>
-                  <Input className="h-8 text-xs font-medium" value={inv.cust?.name || ""} onChange={(e) => updateInvField("cust.name", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>GSTIN</FieldLabel>
-                  <Input className="h-8 text-xs font-mono" value={inv.cust?.gstin || ""} onChange={(e) => updateInvField("cust.gstin", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Phone</FieldLabel>
-                  <Input
-                    className="h-8 text-xs font-mono"
-                    value={inv.cust?.phone || ""}
-                    onChange={(e) => updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    maxLength={10}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Email</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.cust?.email || ""} onChange={(e) => updateInvField("cust.email", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Sales Person</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.salesPerson || ""} onChange={(e) => updateInvField("salesPerson", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Project Remark</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.projectRemark || ""} onChange={(e) => updateInvField("projectRemark", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Freight Type</FieldLabel>
-                  <Select value={inv.freightType || "To be Billed"} onValueChange={(v) => updateInvField("freightType", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="To be Billed">Tobe Billed</SelectItem>
-                      <SelectItem value="Prepaid">Prepaid</SelectItem>
-                      <SelectItem value="FOB">FOB</SelectItem>
-                      <SelectItem value="Ex-Works">Ex-Works</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel>Billing Address</FieldLabel>
-                  <Input
-                    className="h-8 text-xs"
-                    value={inv.cust?.addr || ""}
-                    onChange={(e) => {
-                      const newAddr = e.target.value;
-                      const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
-                      updateInvField("cust.addr", newAddr);
-                      if (isSame) {
-                        updateInvField("cust.ship", newAddr);
+                }
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Customer / M/S. Name</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-medium"
+                      value={inv.cust?.name || ""}
+                      onChange={(e) => updateInvField("cust.name", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>GSTIN</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      value={inv.cust?.gstin || ""}
+                      onChange={(e) => updateInvField("cust.gstin", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Phone</FieldLabel>
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      value={inv.cust?.phone || ""}
+                      onChange={(e) =>
+                        updateInvField("cust.phone", e.target.value.replace(/\D/g, "").slice(0, 10))
                       }
-                    }}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <FieldLabel>Dispatch Address</FieldLabel>
-                    <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
-                        checked={Boolean(inv.cust?.sameAsBilling)}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          updateInvField("cust.sameAsBilling", isChecked);
-                          if (isChecked) {
-                            updateInvField("cust.ship", inv.cust?.addr || "");
-                          } else {
-                            updateInvField("cust.ship", "");
-                          }
-                        }}
-                      />
-                      <span>Same as Billing Address</span>
-                    </label>
+                      maxLength={10}
+                    />
                   </div>
-                  <Input
-                    className="h-8 text-xs"
-                    value={inv.cust?.ship || ""}
-                    onChange={(e) => {
-                      updateInvField("cust.sameAsBilling", false);
-                      updateInvField("cust.ship", e.target.value);
-                    }}
-                    placeholder="Site / Shipping Address"
-                  />
+                  <div>
+                    <FieldLabel>Email</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.email || ""}
+                      onChange={(e) => updateInvField("cust.email", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Sales Person</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.salesPerson || ""}
+                      onChange={(e) => updateInvField("salesPerson", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Project Remark</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.projectRemark || ""}
+                      onChange={(e) => updateInvField("projectRemark", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Freight Type</FieldLabel>
+                    <Select
+                      value={inv.freightType || "To be Billed"}
+                      onValueChange={(v) => updateInvField("freightType", v)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="To be Billed">Tobe Billed</SelectItem>
+                        <SelectItem value="Prepaid">Prepaid</SelectItem>
+                        <SelectItem value="FOB">FOB</SelectItem>
+                        <SelectItem value="Ex-Works">Ex-Works</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Billing Address</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.addr || ""}
+                      onChange={(e) => {
+                        const newAddr = e.target.value;
+                        const isSame = Boolean(inv.cust?.addr && inv.cust?.ship === inv.cust?.addr);
+                        updateInvField("cust.addr", newAddr);
+                        if (isSame) {
+                          updateInvField("cust.ship", newAddr);
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <FieldLabel>Dispatch Address</FieldLabel>
+                      <label className="flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
+                          checked={Boolean(inv.cust?.sameAsBilling)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            updateInvField("cust.sameAsBilling", isChecked);
+                            if (isChecked) {
+                              updateInvField("cust.ship", inv.cust?.addr || "");
+                            } else {
+                              updateInvField("cust.ship", "");
+                            }
+                          }}
+                        />
+                        <span>Same as Billing Address</span>
+                      </label>
+                    </div>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.cust?.ship || ""}
+                      onChange={(e) => {
+                        updateInvField("cust.sameAsBilling", false);
+                        updateInvField("cust.ship", e.target.value);
+                      }}
+                      placeholder="Site / Shipping Address"
+                    />
+                  </div>
                 </div>
-              </div>
-            </Section>
+              </Section>
 
-            {/* 3. Order Booking Items & Details */}
-            <Section title="Order Booking Items & Details">
-              <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table className="w-full text-[11px] border-collapse" style={{ minWidth: "850px" }}>
-                  <thead>
-                    <tr className="border-b border-border bg-muted/20">
-                      {["Sr.", "Order Booking No", "Date", "Product", "Thick", "Qty", "Area", "Amount", "Glass Name", "Weight", "Job Type", "Act Area"].map((h, i) => (
-                        <th key={i} className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {/* `|| []` matters: a record rebuilt from the sheet's typed
+              {/* 3. Order Booking Items & Details */}
+              <Section title="Order Booking Items & Details">
+                <div className="overflow-x-auto -mx-3 sm:-mx-4">
+                  <table
+                    className="w-full text-[11px] border-collapse"
+                    style={{ minWidth: "850px" }}
+                  >
+                    <thead>
+                      <tr className="border-b border-border bg-muted/20">
+                        {[
+                          "Sr.",
+                          "Order Booking No",
+                          "Date",
+                          "Product",
+                          "Thick",
+                          "Qty",
+                          "Area",
+                          "Amount",
+                          "Glass Name",
+                          "Weight",
+                          "Job Type",
+                          "Act Area",
+                        ].map((h, i) => (
+                          <th
+                            key={i}
+                            className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {/* `|| []` matters: a record rebuilt from the sheet's typed
                         columns (the path taken when `fullJSON` is missing or
                         unparseable) has no `items`, and mapping over undefined
                         took the whole page to the error boundary. */}
-                    {(inv.items || []).map((item: any, idx: number) => {
-                      const line = totals.lines?.[idx];
-                      return (
-                        <tr key={item.id || idx} className="hover:bg-muted/10">
-                          <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-8">{idx + 1}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono text-muted-foreground w-[60px]">{inv.no || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs text-muted-foreground w-[80px]">{inv.date || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs text-foreground">{inv.productName || item.desc || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono text-center w-[45px]">{inv.glass?.thickness || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono text-center w-[40px]">{line?.ok ? line.qty : (item.qty || "—")}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono w-[65px]">
-                            {line?.ok ? (settings.rateUnit === "sqft" ? line.totalSqft : line.totalSqm) : "—"}
-                          </td>
-                          <td className="py-1.5 px-2 text-xs font-mono font-semibold text-right w-[75px]">
-                            {line?.ok ? nf(line.amount) : "—"}
-                          </td>
-                          <td className="py-1.5 px-2 text-xs text-foreground">{inv.glass?.desc || item.desc || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono w-[60px]">{totals.weightKg || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs text-muted-foreground w-[85px]">{inv.jobType || "—"}</td>
-                          <td className="py-1.5 px-2 text-xs font-mono w-[60px]">
-                            {line?.ok ? (settings.rateUnit === "sqft" ? line.totalSqft : line.totalSqm) : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Section>
+                      {(inv.items || []).map((item: any, idx: number) => {
+                        const line = totals.lines?.[idx];
+                        return (
+                          <tr key={item.id || idx} className="hover:bg-muted/10">
+                            <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-8">
+                              {idx + 1}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono text-muted-foreground w-[60px]">
+                              {inv.no || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs text-muted-foreground w-[80px]">
+                              {inv.date || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs text-foreground">
+                              {inv.productName || item.desc || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono text-center w-[45px]">
+                              {inv.glass?.thickness || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono text-center w-[40px]">
+                              {line?.ok ? line.qty : item.qty || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono w-[65px]">
+                              {line?.ok
+                                ? settings.rateUnit === "sqft"
+                                  ? line.totalSqft
+                                  : line.totalSqm
+                                : "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono font-semibold text-right w-[75px]">
+                              {line?.ok ? nf(line.amount) : "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs text-foreground">
+                              {inv.glass?.desc || item.desc || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono w-[60px]">
+                              {totals.weightKg || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs text-muted-foreground w-[85px]">
+                              {inv.jobType || "—"}
+                            </td>
+                            <td className="py-1.5 px-2 text-xs font-mono w-[60px]">
+                              {line?.ok
+                                ? settings.rateUnit === "sqft"
+                                  ? line.totalSqft
+                                  : line.totalSqm
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
 
-            {/* 4. Delivery & Terms */}
-            <Section title="Delivery & Terms">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <FieldLabel>Terms</FieldLabel>
-                  <Select value={inv.delivery?.terms || "PI Terms"} onValueChange={(v) => updateInvField("delivery.terms", v)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PI Terms">PI Terms</SelectItem>
-                      <SelectItem value="Standard Terms">Standard Terms</SelectItem>
-                      <SelectItem value="Custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* 4. Delivery & Terms */}
+              <Section title="Delivery & Terms">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <FieldLabel>Terms</FieldLabel>
+                    <Select
+                      value={inv.delivery?.terms || "PI Terms"}
+                      onValueChange={(v) => updateInvField("delivery.terms", v)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PI Terms">PI Terms</SelectItem>
+                        <SelectItem value="Standard Terms">Standard Terms</SelectItem>
+                        <SelectItem value="Custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <FieldLabel>Validity of PI</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.delivery?.validityOfPI || ""}
+                      onChange={(e) => updateInvField("delivery.validityOfPI", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Unloading by</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.delivery?.unloadingType || ""}
+                      onChange={(e) => updateInvField("delivery.unloadingType", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Packing Type</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.delivery?.packingType || ""}
+                      onChange={(e) => updateInvField("delivery.packingType", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Delivery Period</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.delivery?.deliveryPeriod || ""}
+                      onChange={(e) => updateInvField("delivery.deliveryPeriod", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Freight Remark</FieldLabel>
+                    <Input
+                      className="h-8 text-xs"
+                      value={inv.delivery?.freightRemark || ""}
+                      onChange={(e) => updateInvField("delivery.freightRemark", e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <FieldLabel>Validity of PI</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.validityOfPI || ""} onChange={(e) => updateInvField("delivery.validityOfPI", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Unloading by</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.unloadingType || ""} onChange={(e) => updateInvField("delivery.unloadingType", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Packing Type</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.packingType || ""} onChange={(e) => updateInvField("delivery.packingType", e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Delivery Period</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.deliveryPeriod || ""} onChange={(e) => updateInvField("delivery.deliveryPeriod", e.target.value)} />
-                </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel>Freight Remark</FieldLabel>
-                  <Input className="h-8 text-xs" value={inv.delivery?.freightRemark || ""} onChange={(e) => updateInvField("delivery.freightRemark", e.target.value)} />
-                </div>
-              </div>
-            </Section>
+              </Section>
 
-            {/* 5. Summary Fields */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              <div>
-                <FieldLabel>Qty</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
-                  {totals.qty || 0}
+              {/* 5. Summary Fields */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                <div>
+                  <FieldLabel>Qty</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground font-semibold">
+                    {totals.qty || 0}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Weight</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.weightKg || "0.000"}
+                <div>
+                  <FieldLabel>Weight</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.weightKg || "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Total Area SQM</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqm ?? "0.000"}
+                <div>
+                  <FieldLabel>Total Area SQM</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqm ?? "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Act. Area SQM</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqm ?? "0.000"}
+                <div>
+                  <FieldLabel>Act. Area SQM</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqm ?? "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Total Area SQF</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqft ?? "0.000"}
+                <div>
+                  <FieldLabel>Total Area SQF</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqft ?? "0.000"}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <FieldLabel>Act. Area SQF</FieldLabel>
-                <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
-                  {totals.sqft ?? "0.000"}
-                </div>
-              </div>
-            </div>
-
-            {/* 6. Action Buttons */}
-            <div className="flex flex-wrap gap-2 justify-end">
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 shadow-md"
-                onClick={handleConfirmOrder}
-                disabled={isWorkflowLocked}
-              >
-                <Save className="h-4 w-4" /> Save Invoice
-              </Button>
-            </div>
-          </div>
-
-          {/* ════ RIGHT COLUMN: Particular Panel ════ */}
-          <div className="space-y-4">
-            <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14">
-              <div className="px-3 py-2 border-b border-border bg-red-500/10">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Particular</span>
-                  <div className="flex gap-1">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Rate</span>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-4">Amount</span>
+                <div>
+                  <FieldLabel>Act. Area SQF</FieldLabel>
+                  <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
+                    {totals.sqft ?? "0.000"}
                   </div>
                 </div>
               </div>
-              <div className="px-3 py-2 space-y-0">
-                {/* Basic Amount */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground font-medium bg-blue-500/10 px-2 py-0.5 rounded">Basic Amount</span>
-                  <span className="font-mono text-foreground bg-blue-500/20 px-2 py-0.5 rounded">{nf(totals.glassAmount ?? 0)}</span>
+
+              {/* 6. Action Buttons */}
+              <div className="flex flex-wrap gap-2 justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 shadow-md"
+                  onClick={handleConfirmOrder}
+                  disabled={isWorkflowLocked}
+                >
+                  <Save className="h-4 w-4" /> Save Invoice
+                </Button>
+              </div>
+            </div>
+
+            {/* ════ RIGHT COLUMN: Particular Panel ════ */}
+            <div className="space-y-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14">
+                <div className="px-3 py-2 border-b border-border bg-red-500/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">
+                      Particular
+                    </span>
+                    <div className="flex gap-1">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Rate
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-4">
+                        Amount
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                <div className="px-3 py-2 space-y-0">
+                  {/* Basic Amount */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground font-medium bg-blue-500/10 px-2 py-0.5 rounded">
+                      Basic Amount
+                    </span>
+                    <span className="font-mono text-foreground bg-blue-500/20 px-2 py-0.5 rounded">
+                      {nf(totals.glassAmount ?? 0)}
+                    </span>
+                  </div>
 
-                {/* Admin Charge */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Admin Charge</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.adminCharge || ""} onChange={(e) => updateInvField("ch.adminCharge", e.target.value === "" ? "" : Number(e.target.value))} />
+                  {/* Admin Charge */}
+                  <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">Admin Charge</span>
+                    <Input
+                      type="number"
+                      className="h-6 text-[10px] font-mono w-[70px] text-right"
+                      value={inv.ch?.adminCharge || ""}
+                      onChange={(e) =>
+                        updateInvField(
+                          "ch.adminCharge",
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+
+                  {/* Freight */}
+                  <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">Freight</span>
+                    <Input
+                      type="number"
+                      className="h-6 text-[10px] font-mono w-[70px] text-right"
+                      value={inv.ch?.freight || ""}
+                      onChange={(e) =>
+                        updateInvField(
+                          "ch.freight",
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+
+                  {/* Packing Charges */}
+                  <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">Packing Charges</span>
+                    <Input
+                      type="number"
+                      className="h-6 text-[10px] font-mono w-[70px] text-right bg-green-500/15 border-green-500/30"
+                      value={inv.ch?.packingCharges || ""}
+                      onChange={(e) =>
+                        updateInvField(
+                          "ch.packingCharges",
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-red-500 font-bold">Total</span>
+                    <span className="font-mono font-bold text-foreground bg-green-500/20 px-2 py-0.5 rounded">
+                      {nf(totals.subTotal ?? 0)}
+                    </span>
+                  </div>
+
+                  {/* Insurance */}
+                  <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">Insurance</span>
+                    <span className="font-mono text-foreground">{nf(totals.insurance ?? 0)}</span>
+                  </div>
+
+                  {/* Net Value */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-red-500 font-bold">Ass. Value</span>
+                    <span className="font-mono font-bold text-foreground bg-green-500/20 px-2 py-0.5 rounded">
+                      {nf(totals.assessableValue ?? 0)}
+                    </span>
+                  </div>
+
+                  {/* C-GST */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">C-GST</span>
+                    <span className="font-mono text-foreground">{nf(totals.cgst ?? 0)}</span>
+                  </div>
+
+                  {/* S-GST */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">S-GST</span>
+                    <span className="font-mono text-foreground">{nf(totals.sgst ?? 0)}</span>
+                  </div>
+
+                  {/* I-GST */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">I-GST</span>
+                    <span className="font-mono text-foreground">{nf(totals.igst ?? 0)}</span>
+                  </div>
+
+                  {/* Gross Total */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-red-500 font-bold">Gross Total</span>
+                    <span className="font-mono font-bold text-foreground bg-yellow-500/20 px-2 py-0.5 rounded">
+                      {nf(totals.grossTotal ?? 0)}
+                    </span>
+                  </div>
+
+                  {/* TCS Charge */}
+                  <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">TCS Charge</span>
+                    <Input
+                      type="number"
+                      className="h-6 text-[10px] font-mono w-[70px] text-right"
+                      value={inv.ch?.tcsPercent || ""}
+                      onChange={(e) =>
+                        updateInvField(
+                          "ch.tcsPercent",
+                          e.target.value === "" ? "" : Number(e.target.value),
+                        )
+                      }
+                      placeholder="%"
+                    />
+                  </div>
+
+                  {/* Round Off */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground">Round Off</span>
+                    <span className="font-mono text-foreground">
+                      {totals.roundOff > 0 ? `+${nf(totals.roundOff)}` : nf(totals.roundOff ?? 0)}
+                    </span>
+                  </div>
+
+                  {/* Grand Total */}
+                  <div className="flex justify-between py-2 text-sm mt-1 border-t-2 border-border">
+                    <span className="text-red-500 font-bold">Grand Total</span>
+                    <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">
+                      {nf(totals.grandTotal ?? 0)}
+                    </span>
+                  </div>
                 </div>
-
-                {/* Freight */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Freight</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.freight || ""} onChange={(e) => updateInvField("ch.freight", e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
-
-                {/* Packing Charges */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Packing Charges</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right bg-green-500/15 border-green-500/30" value={inv.ch?.packingCharges || ""} onChange={(e) => updateInvField("ch.packingCharges", e.target.value === "" ? "" : Number(e.target.value))} />
-                </div>
-
-                {/* Total */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-red-500 font-bold">Total</span>
-                  <span className="font-mono font-bold text-foreground bg-green-500/20 px-2 py-0.5 rounded">{nf(totals.subTotal ?? 0)}</span>
-                </div>
-
-                {/* Insurance */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Insurance</span>
-                  <span className="font-mono text-foreground">{nf(totals.insurance ?? 0)}</span>
-                </div>
-
-                {/* Net Value */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-red-500 font-bold">Ass. Value</span>
-                  <span className="font-mono font-bold text-foreground bg-green-500/20 px-2 py-0.5 rounded">{nf(totals.assessableValue ?? 0)}</span>
-                </div>
-
-                {/* C-GST */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">C-GST</span>
-                  <span className="font-mono text-foreground">{nf(totals.cgst ?? 0)}</span>
-                </div>
-
-                {/* S-GST */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">S-GST</span>
-                  <span className="font-mono text-foreground">{nf(totals.sgst ?? 0)}</span>
-                </div>
-
-                {/* I-GST */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">I-GST</span>
-                  <span className="font-mono text-foreground">{nf(totals.igst ?? 0)}</span>
-                </div>
-
-                {/* Gross Total */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-red-500 font-bold">Gross Total</span>
-                  <span className="font-mono font-bold text-foreground bg-yellow-500/20 px-2 py-0.5 rounded">{nf(totals.grossTotal ?? 0)}</span>
-                </div>
-
-                {/* TCS Charge */}
-                <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">TCS Charge</span>
-                  <Input type="number" className="h-6 text-[10px] font-mono w-[70px] text-right" value={inv.ch?.tcsPercent || ""} onChange={(e) => updateInvField("ch.tcsPercent", e.target.value === "" ? "" : Number(e.target.value))} placeholder="%" />
-                </div>
-
-                {/* Round Off */}
-                <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                  <span className="text-foreground">Round Off</span>
-                  <span className="font-mono text-foreground">{totals.roundOff > 0 ? `+${nf(totals.roundOff)}` : nf(totals.roundOff ?? 0)}</span>
-                </div>
-
-                {/* Grand Total */}
-                <div className="flex justify-between py-2 text-sm mt-1 border-t-2 border-border">
-                  <span className="text-red-500 font-bold">Grand Total</span>
-                  <span className="font-mono font-bold text-lg text-red-600 bg-red-500/10 px-3 py-0.5 rounded">{nf(totals.grandTotal ?? 0)}</span>
-                </div>
-
-
               </div>
             </div>
           </div>
         </div>
-      </div>
       )}
       {/* ── CONFIRM PAYMENT MODAL ───────────────────────── */}
       <ConfirmPaymentModal
@@ -1347,17 +1590,33 @@ function OrderPage() {
       />
 
       {/* ── DELIVERY STATUS CONFIRMATION DIALOG ───────────────── */}
-      <Dialog open={Boolean(deliveryConfirmTarget)} onOpenChange={(open) => !open && setDeliveryConfirmTarget(null)}>
+      <Dialog
+        open={Boolean(deliveryConfirmTarget)}
+        onOpenChange={(open) => !open && setDeliveryConfirmTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2 border border-emerald-500/30">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <DialogTitle className="text-center text-lg font-bold">Confirm Order Delivery</DialogTitle>
+            <DialogTitle className="text-center text-lg font-bold">
+              Confirm Order Delivery
+            </DialogTitle>
             <DialogDescription className="text-center text-xs text-muted-foreground pt-1">
-              Are you sure Proforma Invoice <span className="font-mono font-bold text-foreground">#{deliveryConfirmTarget?.no}</span> (Customer: <span className="font-semibold text-foreground">{deliveryConfirmTarget?.cust?.name || "Customer"}</span>) has been <span className="font-bold text-emerald-600">Delivered</span>?
-              <br /><br />
-              <span className="text-rose-600 font-semibold dark:text-rose-400">⚠️ Once confirmed as Delivered, this status cannot be changed or reverted.</span>
+              Are you sure Proforma Invoice{" "}
+              <span className="font-mono font-bold text-foreground">
+                #{deliveryConfirmTarget?.no}
+              </span>{" "}
+              (Customer:{" "}
+              <span className="font-semibold text-foreground">
+                {deliveryConfirmTarget?.cust?.name || "Customer"}
+              </span>
+              ) has been <span className="font-bold text-emerald-600">Delivered</span>?
+              <br />
+              <br />
+              <span className="text-rose-600 font-semibold dark:text-rose-400">
+                ⚠️ Once confirmed as Delivered, this status cannot be changed or reverted.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex sm:justify-center gap-2 pt-3">

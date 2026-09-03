@@ -35,7 +35,9 @@ function SystemChecksPage() {
         const res = GlassTests.run();
         setTestSuiteResults(res);
         if (res.passed === res.total) {
-          toast.success(`100% Passed! (${res.passed}/${res.total} calculation engine checks verified)`);
+          toast.success(
+            `100% Passed! (${res.passed}/${res.total} calculation engine checks verified)`,
+          );
         } else {
           toast.error(`${res.total - res.passed} engine checks failed!`);
         }
@@ -60,7 +62,9 @@ function SystemChecksPage() {
     pingSheet(settings.sheetUrl)
       .then((res) => {
         setPinging(false);
-        setPingStatus(`Ping Success! Status: ${res.status || "OK"} (Version: ${res.version || "1.0"})`);
+        setPingStatus(
+          `Ping Success! Status: ${res.status || "OK"} (Version: ${res.version || "1.0"})`,
+        );
         toast.success("Google Apps Script connection verified successfully!");
       })
       .catch((err) => {
@@ -79,7 +83,8 @@ function SystemChecksPage() {
             <ShieldCheck className="h-6 w-6 text-emerald-500" /> Calculation Engine & System Checks
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Validate formula precision, run unit test verification, and test Apps Script backend connectivity
+            Validate formula precision, run unit test verification, and test Apps Script backend
+            connectivity
           </p>
         </div>
 
@@ -94,55 +99,60 @@ function SystemChecksPage() {
            The heading was the literal string "100% OPERATIONAL" and the banner
            was always green, so a failing calculation engine still reported
            itself healthy on the one page whose job is to say otherwise. */}
-      {testSuiteResults && (() => {
-        const failedCount = Number(testSuiteResults.total) - Number(testSuiteResults.passed);
-        const allPassed = failedCount === 0 && Number(testSuiteResults.total) > 0;
-        return (
-          <Card
-            className={
-              allPassed
-                ? "border border-emerald-500/30 bg-emerald-500/5 shadow-md"
-                : "border border-red-500/40 bg-red-500/5 shadow-md"
-            }
-          >
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
+      {testSuiteResults &&
+        (() => {
+          const failedCount = Number(testSuiteResults.total) - Number(testSuiteResults.passed);
+          const allPassed = failedCount === 0 && Number(testSuiteResults.total) > 0;
+          return (
+            <Card
+              className={
+                allPassed
+                  ? "border border-emerald-500/30 bg-emerald-500/5 shadow-md"
+                  : "border border-red-500/40 bg-red-500/5 shadow-md"
+              }
+            >
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={
+                      allPassed
+                        ? "rounded-full bg-emerald-500/20 p-2.5 text-emerald-600"
+                        : "rounded-full bg-red-500/20 p-2.5 text-red-600"
+                    }
+                  >
+                    {allPassed ? (
+                      <CheckCircle2 className="h-6 w-6" />
+                    ) : (
+                      <XCircle className="h-6 w-6" />
+                    )}
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold text-foreground">
+                      {allPassed
+                        ? "Calculation Engine Status: 100% OPERATIONAL"
+                        : `Calculation Engine Status: ${failedCount} CHECK${failedCount === 1 ? "" : "S"} FAILING`}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                      {allPassed
+                        ? `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed with 0 formula deviations`
+                        : `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed. Do not rely on printed figures until this is resolved.`}
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
                   className={
                     allPassed
-                      ? "rounded-full bg-emerald-500/20 p-2.5 text-emerald-600"
-                      : "rounded-full bg-red-500/20 p-2.5 text-red-600"
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-mono text-xs"
+                      : "bg-red-500/10 text-red-600 border-red-500/30 font-mono text-xs"
                   }
                 >
-                  {allPassed ? <CheckCircle2 className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
-                </div>
-                <div>
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    {allPassed
-                      ? "Calculation Engine Status: 100% OPERATIONAL"
-                      : `Calculation Engine Status: ${failedCount} CHECK${failedCount === 1 ? "" : "S"} FAILING`}
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">
-                    {allPassed
-                      ? `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed with 0 formula deviations`
-                      : `${testSuiteResults.passed} of ${testSuiteResults.total} automated checks passed. Do not rely on printed figures until this is resolved.`}
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className={
-                  allPassed
-                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-mono text-xs"
-                    : "bg-red-500/10 text-red-600 border-red-500/30 font-mono text-xs"
-                }
-              >
-                {testSuiteResults.passed} / {testSuiteResults.total} PASSED
-              </Badge>
-            </CardHeader>
-          </Card>
-        );
-      })()}
+                  {testSuiteResults.passed} / {testSuiteResults.total} PASSED
+                </Badge>
+              </CardHeader>
+            </Card>
+          );
+        })()}
 
       {/* ---------- Test Details Table & System Status ---------- */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -165,7 +175,10 @@ function SystemChecksPage() {
             {testSuiteResults?.results ? (
               <div className="divide-y divide-border/40 text-xs">
                 {testSuiteResults.results.map((r: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {r.pass ? (
                         <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -176,7 +189,14 @@ function SystemChecksPage() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0 font-mono text-[11px]">
                       <span className="text-muted-foreground">got={String(r.got)}</span>
-                      <Badge variant="outline" className={r.pass ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]" : "bg-red-500/10 text-red-600 border-red-500/20 text-[10px]"}>
+                      <Badge
+                        variant="outline"
+                        className={
+                          r.pass
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]"
+                            : "bg-red-500/10 text-red-600 border-red-500/20 text-[10px]"
+                        }
+                      >
                         {r.pass ? "PASS" : "FAIL"}
                       </Badge>
                     </div>
@@ -184,7 +204,9 @@ function SystemChecksPage() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-muted-foreground">Running test suite...</div>
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                Running test suite...
+              </div>
             )}
           </CardContent>
         </Card>
@@ -238,9 +260,7 @@ function SystemChecksPage() {
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <HardDrive className="h-4 w-4 text-indigo-500" /> Local Storage Health
               </CardTitle>
-              <CardDescription className="text-xs">
-                Persisted browser data stats
-              </CardDescription>
+              <CardDescription className="text-xs">Persisted browser data stats</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-border/40">

@@ -47,7 +47,8 @@ export const BASE_SETTINGS: any = {
   terms: DEFAULT_TERMS.join("\n"),
   footer: "",
   extraAreaFormula: "+25.4mm",
-  sheetUrl: "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
+  sheetUrl:
+    "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
 
 export const GLASS_TYPES = [
@@ -128,11 +129,7 @@ export const PRODUCTS_BY_TYPE: Record<string, string[]> = {
     "10 MM Laminated Glass",
     "12 MM Laminated Glass",
   ],
-  "Mirror Glass": [
-    "04 MM Mirror Glass",
-    "05 MM Mirror Glass",
-    "06 MM Mirror Glass",
-  ],
+  "Mirror Glass": ["04 MM Mirror Glass", "05 MM Mirror Glass", "06 MM Mirror Glass"],
 };
 
 export function detectGlassTypeFromProduct(prodName: string): string {
@@ -168,13 +165,97 @@ export const SAMPLE_INVOICE_07321: any = {
     defaultRate: 1500,
   },
   items: [
-    { id: "it-1", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "119 5/16", l2: "48 1/16", qty: 1, holes: 4, cutouts: 2, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "1" },
-    { id: "it-2", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "34 13/16", l2: "60 1/16", qty: 1, holes: 2, cutouts: 1, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "2" },
-    { id: "it-3", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "83 14/16", l2: "29 15/16", qty: 1, holes: 4, cutouts: 1, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "3" },
-    { id: "it-4", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "83 14/16", l2: "29 15/16", qty: 1, holes: 4, cutouts: 1, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "4" },
-    { id: "it-5", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "119 5/16", l2: "48 12/16", qty: 1, holes: 4, cutouts: 1, bigCutouts: 1, rate: 1500, shape: "DRAWING", remark: "5" },
-    { id: "it-6", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "119 5/16", l2: "48 12/16", qty: 1, holes: 4, cutouts: 1, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "6" },
-    { id: "it-7", desc: "12 mm Clear T.G.----+ With Polish Grinding", l1: "119 5/16", l2: "48 12/16", qty: 1, holes: 4, cutouts: 1, bigCutouts: 0, rate: 1500, shape: "DRAWING", remark: "7" },
+    {
+      id: "it-1",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "119 5/16",
+      l2: "48 1/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 2,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "1",
+    },
+    {
+      id: "it-2",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "34 13/16",
+      l2: "60 1/16",
+      qty: 1,
+      holes: 2,
+      cutouts: 1,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "2",
+    },
+    {
+      id: "it-3",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "83 14/16",
+      l2: "29 15/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 1,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "3",
+    },
+    {
+      id: "it-4",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "83 14/16",
+      l2: "29 15/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 1,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "4",
+    },
+    {
+      id: "it-5",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "119 5/16",
+      l2: "48 12/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 1,
+      bigCutouts: 1,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "5",
+    },
+    {
+      id: "it-6",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "119 5/16",
+      l2: "48 12/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 1,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "6",
+    },
+    {
+      id: "it-7",
+      desc: "12 mm Clear T.G.----+ With Polish Grinding",
+      l1: "119 5/16",
+      l2: "48 12/16",
+      qty: 1,
+      holes: 4,
+      cutouts: 1,
+      bigCutouts: 0,
+      rate: 1500,
+      shape: "DRAWING",
+      remark: "7",
+    },
   ],
   ch: {
     wastageMode: "none",
@@ -446,7 +527,8 @@ export function getPaymentDueDateInfo(inv: any) {
       daysLeft: 0,
       status: "paid",
       label: "Paid",
-      badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold",
+      badgeClass:
+        "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold",
     };
   }
 
@@ -465,7 +547,8 @@ export function getPaymentDueDateInfo(inv: any) {
       daysLeft: diffDays,
       status: "overdue",
       label: `${overdueDays} ${overdueDays === 1 ? "day" : "days"} overdue`,
-      badgeClass: "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-semibold",
+      badgeClass:
+        "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-semibold",
     };
   } else if (diffDays === 0) {
     return {
@@ -473,7 +556,8 @@ export function getPaymentDueDateInfo(inv: any) {
       daysLeft: 0,
       status: "due_today",
       label: "Due today",
-      badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold",
+      badgeClass:
+        "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold",
     };
   } else {
     return {
@@ -481,7 +565,8 @@ export function getPaymentDueDateInfo(inv: any) {
       daysLeft: diffDays,
       status: "pending",
       label: `${diffDays} ${diffDays === 1 ? "day" : "days"} left`,
-      badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold",
+      badgeClass:
+        "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold",
     };
   }
 }
@@ -527,7 +612,7 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
     poNo: "",
     salesPerson: "Office",
     projectRemark: "",
-    inputUnit: S.inputUnit || "inch",  // 'inch' | 'mm'
+    inputUnit: S.inputUnit || "inch", // 'inch' | 'mm'
     frequencyEnabled: false,
     productName: "",
     jobType: "WITH MATERIAL",
@@ -542,7 +627,16 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
     },
     // Layer system
     layers: [
-      { id: uid("layer"), layerNo: "Item 1", productName: "", thickness: 5, glassName: "", rate: "", process: "", status: "" },
+      {
+        id: uid("layer"),
+        layerNo: "Item 1",
+        productName: "",
+        thickness: 5,
+        glassName: "",
+        rate: "",
+        process: "",
+        status: "",
+      },
     ],
     items: [blankItem()],
     ch: {
@@ -643,8 +737,10 @@ export function computeTotals(S: any, INV: any) {
           it.rate !== "" && it.rate != null
             ? Number(it.rate)
             : l.rate !== "" && l.rate != null
-            ? Number(l.rate)
-            : (INV.glass?.defaultRate ? Number(INV.glass.defaultRate) : 0);
+              ? Number(l.rate)
+              : INV.glass?.defaultRate
+                ? Number(INV.glass.defaultRate)
+                : 0;
         const itemDesc =
           it.desc ||
           l.glassName ||
@@ -717,13 +813,13 @@ export function hasEnteredRateForInvoice(INV: any): boolean {
   return false;
 }
 
-
 /* ---------- the saved record shape (unchanged columns) ---------- */
 export function buildRecord(INV: any, TOT: any) {
   const rec = JSON.parse(JSON.stringify(INV));
   if (rec.layers && rec.layers.length > 0) {
     rec.items = rec.layers.flatMap((l: any, idx: number) => {
-      const lItems = l.items && l.items.length > 0 ? l.items : (idx === 0 && INV.items ? INV.items : []);
+      const lItems =
+        l.items && l.items.length > 0 ? l.items : idx === 0 && INV.items ? INV.items : [];
       return lItems.map((it: any) => Object.assign({}, it, { layerIdx: idx }));
     });
   }
@@ -805,7 +901,11 @@ function withAction(sheetUrl: string, action: string) {
 }
 
 function sheetGet(sheetUrl: string, action: string): Promise<any> {
-  return fetchWithTimeout(withAction(sheetUrl, action), { redirect: "follow" }, SHEET_READ_TIMEOUT_MS)
+  return fetchWithTimeout(
+    withAction(sheetUrl, action),
+    { redirect: "follow" },
+    SHEET_READ_TIMEOUT_MS,
+  )
     .then((r) => r.json())
     .then((j) => {
       if (j && j.success) return j;
@@ -813,7 +913,11 @@ function sheetGet(sheetUrl: string, action: string): Promise<any> {
     });
 }
 
-function sheetPost(sheetUrl: string, payload: any, timeoutMs = SHEET_WRITE_TIMEOUT_MS): Promise<any> {
+function sheetPost(
+  sheetUrl: string,
+  payload: any,
+  timeoutMs = SHEET_WRITE_TIMEOUT_MS,
+): Promise<any> {
   return fetchWithTimeout(
     sheetUrl,
     {
@@ -1067,6 +1171,20 @@ export function formatOrderId(idOrNo: string | undefined | null): string {
   return clean || "—";
 }
 
+/* Format legacy numbers like OB-1007 or OB-1009 into clean PI No format (e.g. 2026-007, 2026-009, 2026-011) */
+export function formatPiNo(idOrNo: string | undefined | null, defaultYear?: string): string {
+  if (!idOrNo) return "—";
+  const str = String(idOrNo).trim();
+  if (!str || str === "—" || str === "N/A" || str === "0") return "—";
+  if (/^\d{4}-\d+$/.test(str)) return str;
+  const digits = str.replace(/\D/g, "");
+  if (!digits) return str;
+  const y = defaultYear || new Date().getFullYear().toString();
+  const num = parseInt(digits, 10);
+  const seq = num > 1000 ? num - 1000 : num;
+  return `${y}-${String(seq).padStart(3, "0")}`;
+}
+
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
 export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const t = TOT,
@@ -1093,9 +1211,9 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     allItems = (INV.items || []).map((it: any) => ({ ...it, layerIdx: 0 }));
   }
 
-  const lines = TOT.lines.map((l: any, i: number) => ({ l, it: allItems[i] || {} })).filter(
-    (x: any) => x.l.ok,
-  );
+  const lines = TOT.lines
+    .map((l: any, i: number) => ({ l, it: allItems[i] || {} }))
+    .filter((x: any) => x.l.ok);
   if (!lines.length) return "";
 
   const terms = (S.terms || "").split("\n").filter((x: string) => x.trim());
@@ -1107,7 +1225,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (INV.layers && INV.layers.length > 0) {
     INV.layers.forEach((l: any, idx: number) => {
       const layerLines = lines.filter(
-        (x: any) => x.it.layerIdx === idx || (idx === 0 && x.it.layerIdx === undefined)
+        (x: any) => x.it.layerIdx === idx || (idx === 0 && x.it.layerIdx === undefined),
       );
       if (layerLines.length > 0) {
         let prodDesc = l.productName || l.glassName;
@@ -1136,7 +1254,11 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     productGroups.push({
       index: 1,
       code: "05904",
-      title: INV.glass?.desc || (INV.glass?.thickness ? `${INV.glass.thickness} mm ${INV.productName || "Glass"}` : (INV.productName || "Glass")),
+      title:
+        INV.glass?.desc ||
+        (INV.glass?.thickness
+          ? `${INV.glass.thickness} mm ${INV.productName || "Glass"}`
+          : INV.productName || "Glass"),
       lines: lines,
     });
   }
@@ -1254,7 +1376,8 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   if (t.adminCharge) summary.push(fr("Admin Charge", nf(t.adminCharge)));
   if (t.discount) summary.push(fr("Discount", "-" + nf(t.discount)));
   summary.push(fr("Total", nf(t.subTotal)));
-  if (t.insurance) summary.push(fr("Insurance " + nf(o.insurancePercent || 2) + " %", nf(t.insurance)));
+  if (t.insurance)
+    summary.push(fr("Insurance " + nf(o.insurancePercent || 2) + " %", nf(t.insurance)));
   summary.push(fr("Ass. Value", nf(t.assessableValue)));
   if (t.cgst) summary.push(fr("C-GST " + nf(o.cgstPercent || 9) + " %", nf(t.cgst)));
   if (t.sgst) summary.push(fr("S-GST " + nf(o.sgstPercent || 9) + " %", nf(t.sgst)));
@@ -1268,35 +1391,36 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   const payStatusText = isPaidFull
     ? "PAID IN FULL"
     : paidVal > 0
-    ? "PARTIALLY PAID"
-    : "UNPAID / CREDIT";
+      ? "PARTIALLY PAID"
+      : "UNPAID / CREDIT";
   const payTypeLabel = INV.delivery?.paymentType || INV.delivery?.paymentTerm || "Credit";
 
   summary.push(
-    `<tr class="pay-row pay-paid" style="border-top:1.5px solid #000; font-weight:bold; background:#f0fdf4; color:#15803d"><td style="padding:3px 6px">Amount Paid</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(paidVal)}</td></tr>`
+    `<tr class="pay-row pay-paid" style="border-top:1.5px solid #000; font-weight:bold; background:#f0fdf4; color:#15803d"><td style="padding:3px 6px">Amount Paid</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(paidVal)}</td></tr>`,
   );
   summary.push(
-    `<tr class="pay-row pay-due" style="font-weight:bold; background:${dueVal > 0 ? '#fffbeb' : '#f0fdf4'}; color:${dueVal > 0 ? '#b45309' : '#15803d'}"><td style="padding:3px 6px">Balance Due</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(dueVal)}</td></tr>`
+    `<tr class="pay-row pay-due" style="font-weight:bold; background:${dueVal > 0 ? "#fffbeb" : "#f0fdf4"}; color:${dueVal > 0 ? "#b45309" : "#15803d"}"><td style="padding:3px 6px">Balance Due</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right">₹ ${nf(dueVal)}</td></tr>`,
   );
   summary.push(
-    `<tr class="pay-row pay-status" style="background:#f8fafc; font-size:8pt"><td style="padding:3px 6px">Payment Status</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right; color:${isPaidFull ? '#15803d' : paidVal > 0 ? '#2563eb' : '#b45309'}">${payStatusText}</td></tr>`
+    `<tr class="pay-row pay-status" style="background:#f8fafc; font-size:8pt"><td style="padding:3px 6px">Payment Status</td><td class="n" style="padding:3px 6px; font-weight:bold; text-align:right; color:${isPaidFull ? "#15803d" : paidVal > 0 ? "#2563eb" : "#b45309"}">${payStatusText}</td></tr>`,
   );
   if (payTypeLabel) {
     summary.push(
-      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Mode</td><td class="n" style="padding:2px 6px; text-align:right">${esc(payTypeLabel)}</td></tr>`
+      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Mode</td><td class="n" style="padding:2px 6px; text-align:right">${esc(payTypeLabel)}</td></tr>`,
     );
   }
   if (INV.dueDate && !isPaidFull) {
     summary.push(
-      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Due Date</td><td class="n" style="padding:2px 6px; text-align:right">${dmy(INV.dueDate)}</td></tr>`
+      `<tr style="font-size:7.5pt"><td style="padding:2px 6px">Payment Due Date</td><td class="n" style="padding:2px 6px; text-align:right">${dmy(INV.dueDate)}</td></tr>`,
     );
   }
 
   const isPre = INV.docType === "pre_proforma";
-  const docTitle = isPre ? "ORDER BOOKING" : (S.title || "PROFORMA INVOICE");
+  const docTitle = isPre ? "ORDER BOOKING" : S.title || "PROFORMA INVOICE";
   const noLabel = isPre ? "Order Booking No." : "Proforma No.";
-  const displayNo = isPre ? formatOrderId(INV.no) : (INV.no || "—");
-  const rawOrderNo = INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
+  const displayNo = formatPiNo(INV.no);
+  const rawOrderNo =
+    INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
   const displayOrderNo = formatOrderId(rawOrderNo);
 
   return `
@@ -1412,11 +1536,13 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
           </tbody>
         </table>
 
-        ${terms.length
-          ? '<div class="terms" style="border:1px solid #000; padding:6px; font-size:7.4pt; line-height:1.45">' +
-            terms.map((x: string, i: number) => `<div>${i + 1}) ${esc(x)}</div>`).join("") +
-            "</div>"
-          : ""}
+        ${
+          terms.length
+            ? '<div class="terms" style="border:1px solid #000; padding:6px; font-size:7.4pt; line-height:1.45">' +
+              terms.map((x: string, i: number) => `<div>${i + 1}) ${esc(x)}</div>`).join("") +
+              "</div>"
+            : ""
+        }
 
         <div style="border:1px solid #000; border-top:0; padding:10px 8px 4px; text-align:center; font-size:8pt">
           <div style="font-weight:bold; text-align:center; margin-bottom:20px; font-size:8.5pt">Customer's Acceptance</div>

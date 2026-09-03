@@ -1,12 +1,5 @@
 import { createFileRoute, useSearch, useNavigate, Link } from "@tanstack/react-router";
-import {
-  Printer,
-  Edit,
-  ArrowLeft,
-  CheckCircle2,
-  MoveHorizontal,
-  X,
-} from "lucide-react";
+import { Printer, Edit, ArrowLeft, CheckCircle2, MoveHorizontal, X } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,11 +75,16 @@ export function InvoiceViewPage() {
                 {isProforma ? "Proforma Invoice" : "Order Booking"} #{targetInv.no}
               </h1>
               {targetInv.sync === "synced" ? (
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] py-0">
+                <Badge
+                  variant="outline"
+                  className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] py-0"
+                >
                   <CheckCircle2 className="h-3 w-3 mr-1" /> Synced
                 </Badge>
               ) : (
-                <Badge variant="outline" className="text-[10px] py-0">Local</Badge>
+                <Badge variant="outline" className="text-[10px] py-0">
+                  Local
+                </Badge>
               )}
             </div>
             <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
@@ -109,7 +107,11 @@ export function InvoiceViewPage() {
             <Edit className="h-3.5 w-3.5 mr-1" /> Edit
           </Button>
 
-          <Button size="sm" onClick={handlePrint} className="h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground">
+          <Button
+            size="sm"
+            onClick={handlePrint}
+            className="h-9 text-xs font-semibold shadow-sm bg-primary text-primary-foreground"
+          >
             <Printer className="h-4 w-4 mr-1.5" /> Print / Save PDF
           </Button>
 
@@ -133,7 +135,9 @@ export function InvoiceViewPage() {
           <MoveHorizontal className="h-3.5 w-3.5 text-primary animate-pulse" />
           Swipe horizontally to view full Proforma Invoice PDF
         </span>
-        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">A4 PDF Preview</Badge>
+        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+          A4 PDF Preview
+        </Badge>
       </div>
 
       {/* ---------- Printable Document Card (100% Mobile & Print Responsive) ---------- */}

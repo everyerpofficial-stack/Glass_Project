@@ -20,7 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
@@ -32,7 +38,17 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const { settings, saveSettings, loadFromSheet, pushAllToSheet, sheetSyncing, invoices, customers, workOrders, payments } = useGQ();
+  const {
+    settings,
+    saveSettings,
+    loadFromSheet,
+    pushAllToSheet,
+    sheetSyncing,
+    invoices,
+    customers,
+    workOrders,
+    payments,
+  } = useGQ();
   const [form, setForm] = useState<any>(() => ({ ...settings }));
   const [pinging, setPinging] = useState(false);
 
@@ -83,13 +99,20 @@ function SettingsPage() {
       {/* ---------- Top Header ---------- */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Application Settings</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Application Settings
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Configure company branding, document defaults, Google Sheets sync, and calculation presets
+            Configure company branding, document defaults, Google Sheets sync, and calculation
+            presets
           </p>
         </div>
 
-        <Button onClick={handleSubmit} size="sm" className="shadow-sm bg-primary text-primary-foreground font-semibold">
+        <Button
+          onClick={handleSubmit}
+          size="sm"
+          className="shadow-sm bg-primary text-primary-foreground font-semibold"
+        >
           <Save className="h-4 w-4 mr-1.5" /> Save All Settings
         </Button>
       </div>
@@ -97,17 +120,30 @@ function SettingsPage() {
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="company" className="space-y-6">
           <TabsList className="h-auto text-xs flex flex-wrap gap-1 p-1.5 w-full sm:w-auto sm:flex-nowrap sm:h-10 bg-white border border-border rounded-xl shadow-xs">
-            <TabsTrigger value="company" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+            <TabsTrigger
+              value="company"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+            >
               <Building className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Company
             </TabsTrigger>
-            <TabsTrigger value="presets" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+            <TabsTrigger
+              value="presets"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+            >
               <Calculator className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Calculation
             </TabsTrigger>
-            <TabsTrigger value="bank" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
+            <TabsTrigger
+              value="bank"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+            >
               <Landmark className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Bank & Terms
             </TabsTrigger>
-            <TabsTrigger value="sync" className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg">
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-emerald-500" /> Sheet Sync
+            <TabsTrigger
+              value="sync"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-emerald-500" />{" "}
+              Sheet Sync
             </TabsTrigger>
           </TabsList>
 
@@ -115,7 +151,9 @@ function SettingsPage() {
           <TabsContent value="company">
             <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Company Profile & Branding</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Company Profile & Branding
+                </CardTitle>
                 <CardDescription className="text-xs">
                   Details shown on generated proforma invoices and quotations
                 </CardDescription>
@@ -155,7 +193,11 @@ function SettingsPage() {
                   {form.logo && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Preview:</span>
-                      <img src={form.logo} alt="Logo preview" className="h-9 w-auto max-w-[160px] object-contain bg-white border border-border rounded p-1" />
+                      <img
+                        src={form.logo}
+                        alt="Logo preview"
+                        className="h-9 w-auto max-w-[160px] object-contain bg-white border border-border rounded p-1"
+                      />
                     </div>
                   )}
                 </div>
@@ -245,7 +287,9 @@ function SettingsPage() {
           <TabsContent value="presets">
             <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Calculation Engine Presets</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  Calculation Engine Presets
+                </CardTitle>
                 <CardDescription className="text-xs">
                   Choose default pricing formulas and unit conversion modes
                 </CardDescription>
@@ -254,7 +298,9 @@ function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div
                     className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                      form.preset === "anand" ? "border-primary bg-primary/5 shadow-md" : "border-border/60 hover:border-primary/40"
+                      form.preset === "anand"
+                        ? "border-primary bg-primary/5 shadow-md"
+                        : "border-border/60 hover:border-primary/40"
                     }`}
                     onClick={() => handleApplyPreset("anand")}
                   >
@@ -263,22 +309,28 @@ function SettingsPage() {
                       {form.preset === "anand" && <CheckCircle2 className="h-4 w-4 text-primary" />}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Rate unit: <strong className="text-foreground">Sq.Mtr (₹807/sqm)</strong>. Rounding: Exact MM. Wastage: 10% cutting.
+                      Rate unit: <strong className="text-foreground">Sq.Mtr (₹807/sqm)</strong>.
+                      Rounding: Exact MM. Wastage: 10% cutting.
                     </p>
                   </div>
 
                   <div
                     className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                      form.preset === "krishna" ? "border-primary bg-primary/5 shadow-md" : "border-border/60 hover:border-primary/40"
+                      form.preset === "krishna"
+                        ? "border-primary bg-primary/5 shadow-md"
+                        : "border-border/60 hover:border-primary/40"
                     }`}
                     onClick={() => handleApplyPreset("krishna")}
                   >
                     <div className="flex items-center justify-between font-bold text-sm">
                       <span>Krishna Glass Preset</span>
-                      {form.preset === "krishna" && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      {form.preset === "krishna" && (
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Rate unit: <strong className="text-foreground">Sq.Ft (₹69/sqft)</strong>. Chargeable inch offset (+1 inch).
+                      Rate unit: <strong className="text-foreground">Sq.Ft (₹69/sqft)</strong>.
+                      Chargeable inch offset (+1 inch).
                     </p>
                   </div>
                 </div>
@@ -398,7 +450,8 @@ function SettingsPage() {
             <Card className="bg-white border border-border rounded-xl shadow-xs">
               <CardHeader>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Google Apps Script Integration
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Google Apps Script
+                  Integration
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Connect your web app directly to your Google Sheets backend via Web App URL
@@ -414,7 +467,13 @@ function SettingsPage() {
                       onChange={(e) => handleChange("sheetUrl", e.target.value)}
                       placeholder="https://script.google.com/macros/s/.../exec"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={handlePing} disabled={pinging}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePing}
+                      disabled={pinging}
+                    >
                       {pinging ? (
                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                       ) : (
@@ -425,7 +484,8 @@ function SettingsPage() {
                     </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1.5">
-                    Deploy your Google Apps Script as a Web App with access set to "Anyone" and paste the URL above.
+                    Deploy your Google Apps Script as a Web App with access set to "Anyone" and
+                    paste the URL above.
                   </p>
                 </div>
 
@@ -444,7 +504,9 @@ function SettingsPage() {
                         <Download className="h-4 w-4 text-blue-500" />
                         <span className="text-xs font-semibold">Pull from Google Sheet</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Download all records from Google Sheets and merge into your local data.</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Download all records from Google Sheets and merge into your local data.
+                      </p>
                       <Button
                         type="button"
                         variant="outline"
@@ -453,7 +515,11 @@ function SettingsPage() {
                         onClick={() => loadFromSheet()}
                         disabled={sheetSyncing || !form.sheetUrl}
                       >
-                        {sheetSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                        {sheetSyncing ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3" />
+                        )}
                         Pull Data from Sheet
                       </Button>
                     </div>
@@ -463,7 +529,9 @@ function SettingsPage() {
                         <Upload className="h-4 w-4 text-emerald-500" />
                         <span className="text-xs font-semibold">Push All to Google Sheet</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Upload all local data to Google Sheets (creates/updates records).</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Upload all local data to Google Sheets (creates/updates records).
+                      </p>
                       <Button
                         type="button"
                         variant="outline"
@@ -472,7 +540,11 @@ function SettingsPage() {
                         onClick={pushAllToSheet}
                         disabled={sheetSyncing || !form.sheetUrl}
                       >
-                        {sheetSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                        {sheetSyncing ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Upload className="h-3 w-3" />
+                        )}
                         Push All Data to Sheet
                       </Button>
                     </div>
@@ -480,7 +552,9 @@ function SettingsPage() {
 
                   {/* Current data counts */}
                   <div className="rounded-lg bg-muted/30 border border-border/50 p-3">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Local Data Summary</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      Local Data Summary
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Invoices:</span>
@@ -507,7 +581,11 @@ function SettingsPage() {
         </Tabs>
 
         <div className="flex justify-end pt-4">
-          <Button type="submit" size="sm" className="shadow-sm bg-primary text-primary-foreground font-semibold w-full sm:w-auto">
+          <Button
+            type="submit"
+            size="sm"
+            className="shadow-sm bg-primary text-primary-foreground font-semibold w-full sm:w-auto"
+          >
             <Save className="h-4 w-4 mr-1.5" /> Save All Settings
           </Button>
         </div>
