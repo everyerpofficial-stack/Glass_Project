@@ -1033,7 +1033,7 @@ function OrderPage() {
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
                                 <CheckCircle2 className="h-3 w-3" /> Yes
                               </span>
-                            ) : (
+                            ) : !isCancelled ? (
                               <button
                                 type="button"
                                 onClick={() => setDeliveryConfirmTarget(item)}
@@ -1041,6 +1041,10 @@ function OrderPage() {
                               >
                                 <XCircle className="h-3 w-3" /> No
                               </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-muted/60 text-muted-foreground border border-border/50">
+                                <XCircle className="h-3 w-3 text-muted-foreground" /> No
+                              </span>
                             )}
                           </td>
                           <td
@@ -1048,19 +1052,21 @@ function OrderPage() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
-                                onClick={() => {
-                                  loadInvoice(item.id, false);
-                                  setShowForm(true);
-                                  toast.success(`Loaded Order Confirm ${item.no} for editing`);
-                                }}
-                                title="Edit Order Confirm"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                              </Button>
+                              {!isCancelled && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                  onClick={() => {
+                                    loadInvoice(item.id, false);
+                                    setShowForm(true);
+                                    toast.success(`Loaded Order Confirm ${item.no} for editing`);
+                                  }}
+                                  title="Edit Order Confirm"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
 
                               <Button
                                 variant="outline"

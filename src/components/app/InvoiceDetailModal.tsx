@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   dmy,
   nf,
@@ -18,6 +19,8 @@ import {
   computeTotals,
   formatOrderId,
   formatPiNo,
+  isCancelled,
+  uid,
 } from "@/lib/gq";
 import { useGQ } from "@/lib/store";
 import { printElement } from "@/lib/print";
@@ -40,6 +43,8 @@ import {
   X,
   Layers,
   Sparkles,
+  CreditCard,
+  Plus,
 } from "lucide-react";
 
 /* ── Pure JS Code128B barcode SVG generator ────────────────────────── */
@@ -182,11 +187,25 @@ export function InvoiceDetailModal({
   onEdit,
   initialTab = "overview",
 }: InvoiceDetailModalProps) {
-  const { workOrders, settings, generateWorkOrder, saveWorkOrder, updateInvoiceStatus } = useGQ();
+  const {
+    workOrders,
+    settings,
+    generateWorkOrder,
+    saveWorkOrder,
+    updateInvoiceStatus,
+    savePayment,
+    patchInvoice,
+  } = useGQ();
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(
     initialTab,
   );
   const [labelsPerRow, setLabelsPerRow] = useState<number>(4);
+  const [showRecordPayment, setShowRecordPayment] = useState(false);
+  const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payMode, setPayMode] = useState("UPI / Google Pay");
+  const [payAmount, setPayAmount] = useState("");
+  const [payRefNo, setPayRefNo] = useState("");
+  const [payNotes, setPayNotes] = useState("");
   /* Points at the printable element of whichever tab is open. Only one tab is
      mounted at a time, so a single ref is unambiguous — and it beats querying
      by class name, since `.wo-print-area` also exists on the /work-order route
@@ -260,6 +279,52 @@ export function InvoiceDetailModal({
   const isPre = invoice.docType === "pre_proforma";
   const docTypeLabel = isPre ? "Proforma Invoice" : "Order Confirm";
   const dueInfo = getPaymentDueDateInfo(invoice);
+  const isDocCancelled = isCancelled(invoice);
+
+  const handleRecordPaymentSubmit = () => {
+    if (isDocCancelled) {
+      toast.error("Cannot record payment on a cancelled document");
+      return;
+    }
+    const amt = Number(payAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error("Enter a valid payment amount");
+      return;
+    }
+
+    savePayment({
+      id: uid("pay"),
+      custName: invoice.cust?.name || "Customer",
+      custId: invoice.cust?.id || "",
+      invoiceNo: invoice.no || "",
+      date: payDate,
+      amount: amt,
+      mode: payMode,
+      refNo: payRefNo,
+      notes: payNotes || "Payment received via Invoice Preview",
+      createdAt: new Date().toISOString(),
+    });
+
+    const currentPaid = Number(invoice.paidAmount || 0);
+    const updatedPaid = currentPaid + amt;
+    const gTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
+    const newRemaining = Math.max(0, gTotal - updatedPaid);
+    const newPaymentStatus = newRemaining <= 0 ? "paid" : updatedPaid > 0 ? "partial" : "unpaid";
+
+    patchInvoice(invoice.id, {
+      paidAmount: updatedPaid,
+      remainingBalance: newRemaining,
+      paymentStatus: newPaymentStatus,
+      paymentRef: payRefNo || invoice.paymentRef,
+      paymentNotes: payNotes || invoice.paymentNotes,
+    });
+
+    toast.success(`Recorded ₹${amt.toLocaleString("en-IN")} payment for Invoice #${invoice.no}`);
+    setShowRecordPayment(false);
+    setPayAmount("");
+    setPayRefNo("");
+    setPayNotes("");
+  };
 
   /* Ensure work order exists (called lazily when switching to cut sheet / stickers tab) */
   const ensureWorkOrder = () => {
@@ -342,7 +407,7 @@ export function InvoiceDetailModal({
 
           {/* Right: Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {onEdit && (
+            {!isDocCancelled && onEdit && (
               <Button
                 size="sm"
                 className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs"
@@ -355,9 +420,22 @@ export function InvoiceDetailModal({
                 Edit Invoice
               </Button>
             )}
+            {!isDocCancelled && (
+              <Button
+                size="sm"
+                className="h-7 text-[11px] gap-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs"
+                onClick={() => {
+                  setActiveTab("overview");
+                  setShowRecordPayment((v) => !v);
+                }}
+              >
+                <CreditCard className="h-3 w-3" />
+                {showRecordPayment ? "Close Payment" : "Record Payment"}
+              </Button>
+            )}
             <Button
               size="sm"
-              className="h-7 text-[11px] gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              className="h-7 text-[11px] gap-1 px-2.5 bg-slate-700 hover:bg-slate-800 text-white font-bold"
               onClick={handlePrintActive}
             >
               <Printer className="h-3 w-3" />
@@ -435,6 +513,13 @@ export function InvoiceDetailModal({
           {/* ─── TAB 1: OVERVIEW & DETAILS ─── */}
           {activeTab === "overview" && (
             <div className="space-y-5 animate-in fade-in-50">
+              {isDocCancelled && (
+                <div className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-3.5 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2 shadow-xs">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>THIS DOCUMENT IS CANCELLED — IT IS READ-ONLY AND CANNOT BE EDITED OR PROCESSED.</span>
+                </div>
+              )}
+
               {/* Financial KPI Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* Total Amount */}
@@ -507,6 +592,116 @@ export function InvoiceDetailModal({
                   </div>
                 </div>
               </div>
+
+              {/* Record Payment Option / Form Section */}
+              {!isDocCancelled && (
+                <div className="flex items-center justify-between bg-card border border-border rounded-xl p-3 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-foreground">Record Payment Received</span>
+                    <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                      (Paid: ₹ {nf(paidAmount)} | Balance: ₹ {nf(pendingAmount)})
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs gap-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    onClick={() => setShowRecordPayment((v) => !v)}
+                  >
+                    {showRecordPayment ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                    {showRecordPayment ? "Close Form" : "+ Record Payment"}
+                  </Button>
+                </div>
+              )}
+
+              {showRecordPayment && !isDocCancelled && (
+                <div className="bg-white dark:bg-slate-800 border-2 border-emerald-500/40 rounded-xl p-4 space-y-3 shadow-md animate-in fade-in-50 text-xs">
+                  <div className="font-bold text-foreground flex items-center gap-1.5 text-xs pb-2 border-b border-border/50">
+                    <CreditCard className="h-4 w-4 text-emerald-600" /> Payment Details for #{invoice.no} ({invoice.cust?.name || "Customer"})
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Payment Date</label>
+                      <Input
+                        type="date"
+                        className="h-8 text-xs mt-1 bg-background"
+                        value={payDate}
+                        onChange={(e) => setPayDate(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Payment Mode</label>
+                      <Select value={payMode} onValueChange={setPayMode}>
+                        <SelectTrigger className="h-8 text-xs mt-1 bg-background">
+                          <SelectValue placeholder="Select mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UPI / Google Pay">UPI / Google Pay</SelectItem>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="Cheque">Cheque</SelectItem>
+                          <SelectItem value="Credit">Credit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Amount Received (₹) *</label>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder={`e.g. ${pendingAmount || 5000}`}
+                        className="h-8 text-xs font-mono font-bold mt-1 bg-background text-emerald-600"
+                        value={payAmount}
+                        onChange={(e) => setPayAmount(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Transaction / Ref No.</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. UPI-9872134"
+                        className="h-8 text-xs mt-1 bg-background"
+                        value={payRefNo}
+                        onChange={(e) => setPayRefNo(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Notes / Remarks</label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. Advance payment received"
+                        className="h-8 text-xs mt-1 bg-background"
+                        value={payNotes}
+                        onChange={(e) => setPayNotes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setShowRecordPayment(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1"
+                      onClick={handleRecordPaymentSubmit}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Save Payment Record
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Customer & Order Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

@@ -213,14 +213,41 @@ function Dashboard() {
       try {
         totals = computeTotals(settings, rec);
       } catch {
-        return;
+        totals = null;
       }
-      (totals?.lines || []).forEach((line: any) => {
-        if (!line?.ok) return;
-        const product = line.productName || line.glassName || line.desc || "";
-        const category = detectGlassTypeFromProduct(String(product));
-        bySqft.set(category, (bySqft.get(category) || 0) + (Number(line.totalSqft) || 0));
-      });
+      const validLines = (totals?.lines || []).filter((line: any) => line?.ok);
+      if (validLines.length > 0) {
+        validLines.forEach((line: any) => {
+          const category =
+            line.glassType ||
+            rec.layers?.[line.layerIdx]?.glassType ||
+            detectGlassTypeFromProduct(
+              line.productName ||
+                line.glassName ||
+                line.desc ||
+                rec.productName ||
+                rec.glass?.desc ||
+                "",
+            );
+          bySqft.set(category, (bySqft.get(category) || 0) + (Number(line.totalSqft) || 0));
+        });
+      } else {
+        const sqft = Number(rec.totals?.sqft) || Number(totals?.sqft) || 0;
+        if (sqft > 0) {
+          const firstLayer = rec.layers?.[0];
+          const category =
+            firstLayer?.glassType ||
+            rec.glassType ||
+            detectGlassTypeFromProduct(
+              firstLayer?.productName ||
+                firstLayer?.glassName ||
+                rec.productName ||
+                rec.glass?.desc ||
+                "",
+            );
+          bySqft.set(category, (bySqft.get(category) || 0) + sqft);
+        }
+      }
     });
     return Array.from(bySqft.entries())
       .map(([category, sqft]) => ({ category, sqft: Math.round(sqft) }))
@@ -654,7 +681,7 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-4 text-xs mb-4 flex-wrap">
-              {glassDemandData.slice(0, 2).map((d) => (
+              {glassDemandData.map((d) => (
                 <div key={d.category} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
                   <span className="text-muted-foreground font-medium">

@@ -205,6 +205,7 @@ type Ctx = {
   payments: any[];
   savePayment: (p: any) => void;
   deletePayment: (id: string) => void;
+  patchInvoice: (id: string, patch: Record<string, any>, base?: any) => any;
   clearAllData: (options?: { clearLocal?: boolean; clearSheet?: boolean }) => Promise<void>;
 };
 
@@ -637,6 +638,10 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   );
 
   const saveInvoice = useCallback(() => {
+    if (inv.status === "cancelled") {
+      toast.error("Cancelled records cannot be modified or saved.");
+      return false;
+    }
     if (!String(inv.cust.name || "").trim()) {
       toast.error("Enter a customer name before saving");
       return false;
@@ -1379,6 +1384,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     generateWorkOrder,
     getBookingsByStatus,
     saveWorkOrder,
+    patchInvoice,
     clearAllData,
   };
 

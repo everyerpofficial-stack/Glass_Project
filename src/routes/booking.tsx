@@ -834,15 +834,15 @@ function BookingPage() {
 
         {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
         {!showForm && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
-              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
-                <Clock className="h-3 w-3" /> Pending Follow Up
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
+              <div className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
+                <FileText className="h-3 w-3" /> Total PI
               </div>
-              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                {pendingWhatsAppCount}
+              <div className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                {preProformaInvoices.length}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting follow up</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Total proforma invoices</div>
             </div>
             <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
               <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
@@ -853,9 +853,18 @@ function BookingPage() {
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Follow up completed</div>
             </div>
+            <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
+              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
+                <Clock className="h-3 w-3" /> Pending Follow Up
+              </div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                {pendingWhatsAppCount}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting follow up</div>
+            </div>
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Total Value
+                Invoice Value
               </div>
               <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
                 ₹ {nf(totalSavedValue)}
@@ -938,6 +947,10 @@ function BookingPage() {
                           key={item.id}
                           className="hover:bg-muted/30 transition-colors cursor-pointer"
                           onClick={() => {
+                            if (isCancelled) {
+                              toast.error("Cancelled proforma invoice cannot be edited");
+                              return;
+                            }
                             loadInvoice(item.id, false);
                             setShowForm(true);
                           }}
@@ -982,15 +995,23 @@ function BookingPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (isCancelled) {
+                                  toast.error("Cancelled invoice cannot be followed up");
+                                  return;
+                                }
                                 toggleWhatsAppSent(item.id);
                               }}
                               className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
-                                item.whatsappSent
+                                isCancelled
+                                  ? "bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60"
+                                  : item.whatsappSent
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
                                   : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
                               }`}
                               title={
-                                item.whatsappSent
+                                isCancelled
+                                  ? "Cancelled invoice"
+                                  : item.whatsappSent
                                   ? "Status: Yes (Click to toggle)"
                                   : "Status: No (Click to toggle)"
                               }
@@ -1041,19 +1062,21 @@ function BookingPage() {
                               )}
 
                               {/* Edit Symbol Button */}
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
-                                onClick={() => {
-                                  loadInvoice(item.id, false);
-                                  setShowForm(true);
-                                  toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
-                                }}
-                                title="Edit Proforma Invoice"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                              </Button>
+                              {!isCancelled && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                  onClick={() => {
+                                    loadInvoice(item.id, false);
+                                    setShowForm(true);
+                                    toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
+                                  }}
+                                  title="Edit Proforma Invoice"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
 
                               {/* Print Symbol Button */}
                               <Button

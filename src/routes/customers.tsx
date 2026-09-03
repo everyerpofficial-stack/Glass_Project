@@ -60,6 +60,8 @@ import {
   commercialRecords,
   dedupeCustomers,
   dmy,
+  formatOrderId,
+  formatPiNo,
   isCancelled,
   nf,
   today,
@@ -104,8 +106,6 @@ function CustomersPage() {
     hydrated,
   } = useGQ();
   const [search, setSearch] = useState("");
-  const [cityFilter, setCityFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   /* Edit / Add Modal state */
   const [openModal, setOpenModal] = useState(false);
@@ -336,14 +336,7 @@ function CustomersPage() {
     }, 0);
   }, [allCustomers, invoices, payments]);
 
-  /* Unique cities */
-  const cities = useMemo(() => {
-    const set = new Set<string>();
-    allCustomers.forEach((c) => {
-      if (c.city) set.add(c.city);
-    });
-    return Array.from(set);
-  }, [allCustomers]);
+
 
   const ALPHABET = ["ALL", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
   const [letterFilter, setLetterFilter] = useState("ALL");
@@ -354,7 +347,21 @@ function CustomersPage() {
   const filteredCustomers = useMemo(() => {
     return allCustomers.filter((c) => {
       const nameStr = String(c.name || "").trim();
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
+
+      const cInvoices = invoices.filter(
+        (inv) =>
+          String(inv.cust?.name || "").toLowerCase() === nameStr.toLowerCase() ||
+          (c.id && String(inv.cust?.id || "") === String(c.id)),
+      );
+      const matchInvoiceNo = cInvoices.some(
+        (inv) =>
+          String(inv.no || "").toLowerCase().includes(q) ||
+          String(inv.orderNo || "").toLowerCase().includes(q) ||
+          String(inv.preProformaNo || "").toLowerCase().includes(q) ||
+          formatPiNo(inv.no).toLowerCase().includes(q) ||
+          formatOrderId(inv.orderNo).toLowerCase().includes(q),
+      );
 
       const matchSearch =
         !search ||
@@ -370,17 +377,14 @@ function CustomersPage() {
           .includes(q) ||
         String(c.id || "")
           .toLowerCase()
-          .includes(q);
+          .includes(q) ||
+        matchInvoiceNo;
 
       const matchLetter = letterFilter === "ALL" || nameStr.toUpperCase().startsWith(letterFilter);
 
-      const matchCity =
-        cityFilter === "all" || String(c.city || "").toLowerCase() === cityFilter.toLowerCase();
-      const matchStatus = statusFilter === "all" || (c.status || "active") === statusFilter;
-
-      return matchSearch && matchLetter && matchCity && matchStatus;
+      return matchSearch && matchLetter;
     });
-  }, [allCustomers, search, letterFilter, cityFilter, statusFilter]);
+  }, [allCustomers, invoices, search, letterFilter]);
 
   const totalPages = Math.max(
     1,
@@ -479,25 +483,14 @@ function CustomersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Email Address</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="hindustan@live.in"
-                    />
-                  </div>
-                  <div>
-                    <Label>City / Branch</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="Jaipur / Mysore"
-                    />
-                  </div>
+                <div>
+                  <Label>Email Address</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="hindustan@live.in"
+                  />
                 </div>
 
                 <div>
@@ -603,47 +596,22 @@ function CustomersPage() {
         </div>
       </div>
 
-      {/* ── Toolbar Row (Search + Filter Dropdowns + Count) ─────────────── */}
+      {/* ── Toolbar Row (Search + Customer Count) ─────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-border rounded-xl p-4 shadow-xs">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 h-8 text-xs bg-background"
-            placeholder="Search by name, phone, GSTIN, city..."
+            placeholder="Search by name, contact number, invoice no..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground mr-1">
+          <span className="text-xs font-medium text-muted-foreground">
             <span className="font-bold text-foreground">{filteredCustomers.length}</span> customers
           </span>
-
-          <Select value={cityFilter} onValueChange={setCityFilter}>
-            <SelectTrigger className="h-8 text-xs w-32 bg-background">
-              <SelectValue placeholder="All Cities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Cities</SelectItem>
-              {cities.map((city) => (
-                <SelectItem key={city} value={city}>
-                  {city}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 text-xs w-32 bg-background">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -1200,7 +1168,7 @@ function CustomersPage() {
                       onClick={() => setShowAddPayment((v) => !v)}
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      {showAddPayment ? "Cancel Form" : "Record New Payment"}
+                      {showAddPayment ? "Close" : "Record New Payment"}
                     </Button>
                   </div>
 

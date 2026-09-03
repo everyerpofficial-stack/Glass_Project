@@ -133,12 +133,55 @@ export const PRODUCTS_BY_TYPE: Record<string, string[]> = {
 };
 
 export function detectGlassTypeFromProduct(prodName: string): string {
-  if (!prodName) return "Clear Glass";
+  if (!prodName || typeof prodName !== "string") return "Clear Glass";
+  const trimmed = prodName.trim();
+  if (!trimmed) return "Clear Glass";
+
+  // 1. Direct match with GLASS_TYPES
+  const exactType = GLASS_TYPES.find((t) => t.toLowerCase() === trimmed.toLowerCase());
+  if (exactType) return exactType;
+
+  // 2. Direct match with PRODUCTS_BY_TYPE list
   for (const [gType, prods] of Object.entries(PRODUCTS_BY_TYPE)) {
-    if (prods.includes(prodName) || prodName.toLowerCase().includes(gType.toLowerCase())) {
+    if (prods.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
       return gType;
     }
   }
+
+  // 3. Normalized keyword analysis
+  const s = trimmed.toLowerCase();
+  const isTG =
+    /\b(t\.?\s*g\.?|tg|toughened|tough)\b/i.test(s) ||
+    s.includes("t.g.") ||
+    s.includes("clear t.g") ||
+    s.includes("frosted t.g") ||
+    s.includes("tinted t.g") ||
+    s.includes("reflective t.g");
+
+  // Check compound types with TG/toughened first
+  if (isTG) {
+    if (s.includes("frost")) return "Frosted - T.G.";
+    if (s.includes("tint")) return "Tinted - T.G.";
+    if (s.includes("reflect")) return "Reflective - T.G.";
+    if (s.includes("clear") || s.includes("float")) return "Clear - T.G.";
+    return "Toughened Glass";
+  }
+
+  // Types without TG
+  if (s.includes("frost")) return "Frosted Glass";
+  if (s.includes("tint")) return "Tinted - T.G.";
+  if (s.includes("reflect")) return "Reflective Glass";
+  if (s.includes("laminat") || /\blam\b/i.test(s)) return "Laminated Glass";
+  if (s.includes("mirror")) return "Mirror Glass";
+  if (s.includes("clear") || s.includes("float")) return "Clear Glass";
+
+  // Check substring containment in GLASS_TYPES
+  for (const gType of GLASS_TYPES) {
+    if (s.includes(gType.toLowerCase())) {
+      return gType;
+    }
+  }
+
   return "Clear Glass";
 }
 
@@ -838,9 +881,10 @@ export function computeTotals(S: any, INV: any) {
           desc: itemDesc,
           layerNo: l.layerNo || `Layer - ${idx + 1}`,
           layerIdx: idx,
-          productName: l.productName || "",
-          thickness: l.thickness,
-          glassName: l.glassName,
+          productName: l.productName || it.productName || "",
+          thickness: l.thickness || it.thickness,
+          glassName: l.glassName || it.glassName || "",
+          glassType: l.glassType || it.glassType || "",
         });
       });
     });
@@ -851,10 +895,29 @@ export function computeTotals(S: any, INV: any) {
         rate: it.rate === "" || it.rate == null ? INV.glass?.defaultRate : it.rate,
         desc: it.desc || INV.glass?.desc,
         layerIdx: 0,
+        productName: it.productName || INV.productName || it.desc || INV.glass?.desc || "",
+        glassName: it.glassName || INV.glass?.desc || "",
+        glassType: it.glassType || INV.glassType || "",
       }),
     );
   }
-  return G.calcInvoice(allItems, engineOpts(S, INV));
+  const res = G.calcInvoice(allItems, engineOpts(S, INV));
+  if (res && Array.isArray(res.lines)) {
+    res.lines = res.lines.map((line: any, idx: number) => {
+      const src = allItems[idx] || {};
+      return {
+        ...src,
+        ...line,
+        productName: src.productName || line.productName || "",
+        glassName: src.glassName || line.glassName || "",
+        glassType: src.glassType || line.glassType || "",
+        desc: src.desc || line.desc || "",
+        layerIdx: src.layerIdx !== undefined ? src.layerIdx : line.layerIdx,
+        layerNo: src.layerNo || line.layerNo,
+      };
+    });
+  }
+  return res;
 }
 
 export function isRateEntered(val: any): boolean {
@@ -906,8 +969,22 @@ export function buildRecord(INV: any, TOT: any) {
     rec.items = rec.layers.flatMap((l: any, idx: number) => {
       const lItems =
         l.items && l.items.length > 0 ? l.items : idx === 0 && INV.items ? INV.items : [];
-      return lItems.map((it: any) => Object.assign({}, it, { layerIdx: idx }));
+      return lItems.map((it: any) =>
+        Object.assign({}, it, {
+          layerIdx: idx,
+          glassType: it.glassType || l.glassType || "",
+          productName: it.productName || l.productName || "",
+          glassName: it.glassName || l.glassName || "",
+          thickness: it.thickness || l.thickness,
+        }),
+      );
     });
+    if (!rec.productName && rec.layers[0]) {
+      rec.productName = rec.layers[0].productName || rec.layers[0].glassName || "";
+    }
+    if (!rec.glassType && rec.layers[0]) {
+      rec.glassType = rec.layers[0].glassType || "";
+    }
   }
   rec.totals = {
     qty: TOT.qty,
