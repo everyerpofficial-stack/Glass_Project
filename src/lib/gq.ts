@@ -1639,12 +1639,14 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
             <td style="border:1px solid #000; padding:4px">
               <b>M/s. : ${esc(INV.cust?.name || "")}</b><br>
               ${esc(INV.cust?.addr || "").replace(/\n/g, "<br>")}<br>
+              ${INV.cust?.phone || INV.cust?.mobile ? "Phone : " + esc(INV.cust?.phone || INV.cust?.mobile) + "<br>" : ""}
               ${INV.cust?.email ? "Email : " + esc(INV.cust.email) + "<br>" : ""}
               <b>GST# : ${esc(INV.cust?.gstin || "")}</b>
             </td>
             <td style="border:1px solid #000; padding:4px">
               <b>Dispatch To : ${esc(INV.cust?.name || "")}</b><br>
               ${esc(INV.cust?.ship || INV.cust?.addr || "").replace(/\n/g, "<br>")}<br>
+              ${INV.cust?.phone || INV.cust?.mobile ? "Phone : " + esc(INV.cust?.phone || INV.cust?.mobile) + "<br>" : ""}
               <b>GST# : ${esc(INV.cust?.gstin || "")}</b>
             </td>
           </tr>

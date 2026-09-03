@@ -65,10 +65,13 @@ function getGreeting() {
    The Today / Yesterday / This Month / This Year pills used to be decoration:
    they set state that nothing read, so every range rendered the same all-time
    figures under a label claiming otherwise. */
-type Timeframe = "today" | "yesterday" | "month" | "year" | "all";
+type Timeframe = "today" | "yesterday" | "month" | "year" | "custom";
 
-function timeframeRange(tf: Timeframe): { from: number; to: number } | null {
-  if (tf === "all") return null;
+function timeframeRange(
+  tf: Timeframe,
+  customStart?: string,
+  customEnd?: string,
+): { from: number; to: number } | null {
   const now = new Date();
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const DAY = 86400000;
@@ -80,10 +83,18 @@ function timeframeRange(tf: Timeframe): { from: number; to: number } | null {
       to: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
     };
   }
-  return {
-    from: new Date(now.getFullYear(), 0, 1).getTime(),
-    to: new Date(now.getFullYear() + 1, 0, 1).getTime(),
-  };
+  if (tf === "year") {
+    return {
+      from: new Date(now.getFullYear(), 0, 1).getTime(),
+      to: new Date(now.getFullYear() + 1, 0, 1).getTime(),
+    };
+  }
+  if (tf === "custom") {
+    const from = customStart ? new Date(customStart).getTime() : 0;
+    const to = customEnd ? new Date(customEnd + "T23:59:59").getTime() : Date.now() + DAY * 365;
+    return { from, to };
+  }
+  return null;
 }
 
 /* A document is dated by its own `date`; `createdAt` is only a fallback for
@@ -123,9 +134,20 @@ function compactAmount(v: number): string {
 function Dashboard() {
   const { invoices, payments, settings } = useGQ();
   const [timeframe, setTimeframe] = useState<Timeframe>("month");
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [orderTab, setOrderTab] = useState<"all" | "booking" | "confirm">("all");
 
-  const range = useMemo(() => timeframeRange(timeframe), [timeframe]);
+  const range = useMemo(
+    () => timeframeRange(timeframe, customStart, customEnd),
+    [timeframe, customStart, customEnd],
+  );
 
   /* Supersession and cancellation are resolved against the whole dataset before
      the date filter runs. Filtering first would hide the Order Confirm that
@@ -424,13 +446,17 @@ function Dashboard() {
         const glassName = lineDesc
           ? String(lineDesc).split("-")[0]?.trim()
           : q.layers?.[0]?.productName || "—";
+        const grandTotal = Number(q.totals?.grandTotal) || 0;
+        const paid = Number(q.paidAmount) || 0;
         return {
           id: String(q.id),
           obNo: formatPiNo(q.no || q.orderNo || q.id),
           customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
           date: q.date ? dmy(q.date) : "—",
           glassType: glassName,
-          amount: Number(q.totals?.grandTotal) || 0,
+          amount: grandTotal,
+          receivedAmount: paid,
+          dueAmount: q.status === "cancelled" ? 0 : Math.max(0, grandTotal - paid),
           followUp: q.whatsappSent ? "Done" : "Pending",
           status:
             q.status === "draft"
@@ -462,6 +488,13 @@ function Dashboard() {
           customer: String(q.cust?.name || "Unnamed Customer").toUpperCase(),
           date: q.date ? dmy(q.date) : "—",
           amount: grandTotal,
+          receivedAmount: paid,
+          dueAmount:
+            q.status === "cancelled"
+              ? 0
+              : Number.isFinite(stored)
+                ? stored
+                : Math.max(0, grandTotal - paid),
           status:
             q.status === "work_order_generated"
               ? "Work Order"
@@ -489,6 +522,8 @@ function Dashboard() {
       date: string;
       glassType: string;
       amount: number;
+      receivedAmount: number;
+      dueAmount: number;
       status: string;
       link: string;
     };
@@ -501,6 +536,8 @@ function Dashboard() {
       date: String(b.date),
       glassType: String(b.glassType || "—"),
       amount: Number(b.amount),
+      receivedAmount: Number(b.receivedAmount || 0),
+      dueAmount: Number(b.dueAmount || 0),
       status: String(b.status),
       link: "/booking",
     }));
@@ -513,6 +550,8 @@ function Dashboard() {
       date: String(c.date),
       glassType: String(c.glassType || "—"),
       amount: Number(c.amount),
+      receivedAmount: Number(c.advance || 0),
+      dueAmount: Number(c.dueAmount || 0),
       status: String(c.status),
       link: "/order",
     }));
@@ -543,38 +582,59 @@ function Dashboard() {
         </div>
 
         {/* Date Filter Pills */}
-        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
-          {[
-            { id: "today", label: "Today" },
-            { id: "yesterday", label: "Yesterday" },
-            { id: "month", label: "This Month" },
-            { id: "year", label: "This Year" },
-          ].map((item) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
+            {[
+              { id: "today", label: "Today" },
+              { id: "yesterday", label: "Yesterday" },
+              { id: "month", label: "This Month" },
+              { id: "year", label: "This Year" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTimeframe(item.id as Timeframe)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  timeframe === item.id
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
             <button
-              key={item.id}
-              onClick={() => setTimeframe(item.id as Timeframe)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                timeframe === item.id
+              type="button"
+              onClick={() => setTimeframe("custom")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                timeframe === "custom"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               }`}
             >
-              {item.label}
+              <span>Custom Date</span>
+              <CalendarIcon className="h-3.5 w-3.5" />
             </button>
-          ))}
-          {/* Was a "Date Range" pill with no picker behind it. Until a custom
-              range is actually built, offering All Time is honest and useful. */}
-          <button
-            onClick={() => setTimeframe("all")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-              timeframe === "all"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-            }`}
-          >
-            <span>All Time</span>
-            <CalendarIcon className="h-3.5 w-3.5" />
-          </button>
+          </div>
+
+          {timeframe === "custom" && (
+            <div className="flex items-center gap-1.5 bg-white dark:bg-muted p-1 rounded-xl border border-border text-xs">
+              <span className="text-[11px] font-bold text-muted-foreground pl-1">From:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-7 px-2 text-xs rounded-md border border-border bg-background font-mono"
+              />
+              <span className="text-[11px] font-bold text-muted-foreground">To:</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-7 px-2 text-xs rounded-md border border-border bg-background font-mono"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -992,7 +1052,7 @@ function Dashboard() {
                 }`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                Pending ({recentOrderBookingsRows.length})
+                Proforma Invoice ({recentOrderBookingsRows.length})
               </button>
               <button
                 onClick={() => setOrderTab("confirm")}
@@ -1003,7 +1063,7 @@ function Dashboard() {
                 }`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Confirmed ({recentOrderConfirmRows.length})
+                Order Confirm ({recentOrderConfirmRows.length})
               </button>
             </div>
           </div>
@@ -1032,24 +1092,25 @@ function Dashboard() {
               <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
                 <th className="py-3 px-4">
                   {orderTab === "confirm"
-                    ? "Invoice No."
+                    ? "Order ID"
                     : orderTab === "booking"
                       ? "PI No."
-                      : "PI / Invoice No."}
+                      : "PI / Order ID"}
                 </th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">Customer</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Glass Spec</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Total Amount</th>
+                <th className="py-3 px-4 text-right">Received Amount</th>
+                <th className="py-3 px-4 text-right font-mono">Due Amount</th>
                 <th className="py-3 px-4 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {!combinedRecentOrders.length && (
                 <tr>
-                  <td colSpan={8} className="py-10 px-4 text-center text-muted-foreground">
+                  <td colSpan={9} className="py-10 px-4 text-center text-muted-foreground">
                     No documents in this period.
                   </td>
                 </tr>
@@ -1071,25 +1132,21 @@ function Dashboard() {
                   <td className="py-3 px-4 font-semibold text-slate-800">{row.customer}</td>
                   <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{row.date}</td>
                   <td className="py-3 px-4 text-muted-foreground">{row.glassType}</td>
-                  <td className="py-3 px-4 text-right font-semibold text-foreground">
+                  <td className="py-3 px-4 text-right font-semibold text-foreground font-mono">
                     {cur(row.amount, settings.currency)}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                    {cur(row.receivedAmount, settings.currency)}
+                  </td>
+                  <td className="py-3 px-4 text-right font-bold font-mono">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        row.status === "Cancelled"
-                          ? "bg-rose-50 text-rose-700 border border-rose-200"
-                          : row.status === "Confirmed"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : row.status === "New"
-                              ? "bg-blue-50 text-blue-700 border border-blue-200"
-                              : row.status === "Follow Up"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                : "bg-purple-50 text-purple-700 border border-purple-200"
-                      }`}
+                      className={
+                        row.dueAmount > 0
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }
                     >
-                      {row.status === "Confirmed" && "✓ "}
-                      {row.status}
+                      {cur(row.dueAmount, settings.currency)}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-center">

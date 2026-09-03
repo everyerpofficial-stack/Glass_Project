@@ -126,11 +126,13 @@ export const Route = createFileRoute("/booking")({
     id?: string | undefined;
     detailId?: string | undefined;
     action?: string | undefined;
+    tab?: string | undefined;
   } => ({
     view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
     id: typeof search["id"] === "string" ? (search["id"] as string) : undefined,
     detailId: typeof search["detailId"] === "string" ? (search["detailId"] as string) : undefined,
     action: typeof search["action"] === "string" ? (search["action"] as string) : undefined,
+    tab: typeof search["tab"] === "string" ? (search["tab"] as string) : undefined,
   }),
   component: BookingPage,
 });
@@ -419,6 +421,7 @@ function BookingPage() {
     id?: string;
     detailId?: string;
     action?: string;
+    tab?: string;
   };
 
   const [bulkOpenLayerIdx, setBulkOpenLayerIdx] = useState<number | null>(null);
@@ -2560,6 +2563,7 @@ function BookingPage() {
       <InvoiceDetailModal
         invoice={detailInvoice}
         open={detailOpen}
+        initialTab={(searchParams?.tab as any) || "overview"}
         onOpenChange={(open) => {
           setDetailOpen(open);
           if (

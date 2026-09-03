@@ -490,7 +490,9 @@ export function InvoiceDetailModal({
               {isDocCancelled && (
                 <div className="bg-rose-500/15 border border-rose-500/40 rounded-xl p-3.5 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2 shadow-xs">
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>THIS DOCUMENT IS CANCELLED — IT IS READ-ONLY AND CANNOT BE EDITED OR PROCESSED.</span>
+                  <span>
+                    THIS DOCUMENT IS CANCELLED — IT IS READ-ONLY AND CANNOT BE EDITED OR PROCESSED.
+                  </span>
                 </div>
               )}
 
@@ -560,18 +562,28 @@ export function InvoiceDetailModal({
                 <div className="flex items-center justify-between bg-card border border-border rounded-xl p-3 shadow-xs">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-foreground">Record Payment Received</span>
+                    <span className="text-xs font-bold text-foreground">
+                      Payment Status
+                    </span>
                     <span className="text-[11px] text-muted-foreground hidden sm:inline">
                       (Paid: ₹ {nf(paidAmount)} | Balance: ₹ {nf(pendingAmount)})
                     </span>
                   </div>
                   <Button
                     size="sm"
-                    className="h-7 text-xs gap-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    className={`h-7 text-xs gap-1 px-3 font-bold transition-colors ${
+                      showRecordPayment
+                        ? "bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 dark:text-rose-300 dark:border-rose-800"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    }`}
                     onClick={() => setShowRecordPayment((v) => !v)}
                   >
-                    {showRecordPayment ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                    {showRecordPayment ? "Close Form" : "+ Record Payment"}
+                    {showRecordPayment ? (
+                      <X className="h-3.5 w-3.5" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    {showRecordPayment ? "Close" : "+ Record Payment"}
                   </Button>
                 </div>
               )}
@@ -579,12 +591,15 @@ export function InvoiceDetailModal({
               {showRecordPayment && !isDocCancelled && (
                 <div className="bg-white dark:bg-slate-800 border-2 border-emerald-500/40 rounded-xl p-4 space-y-3 shadow-md animate-in fade-in-50 text-xs">
                   <div className="font-bold text-foreground flex items-center gap-1.5 text-xs pb-2 border-b border-border/50">
-                    <CreditCard className="h-4 w-4 text-emerald-600" /> Payment Details for #{invoice.no} ({invoice.cust?.name || "Customer"})
+                    <CreditCard className="h-4 w-4 text-emerald-600" /> Payment Details for #
+                    {invoice.no} ({invoice.cust?.name || "Customer"})
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Payment Date</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Payment Date
+                      </label>
                       <Input
                         type="date"
                         className="h-8 text-xs mt-1 bg-background"
@@ -594,7 +609,9 @@ export function InvoiceDetailModal({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Payment Mode</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Payment Mode
+                      </label>
                       <Select value={payMode} onValueChange={setPayMode}>
                         <SelectTrigger className="h-8 text-xs mt-1 bg-background">
                           <SelectValue placeholder="Select mode" />
@@ -610,7 +627,9 @@ export function InvoiceDetailModal({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Amount Received (₹) *</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Amount Received (₹) *
+                      </label>
                       <Input
                         type="number"
                         step="any"
@@ -622,7 +641,9 @@ export function InvoiceDetailModal({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Transaction / Ref No.</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Transaction / Ref No.
+                      </label>
                       <Input
                         type="text"
                         placeholder="e.g. UPI-9872134"
@@ -633,7 +654,9 @@ export function InvoiceDetailModal({
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Notes / Remarks</label>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Notes / Remarks
+                      </label>
                       <Input
                         type="text"
                         placeholder="e.g. Advance payment received"
@@ -768,7 +791,9 @@ export function InvoiceDetailModal({
               {/* Item Details Table */}
               <div className="border border-border rounded-xl overflow-hidden bg-card shadow-xs">
                 <div className="bg-muted/40 px-4 py-2.5 text-xs font-bold border-b border-border text-foreground flex items-center justify-between">
-                  <span>Item Details ({invoice.items?.length || invoice.layers?.length || 0} items)</span>
+                  <span>
+                    Item Details ({invoice.items?.length || invoice.layers?.length || 0} items)
+                  </span>
                   <span className="text-[11px] font-mono text-muted-foreground">
                     Total: ₹ {nf(grandTotal)}
                   </span>
@@ -812,24 +837,31 @@ export function InvoiceDetailModal({
                           item.thk ||
                           invoice.glass?.thickness ||
                           5;
-                        const qty = computedLine?.pcs || computedLine?.qty || item.qty || item.pcs || 1;
+                        const qty =
+                          computedLine?.pcs || computedLine?.qty || item.qty || item.pcs || 1;
                         const areaVal =
                           computedLine?.sqft || item.sqft || computedLine?.sqm || item.sqm || "—";
 
                         const rateVal = Number(
                           computedLine?.rate ??
-                          (item.rate !== "" && item.rate != null ? item.rate : null) ??
-                          (layerObj?.rate !== "" && layerObj?.rate != null ? layerObj.rate : null) ??
-                          invoice.glass?.defaultRate ??
-                          0
+                            (item.rate !== "" && item.rate != null ? item.rate : null) ??
+                            (layerObj?.rate !== "" && layerObj?.rate != null
+                              ? layerObj.rate
+                              : null) ??
+                            invoice.glass?.defaultRate ??
+                            0,
                         );
 
                         const amountVal = Number(
                           computedLine?.amount ??
-                          computedLine?.lineTotal ??
-                          computedLine?.gross ??
-                          (item.amount !== "" && item.amount != null ? item.amount : null) ??
-                          (rateVal > 0 ? rateVal * (Number(computedLine?.sqft || item.sqft || item.sqm || 0) || Number(qty)) : 0)
+                            computedLine?.lineTotal ??
+                            computedLine?.gross ??
+                            (item.amount !== "" && item.amount != null ? item.amount : null) ??
+                            (rateVal > 0
+                              ? rateVal *
+                                (Number(computedLine?.sqft || item.sqft || item.sqm || 0) ||
+                                  Number(qty))
+                              : 0),
                         );
 
                         return (
@@ -838,9 +870,7 @@ export function InvoiceDetailModal({
                             <td className="p-2.5 font-sans font-medium text-foreground">
                               {productName}
                             </td>
-                            <td className="p-2.5 text-center font-sans">
-                              {thickness} mm
-                            </td>
+                            <td className="p-2.5 text-center font-sans">{thickness} mm</td>
                             <td className="p-2.5 text-center font-bold">{qty}</td>
                             <td className="p-2.5 text-right">{areaVal}</td>
                             <td className="p-2.5 text-right font-bold">₹ {nf(rateVal)}</td>

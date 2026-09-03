@@ -29,6 +29,7 @@ import {
   Factory,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
+import {
+  ConfirmPaymentModal,
+  type ConfirmPaymentDetails,
+} from "@/components/app/ConfirmPaymentModal";
 import {
   blankInvoice,
   commercialRecords,
@@ -92,15 +97,17 @@ const AVATAR_COLORS = [
 ];
 
 function isPaymentForCancelledInv(p: any, invs: any[]) {
-  const invNo = String(p.invoiceNo || "").trim().toLowerCase();
+  const invNo = String(p.invoiceNo || "")
+    .trim()
+    .toLowerCase();
   if (!invNo && !p.invoiceId) return false;
   const targetInv = invs.find(
     (x: any) =>
       (p.invoiceId && String(x.id) === String(p.invoiceId)) ||
       (invNo &&
         (String(x.no || "").toLowerCase() === invNo ||
-         String(x.orderNo || "").toLowerCase() === invNo ||
-         String(x.preProformaNo || "").toLowerCase() === invNo)),
+          String(x.orderNo || "").toLowerCase() === invNo ||
+          String(x.preProformaNo || "").toLowerCase() === invNo)),
   );
   return Boolean(targetInv && isCancelled(targetInv));
 }
@@ -129,6 +136,59 @@ function CustomersPage() {
   /* Customer Details Popup Modal state */
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [viewCust, setViewCust] = useState<any>(null);
+
+  /* Pay Modal state */
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payModalInvoice, setPayModalInvoice] = useState<any>(null);
+
+  const handlePayClick = (c: any, customerQuotes: any[], e: React.MouseEvent) => {
+    e.stopPropagation();
+    const unpaidInv =
+      customerQuotes.find(
+        (inv) =>
+          !isCancelled(inv) &&
+          Math.max(0, (Number(inv.totals?.grandTotal) || 0) - (Number(inv.paidAmount) || 0)) > 0,
+      ) || customerQuotes[0];
+
+    if (unpaidInv) {
+      setPayModalInvoice(unpaidInv);
+      setPayModalOpen(true);
+    } else {
+      handleOpenDetails(c, e);
+      setShowAddPayment(true);
+    }
+  };
+
+  const handleConfirmPaymentDetails = (details: ConfirmPaymentDetails) => {
+    if (!payModalInvoice) return;
+    const grandTotal = Number(payModalInvoice.totals?.grandTotal) || 0;
+    const currentPaid = Number(payModalInvoice.paidAmount) || 0;
+    const newPaidAmount = Math.min(grandTotal, currentPaid + details.paidAmount);
+    const remaining = Math.max(0, grandTotal - newPaidAmount);
+
+    patchInvoice(payModalInvoice.id, {
+      paidAmount: newPaidAmount,
+      remainingBalance: remaining,
+      paymentStatus:
+        newPaidAmount >= grandTotal ? "PAID" : newPaidAmount > 0 ? "PARTIAL" : "UNPAID",
+      dueDate: details.dueDate || payModalInvoice.dueDate,
+    });
+
+    savePayment({
+      date: new Date().toISOString().split("T")[0],
+      custName: payModalInvoice.cust?.name || payModalInvoice.custName || "",
+      invoiceNo: payModalInvoice.no || payModalInvoice.orderNo || "",
+      invoiceId: payModalInvoice.id,
+      amount: details.paidAmount,
+      mode: details.paymentType,
+      refNo: details.refNo,
+      notes: details.notes,
+    });
+
+    toast.success(`Payment of ₹${nf(details.paidAmount)} recorded successfully`);
+    setPayModalOpen(false);
+    setPayModalInvoice(null);
+  };
 
   /* Add Payment Form state inside Customer Details Popup */
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -234,20 +294,27 @@ function CustomersPage() {
      Invoice raised from it both carry the same grandTotal, so the ledger was
      billing this customer twice for every confirmed order — and the Due Balance
      underneath, being Total Invoiced minus Total Paid, inherited the error. */
-  const viewCustNameLower = String(viewCust?.name || "").trim().toLowerCase();
+  const viewCustNameLower = String(viewCust?.name || "")
+    .trim()
+    .toLowerCase();
 
   const customerInvoices = useMemo(() => {
     if (!viewCustNameLower) return [];
     return invoices.filter(
       (inv) =>
-        String(inv.cust?.name || "").trim().toLowerCase() === viewCustNameLower,
+        String(inv.cust?.name || "")
+          .trim()
+          .toLowerCase() === viewCustNameLower,
     );
   }, [invoices, viewCustNameLower]);
 
   const customerPayments = useMemo(() => {
     if (!viewCustNameLower) return [];
     return payments.filter(
-      (p) => String(p.custName || "").trim().toLowerCase() === viewCustNameLower,
+      (p) =>
+        String(p.custName || "")
+          .trim()
+          .toLowerCase() === viewCustNameLower,
     );
   }, [payments, viewCustNameLower]);
 
@@ -365,22 +432,23 @@ function CustomersPage() {
     let dueSum = 0;
 
     allCustomers.forEach((c) => {
-      const nameLower = String(c.name || "").trim().toLowerCase();
+      const nameLower = String(c.name || "")
+        .trim()
+        .toLowerCase();
       const customerQuotes = invoices.filter(
         (inv) =>
-          String(inv.cust?.name || "").trim().toLowerCase() === nameLower &&
-          !isCancelled(inv),
+          String(inv.cust?.name || "")
+            .trim()
+            .toLowerCase() === nameLower && !isCancelled(inv),
       );
       const custPays = payments.filter(
         (p) =>
-          String(p.custName || "").trim().toLowerCase() === nameLower &&
-          !isPaymentForCancelledInv(p, invoices),
+          String(p.custName || "")
+            .trim()
+            .toLowerCase() === nameLower && !isPaymentForCancelledInv(p, invoices),
       );
 
-      const totalPaidFromPayments = custPays.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0),
-        0,
-      );
+      const totalPaidFromPayments = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       const totalPaidFromInvoices = customerQuotes.reduce(
         (sum, inv) => sum + (Number(inv.paidAmount) || 0),
         0,
@@ -400,8 +468,6 @@ function CustomersPage() {
     return { grandTotalSum, receivedSum, dueSum };
   }, [allCustomers, invoices, payments]);
 
-
-
   const ALPHABET = ["ALL", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
   const [letterFilter, setLetterFilter] = useState("ALL");
   const [page, setPage] = useState(1);
@@ -420,9 +486,15 @@ function CustomersPage() {
       );
       const matchInvoiceNo = cInvoices.some(
         (inv) =>
-          String(inv.no || "").toLowerCase().includes(q) ||
-          String(inv.orderNo || "").toLowerCase().includes(q) ||
-          String(inv.preProformaNo || "").toLowerCase().includes(q) ||
+          String(inv.no || "")
+            .toLowerCase()
+            .includes(q) ||
+          String(inv.orderNo || "")
+            .toLowerCase()
+            .includes(q) ||
+          String(inv.preProformaNo || "")
+            .toLowerCase()
+            .includes(q) ||
           formatPiNo(inv.no).toLowerCase().includes(q) ||
           formatOrderId(inv.orderNo).toLowerCase().includes(q),
       );
@@ -712,8 +784,6 @@ function CustomersPage() {
         </div>
       </div>
 
-
-
       {/* ── Customer Data Table ────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
         {!hydrated ? (
@@ -740,7 +810,7 @@ function CustomersPage() {
                 <tr className="border-b border-border bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   <th className="py-3 px-4">Customer</th>
                   <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">City</th>
+                  <th className="py-3 px-4">Address</th>
                   <th className="py-3 px-4 text-center">Invoices</th>
                   <th className="py-3 px-4 text-right">Total Amount</th>
                   <th className="py-3 px-4 text-right">Received Amount</th>
@@ -816,15 +886,15 @@ function CustomersPage() {
                         )}
                       </td>
 
-                      {/* City */}
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {c.city || c.addr?.split(",")?.[0] ? (
+                      {/* Address */}
+                      <td className="py-3 px-4 text-muted-foreground max-w-[220px]">
+                        {c.addr || c.city ? (
                           <div className="flex items-center gap-1">
                             <MapPin className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-                            <span>{c.city || c.addr?.split(",")?.[0]}</span>
+                            <span className="truncate">{c.addr || c.city}</span>
                           </div>
                         ) : (
-                          "Jaipur"
+                          <span className="text-muted-foreground/60">—</span>
                         )}
                       </td>
 
@@ -856,12 +926,21 @@ function CustomersPage() {
                         </span>
                       </td>
 
-                      {/* Actions (Removed confusing + button as requested) */}
+                      {/* Actions */}
                       <td className="py-3 px-4 text-right">
                         <div
-                          className="flex items-center justify-end gap-1"
+                          className="flex items-center justify-end gap-1.5"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[11px] font-bold px-2 gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 shadow-2xs cursor-pointer"
+                            onClick={(e) => handlePayClick(c, customerQuotes, e)}
+                            title={`Pay / Record Payment for ${c.name}`}
+                          >
+                            <IndianRupee className="h-3 w-3" /> Pay
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1238,10 +1317,18 @@ function CustomersPage() {
                     </div>
                     <Button
                       size="sm"
-                      className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                      className={`h-8 text-xs gap-1.5 font-semibold shadow-xs transition-colors ${
+                        showAddPayment
+                          ? "bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 dark:text-rose-300 dark:border-rose-800"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
                       onClick={() => setShowAddPayment((v) => !v)}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      {showAddPayment ? (
+                        <X className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
                       {showAddPayment ? "Close" : "Record New Payment"}
                     </Button>
                   </div>
@@ -1428,6 +1515,14 @@ function CustomersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── CONFIRM PAYMENT MODAL ── */}
+      <ConfirmPaymentModal
+        open={payModalOpen}
+        invoice={payModalInvoice}
+        onClose={() => setPayModalOpen(false)}
+        onConfirm={handleConfirmPaymentDetails}
+      />
     </div>
   );
 }

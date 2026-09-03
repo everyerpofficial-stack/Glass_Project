@@ -73,15 +73,60 @@ export const Route = createFileRoute("/order")({
     detailId?: string | undefined;
     action?: string | undefined;
     from?: string | undefined;
+    tab?: string | undefined;
   } => ({
     view: typeof search["view"] === "string" ? (search["view"] as string) : undefined,
     id: typeof search["id"] === "string" ? (search["id"] as string) : undefined,
     detailId: typeof search["detailId"] === "string" ? (search["detailId"] as string) : undefined,
     action: typeof search["action"] === "string" ? (search["action"] as string) : undefined,
     from: typeof search["from"] === "string" ? (search["from"] as string) : undefined,
+    tab: typeof search["tab"] === "string" ? (search["tab"] as string) : undefined,
   }),
   component: OrderPage,
 });
+
+/* ── Timeframe Helper ────────────────────────────────────────── */
+type Timeframe = "today" | "yesterday" | "month" | "year" | "custom";
+
+function timeframeRange(
+  tf: Timeframe,
+  customStart?: string,
+  customEnd?: string,
+): { from: number; to: number } | null {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY = 86400000;
+  if (tf === "today") return { from: midnight, to: midnight + DAY };
+  if (tf === "yesterday") return { from: midnight - DAY, to: midnight };
+  if (tf === "month") {
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
+    };
+  }
+  if (tf === "year") {
+    return {
+      from: new Date(now.getFullYear(), 0, 1).getTime(),
+      to: new Date(now.getFullYear() + 1, 0, 1).getTime(),
+    };
+  }
+  if (tf === "custom") {
+    const from = customStart ? new Date(customStart).getTime() : 0;
+    const to = customEnd ? new Date(customEnd + "T23:59:59").getTime() : Date.now() + DAY * 365;
+    return { from, to };
+  }
+  return null;
+}
+
+function recordTime(rec: any): number {
+  return Date.parse(rec?.date || "") || Date.parse(rec?.createdAt || "") || 0;
+}
+
+function withinRange(rec: any, range: { from: number; to: number } | null): boolean {
+  if (!range) return true;
+  const t = recordTime(rec);
+  return t >= range.from && t < range.to;
+}
 
 /* ─── shared UI helpers ──────────────────────────────────────────── */
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -128,6 +173,7 @@ function OrderPage() {
     detailId?: string;
     action?: string;
     from?: string;
+    tab?: string;
   };
   const {
     inv,
@@ -204,9 +250,24 @@ function OrderPage() {
     }
   }, [searchParams?.id, searchParams?.detailId, searchParams?.view, loadInvoice, invoices]);
 
+  const [timeframe, setTimeframe] = useState<Timeframe>("month");
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+
+  const range = useMemo(
+    () => timeframeRange(timeframe, customStart, customEnd),
+    [timeframe, customStart, customEnd],
+  );
+
   const proformaInvoices = useMemo(
-    () => invoices.filter((x: any) => x.docType === "proforma"),
-    [invoices],
+    () => invoices.filter((x: any) => x.docType === "proforma" && withinRange(x, range)),
+    [invoices, range],
   );
 
   const pendingCount = useMemo(
@@ -222,6 +283,10 @@ function OrderPage() {
       ).length,
     [proformaInvoices],
   );
+  const cancelledCount = useMemo(
+    () => proformaInvoices.filter((x: any) => x.status === "cancelled").length,
+    [proformaInvoices],
+  );
   const deliveredCount = useMemo(
     () =>
       proformaInvoices.filter(
@@ -231,8 +296,15 @@ function OrderPage() {
       ).length,
     [proformaInvoices],
   );
-  const totalSavedValue = useMemo(
-    () => proformaInvoices.reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0),
+  const totalDueAmount = useMemo(
+    () =>
+      proformaInvoices.reduce((acc, item: any) => {
+        if (item.status === "cancelled") return acc;
+        const grandTotal = Number(item.totals?.grandTotal || 0);
+        const paidAmount = Number(item.paidAmount || 0);
+        const due = Math.max(0, grandTotal - paidAmount);
+        return acc + due;
+      }, 0),
     [proformaInvoices],
   );
 
@@ -518,17 +590,97 @@ function OrderPage() {
                   </Button>
                 )}
               </>
-            ) : null}
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center bg-slate-100 dark:bg-muted p-1 rounded-xl border border-border/80 text-xs font-medium gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setTimeframe("today")}
+                    className={`px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer ${
+                      timeframe === "today"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-muted/80"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimeframe("yesterday")}
+                    className={`px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer ${
+                      timeframe === "yesterday"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-muted/80"
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimeframe("month")}
+                    className={`px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer ${
+                      timeframe === "month"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-muted/80"
+                    }`}
+                  >
+                    This Month
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimeframe("year")}
+                    className={`px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer ${
+                      timeframe === "year"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-muted/80"
+                    }`}
+                  >
+                    This Year
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimeframe("custom")}
+                    className={`px-3 py-1.5 rounded-lg transition-all font-semibold flex items-center gap-1 cursor-pointer ${
+                      timeframe === "custom"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-slate-200/60 dark:hover:bg-muted/80"
+                    }`}
+                  >
+                    <span>Custom Date</span>
+                    <CalendarDays className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {timeframe === "custom" && (
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-muted p-1 rounded-xl border border-border text-xs">
+                    <span className="text-[11px] font-bold text-muted-foreground pl-1">From:</span>
+                    <input
+                      type="date"
+                      value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                      className="h-7 px-2 text-xs rounded-md border border-border bg-background font-mono"
+                    />
+                    <span className="text-[11px] font-bold text-muted-foreground">To:</span>
+                    <input
+                      type="date"
+                      value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                      className="h-7 px-2 text-xs rounded-md border border-border bg-background font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
         {!showForm && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Card 1: Total Saved */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Card 1: Total Order */}
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Total Saved
+                Total Order
               </div>
               <div className="text-xl font-bold text-foreground mt-0.5">
                 {proformaInvoices.length}
@@ -536,7 +688,7 @@ function OrderPage() {
               <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
             </div>
 
-            {/* Card 2: Order Confirmed (Next to Total Saved) */}
+            {/* Card 2: Order Confirmed */}
             <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
               <div className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
                 <CheckCircle2 className="h-3 w-3" /> Order Confirmed
@@ -547,27 +699,44 @@ function OrderPage() {
               <div className="text-[10px] text-muted-foreground mt-0.5">In workflow</div>
             </div>
 
-            {/* Card 3: Delivered Orders (Out of Total) */}
-            <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
-              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
-                <CheckCircle2 className="h-3 w-3" /> Delivered
+            {/* Card 3: Cancelled */}
+            <div className="bg-background border border-rose-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-rose-500">
+              <div className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400 flex items-center gap-1 tracking-wider">
+                <XCircle className="h-3 w-3" /> Cancelled
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
-                {deliveredCount} / {proformaInvoices.length}
+              <div className="text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+                {cancelledCount}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Delivered out of total</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Cancelled orders</div>
             </div>
 
-            {/* Card 4: Total Value */}
-            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Total Value
+            {/* Card 4: Delivery Status */}
+            <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
+              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
+                <CheckCircle2 className="h-3 w-3" /> Delivery Status
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
-                ₹ {nf(totalSavedValue)}
+              <div className="text-xl font-bold mt-0.5 font-mono flex items-center gap-1">
+                <span className="text-emerald-600 dark:text-emerald-400">{deliveredCount}</span>
+                <span className="text-muted-foreground/60 font-normal">/</span>
+                <span className="text-rose-600 dark:text-rose-400">{proformaInvoices.length}</span>
+              </div>
+              <div className="text-[10px] mt-0.5 flex items-center gap-1 font-semibold">
+                <span className="text-emerald-600 dark:text-emerald-400">Yes</span>
+                <span className="text-muted-foreground/60">/</span>
+                <span className="text-rose-600 dark:text-rose-400">No</span>
+              </div>
+            </div>
+
+            {/* Card 5: Total Due Amount */}
+            <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
+              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 tracking-wider">
+                Total Due Amount
+              </div>
+              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
+                ₹ {nf(totalDueAmount)}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                Proforma invoices value
+                Active outstanding dues
               </div>
             </div>
           </div>
@@ -624,7 +793,7 @@ function OrderPage() {
                   <thead>
                     <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       <th className="py-2.5 px-3">PI No</th>
-                      <th className="py-2.5 px-3">Invoice No</th>
+                      <th className="py-2.5 px-3">Order ID</th>
                       <th className="py-2.5 px-3">Date & Payment Due</th>
                       <th className="py-2.5 px-3">Customer Name</th>
                       <th className="py-2.5 px-3">Phone No.</th>
@@ -1437,6 +1606,7 @@ function OrderPage() {
       <InvoiceDetailModal
         invoice={detailInvoice}
         open={detailOpen}
+        initialTab={(searchParams?.tab as any) || "overview"}
         onOpenChange={(open) => {
           setDetailOpen(open);
           if (

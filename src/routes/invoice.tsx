@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, useNavigate, Link } from "@tanstack/react-router";
-import { Printer, Edit, ArrowLeft, CheckCircle2, MoveHorizontal, X } from "lucide-react";
+import { Printer, Edit, ArrowLeft, CheckCircle2, MoveHorizontal, X, Factory } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,13 +28,19 @@ export function InvoiceViewPage() {
      loaded, printing one document under another one’s link. Distinguish "not
      found" from "no id given" so the page can say which happened. */
   const requestedId = searchParams?.id;
-  const foundInv = useMemo(
-    () => (requestedId ? invoices.find((x) => x.id === requestedId) : undefined),
-    [requestedId, invoices],
+
+  const foundRecord = invoices.find(
+    (inv: any) =>
+      inv.id === requestedId ||
+      inv.no === requestedId ||
+      inv.orderNo === requestedId ||
+      inv.preProformaNo === requestedId,
   );
-  const missing = Boolean(requestedId) && !foundInv;
-  const targetInv = foundInv || activeInv;
-  const isProforma = targetInv?.docType === "proforma";
+
+  const missing = requestedId && !foundRecord;
+  const targetInv = foundRecord || activeInv;
+
+  const isProforma = targetInv.docType === "proforma";
 
   const totals = useMemo(() => {
     return computeTotals(settings, targetInv);
@@ -105,6 +111,21 @@ export function InvoiceViewPage() {
             className="h-9 text-xs"
           >
             <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigate({
+                to: isProforma ? "/order" : "/booking",
+                search: { detailId: targetInv.id, tab: "cutsheet" } as any,
+              });
+            }}
+            className="h-9 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40 cursor-pointer"
+            title="View Work Order Cut Sheet & Barcode Stickers"
+          >
+            <Factory className="h-4 w-4 mr-1.5" /> Work Order
           </Button>
 
           <Button
