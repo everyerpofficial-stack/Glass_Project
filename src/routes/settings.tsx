@@ -153,7 +153,8 @@ function SettingsPage() {
               value="reset"
               className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg text-rose-600 font-bold"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-rose-600" /> Clear & Reset Data
+              <Trash2 className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-rose-600" /> Clear & Reset
+              Data
             </TabsTrigger>
           </TabsList>
 
@@ -594,10 +595,12 @@ function SettingsPage() {
             <Card className="border-rose-200 dark:border-rose-900/50 shadow-sm">
               <CardHeader className="bg-rose-50/50 dark:bg-rose-950/20 border-b border-rose-100 dark:border-rose-900/40">
                 <CardTitle className="text-base font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-rose-600" /> Total Data Clear & Database Reset
+                  <AlertTriangle className="h-5 w-5 text-rose-600" /> Total Data Clear & Database
+                  Reset
                 </CardTitle>
                 <CardDescription className="text-xs text-rose-600/80">
-                  Wipe all stored invoices, quotes, customers, work orders, and payment history from the website local storage and Google Sheet database.
+                  Wipe all stored invoices, quotes, customers, work orders, and payment history from
+                  the website local storage and Google Sheet database.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
@@ -609,7 +612,8 @@ function SettingsPage() {
                         <Trash2 className="h-4 w-4" /> 1. Clear Website Local Data
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Deletes all records stored locally in your browser (localStorage). Does not touch your connected Google Sheet.
+                        Deletes all records stored locally in your browser (localStorage). Does not
+                        touch your connected Google Sheet.
                       </p>
                     </div>
                     <ConfirmDelete
@@ -636,7 +640,8 @@ function SettingsPage() {
                         <Database className="h-4 w-4" /> 2. Clear Google Sheet Database
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Wipes all data rows across your Google Sheet tables (Invoices, Customers, WorkOrders, Payments).
+                        Wipes all data rows across your Google Sheet tables (Invoices, Customers,
+                        WorkOrders, Payments).
                       </p>
                     </div>
                     <ConfirmDelete
@@ -664,7 +669,8 @@ function SettingsPage() {
                         <AlertTriangle className="h-4 w-4 text-rose-600" /> 3. Total Master Clear
                       </div>
                       <p className="text-xs text-rose-700/80 dark:text-rose-300/80 font-medium leading-relaxed">
-                        Wipes EVERYTHING: erases all data from both your local website browser storage AND your connected Google Sheet database.
+                        Wipes EVERYTHING: erases all data from both your local website browser
+                        storage AND your connected Google Sheet database.
                       </p>
                     </div>
                     <ConfirmDelete
@@ -689,24 +695,34 @@ function SettingsPage() {
                 <div className="rounded-xl bg-muted/40 border border-border p-4 space-y-2">
                   <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                     <span>Current Database Record Count</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">Real-time store snapshot</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Real-time store snapshot
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
                     <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
                       <span className="text-muted-foreground font-medium">Invoices & PIs:</span>
-                      <span className="font-mono font-bold text-foreground text-sm">{invoices.length}</span>
+                      <span className="font-mono font-bold text-foreground text-sm">
+                        {invoices.length}
+                      </span>
                     </div>
                     <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
                       <span className="text-muted-foreground font-medium">Customers:</span>
-                      <span className="font-mono font-bold text-foreground text-sm">{customers.length}</span>
+                      <span className="font-mono font-bold text-foreground text-sm">
+                        {customers.length}
+                      </span>
                     </div>
                     <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
                       <span className="text-muted-foreground font-medium">Work Orders:</span>
-                      <span className="font-mono font-bold text-foreground text-sm">{workOrders.length}</span>
+                      <span className="font-mono font-bold text-foreground text-sm">
+                        {workOrders.length}
+                      </span>
                     </div>
                     <div className="p-2.5 rounded-lg bg-background border border-border/60 flex justify-between items-center">
                       <span className="text-muted-foreground font-medium">Payments:</span>
-                      <span className="font-mono font-bold text-foreground text-sm">{payments.length}</span>
+                      <span className="font-mono font-bold text-foreground text-sm">
+                        {payments.length}
+                      </span>
                     </div>
                   </div>
                 </div>

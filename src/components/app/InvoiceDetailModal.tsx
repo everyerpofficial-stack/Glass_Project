@@ -630,23 +630,40 @@ export function InvoiceDetailModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40 font-mono text-xs">
-                      {invoice.items?.map((item: any, idx: number) => (
-                        <tr key={item.id || idx} className="hover:bg-muted/10">
-                          <td className="p-2.5 text-muted-foreground">{idx + 1}</td>
-                          <td className="p-2.5 font-sans font-medium text-foreground">
-                            {invoice.productName || item.desc || "Glass Item"}
-                          </td>
-                          <td className="p-2.5 text-center font-sans">
-                            {invoice.glass?.thickness || item.thickness || 5} mm
-                          </td>
-                          <td className="p-2.5 text-center font-bold">{item.qty || 1}</td>
-                          <td className="p-2.5 text-right">{item.sqft || item.sqm || "—"}</td>
-                          <td className="p-2.5 text-right">₹ {nf(item.rate || 0)}</td>
-                          <td className="p-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                            ₹ {nf(item.amount || 0)}
-                          </td>
-                        </tr>
-                      ))}
+                      {invoice.items?.map((item: any, idx: number) => {
+                        const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
+                        const layerObj = invoice.layers?.[layerIdx] || null;
+                        const productName =
+                          layerObj?.productName ||
+                          layerObj?.glassName ||
+                          item.productName ||
+                          invoice.productName ||
+                          item.desc ||
+                          "Glass Item";
+                        const thickness =
+                          layerObj?.thickness ||
+                          item.thickness ||
+                          item.thk ||
+                          invoice.glass?.thickness ||
+                          5;
+                        return (
+                          <tr key={item.id || idx} className="hover:bg-muted/10">
+                            <td className="p-2.5 text-muted-foreground">{idx + 1}</td>
+                            <td className="p-2.5 font-sans font-medium text-foreground">
+                              {productName}
+                            </td>
+                            <td className="p-2.5 text-center font-sans">
+                              {thickness} mm
+                            </td>
+                            <td className="p-2.5 text-center font-bold">{item.qty || 1}</td>
+                            <td className="p-2.5 text-right">{item.sqft || item.sqm || "—"}</td>
+                            <td className="p-2.5 text-right">₹ {nf(item.rate || 0)}</td>
+                            <td className="p-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                              ₹ {nf(item.amount || 0)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

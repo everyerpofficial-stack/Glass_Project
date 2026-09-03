@@ -47,6 +47,7 @@ import {
   GLASS_TYPES,
   PRODUCTS_BY_TYPE,
   detectGlassTypeFromProduct,
+  dedupeCustomers,
   formatOrderId,
   formatPiNo,
 } from "@/lib/gq";
@@ -314,6 +315,66 @@ function BulkEntryModal({
   );
 }
 
+const handleInchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (
+    e.key === "Backspace" ||
+    e.key === "Delete" ||
+    e.key === "Tab" ||
+    e.key === "Escape" ||
+    e.key === "Enter" ||
+    e.key.startsWith("Arrow") ||
+    e.key === "Home" ||
+    e.key === "End" ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return;
+  }
+  if (e.key.length === 1 && !/[0-9 ./-]/.test(e.key)) {
+    e.preventDefault();
+  }
+};
+
+const handleDecimalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (
+    e.key === "Backspace" ||
+    e.key === "Delete" ||
+    e.key === "Tab" ||
+    e.key === "Escape" ||
+    e.key === "Enter" ||
+    e.key.startsWith("Arrow") ||
+    e.key === "Home" ||
+    e.key === "End" ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return;
+  }
+  if (e.key.length === 1 && !/[0-9.]/.test(e.key)) {
+    e.preventDefault();
+  }
+};
+
+const handleIntegerKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (
+    e.key === "Backspace" ||
+    e.key === "Delete" ||
+    e.key === "Tab" ||
+    e.key === "Escape" ||
+    e.key === "Enter" ||
+    e.key.startsWith("Arrow") ||
+    e.key === "Home" ||
+    e.key === "End" ||
+    e.ctrlKey ||
+    e.metaKey
+  ) {
+    return;
+  }
+  if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
+    e.preventDefault();
+  }
+};
+
 /* ─── Main Booking Page ──────────────────────────────────────────── */
 function BookingPage() {
   const navigate = useNavigate();
@@ -502,7 +563,23 @@ function BookingPage() {
       ensureLayersWithItems(copy);
       if (!copy.layers[layerIdx]) return prev;
       if (!copy.layers[layerIdx].items[itemIdx]) return prev;
-      copy.layers[layerIdx].items[itemIdx][field] = val;
+
+      let cleanVal = val;
+      if (field === "l1" || field === "l2") {
+        if (typeof cleanVal === "string") {
+          cleanVal = cleanVal.replace(/[^0-9 ./-]/g, "");
+        }
+      } else if (field === "l1mm" || field === "l2mm" || field === "thk" || field === "rate") {
+        if (typeof cleanVal === "string") {
+          cleanVal = cleanVal.replace(/[^0-9.]/g, "");
+        }
+      } else if (["qty", "holes", "cutouts", "bigHoles", "bigCutouts", "csks", "countersinks", "freq"].includes(field)) {
+        if (typeof cleanVal === "string") {
+          cleanVal = cleanVal.replace(/[^0-9]/g, "");
+        }
+      }
+
+      copy.layers[layerIdx].items[itemIdx][field] = cleanVal;
       if (field === "remark") {
         copy.layers[layerIdx].items[itemIdx]["shape"] = val;
       }
@@ -604,7 +681,15 @@ function BookingPage() {
     setInv((prev: any) => {
       const copy = JSON.parse(JSON.stringify(prev));
       ensureLayersWithItems(copy);
-      if (copy.layers[index]) copy.layers[index][field] = val;
+      if (copy.layers[index]) {
+        let cleanVal = val;
+        if (field === "thickness" || field === "rate") {
+          if (typeof cleanVal === "string") {
+            cleanVal = cleanVal.replace(/[^0-9.]/g, "");
+          }
+        }
+        copy.layers[index][field] = cleanVal;
+      }
       copy.items = copy.layers.flatMap((l: any) => l.items || []);
       return copy;
     });
@@ -614,9 +699,12 @@ function BookingPage() {
   const [custSearch, setCustSearch] = useState("");
   const [custDropOpen, setCustDropOpen] = useState(false);
 
+  const uniqueCustomers = useMemo(() => dedupeCustomers(customers), [customers]);
+
   const filteredCustomers = useMemo(
-    () => customers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
-    [customers, custSearch],
+    () =>
+      uniqueCustomers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
+    [uniqueCustomers, custSearch],
   );
 
   const selectCustomer = (c: any) => {
@@ -935,14 +1023,11 @@ function BookingPage() {
                                       : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                                   }`}
                                   onClick={() => {
-                                    const targetPI = confirmPreProforma(item.id);
-                                    if (targetPI && targetPI.id) {
-                                      loadInvoice(targetPI.id, false);
-                                      navigate({
-                                        to: "/order",
-                                        search: { view: "form", id: targetPI.id } as any,
-                                      });
-                                    }
+                                    loadInvoice(item.id, false);
+                                    navigate({
+                                      to: "/order",
+                                      search: { view: "form", id: item.id, from: "booking" } as any,
+                                    });
                                   }}
                                   title={
                                     isConfirmed
@@ -1127,7 +1212,12 @@ function BookingPage() {
                       <Select
                         value={inv.cust?.name || ""}
                         onValueChange={(val) => {
-                          const found = customers.find((c: any) => c.name === val);
+                          const found = uniqueCustomers.find(
+                            (c: any) =>
+                              String(c.name || "")
+                                .trim()
+                                .toLowerCase() === String(val).trim().toLowerCase(),
+                          );
                           if (found) selectCustomer(found);
                         }}
                       >
@@ -1135,7 +1225,7 @@ function BookingPage() {
                           <SelectValue placeholder="-- Select Old Customer --" />
                         </SelectTrigger>
                         <SelectContent>
-                          {customers.map((c: any) => (
+                          {uniqueCustomers.map((c: any) => (
                             <SelectItem key={c.id || c.name} value={c.name}>
                               <span className="font-semibold">{c.name}</span>{" "}
                               {c.phone ? `(${c.phone})` : ""}
@@ -1532,20 +1622,30 @@ function BookingPage() {
                                 </div>
                                 <div>
                                   <Input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     className="h-7 text-xs font-mono w-full text-center"
                                     value={layer.thickness || ""}
-                                    onChange={(e) =>
-                                      updateLayer(layerIdx, "thickness", Number(e.target.value))
-                                    }
+                                    onKeyDown={handleDecimalKeyDown}
+                                    onChange={(e) => {
+                                      const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                      e.target.value = clean;
+                                      updateLayer(layerIdx, "thickness", clean);
+                                    }}
                                   />
                                 </div>
                                 <div>
                                   <Input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     className="h-7 text-xs font-mono w-full text-center"
                                     value={layer.rate || ""}
-                                    onChange={(e) => updateLayer(layerIdx, "rate", e.target.value)}
+                                    onKeyDown={handleDecimalKeyDown}
+                                    onChange={(e) => {
+                                      const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                      e.target.value = clean;
+                                      updateLayer(layerIdx, "rate", clean);
+                                    }}
                                   />
                                 </div>
                                 <div className="flex justify-center">
@@ -1823,14 +1923,17 @@ function BookingPage() {
                                                 <Input
                                                   className="h-8 text-xs font-mono text-center w-full"
                                                   value={item.l1 || ""}
-                                                  onChange={(e) =>
+                                                  onKeyDown={handleInchKeyDown}
+                                                  onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9 ./-]/g, "");
+                                                    e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
                                                       itemIdx,
                                                       "l1",
-                                                      e.target.value,
-                                                    )
-                                                  }
+                                                      clean,
+                                                    );
+                                                  }}
                                                   placeholder={isFreqOn ? "36 2" : "36 3/8"}
                                                 />
                                               </td>
@@ -1838,14 +1941,17 @@ function BookingPage() {
                                                 <Input
                                                   className="h-8 text-xs font-mono text-center w-full"
                                                   value={item.l2 || ""}
-                                                  onChange={(e) =>
+                                                  onKeyDown={handleInchKeyDown}
+                                                  onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9 ./-]/g, "");
+                                                    e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
                                                       itemIdx,
                                                       "l2",
-                                                      e.target.value,
-                                                    )
-                                                  }
+                                                      clean,
+                                                    );
+                                                  }}
                                                   placeholder={isFreqOn ? "32 2" : "13 3/8"}
                                                 />
                                               </td>
@@ -1857,36 +1963,42 @@ function BookingPage() {
                                             <>
                                               <td className="py-1.5 px-1">
                                                 <Input
-                                                  type="number"
+                                                  type="text"
+                                                  inputMode="decimal"
                                                   className="h-8 text-xs font-mono text-center w-full"
                                                   value={item.l1mm ?? ""}
-                                                  onChange={(e) =>
+                                                  onKeyDown={handleDecimalKeyDown}
+                                                  onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                                    e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
                                                       itemIdx,
                                                       "l1mm",
-                                                      e.target.value,
-                                                    )
-                                                  }
+                                                      clean,
+                                                    );
+                                                  }}
                                                   placeholder="60.3"
-                                                  step="0.1"
                                                 />
                                               </td>
                                               <td className="py-1.5 px-1">
                                                 <Input
-                                                  type="number"
+                                                  type="text"
+                                                  inputMode="decimal"
                                                   className="h-8 text-xs font-mono text-center w-full"
                                                   value={item.l2mm ?? ""}
-                                                  onChange={(e) =>
+                                                  onKeyDown={handleDecimalKeyDown}
+                                                  onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9.]/g, "");
+                                                    e.target.value = clean;
                                                     updateLayerItem(
                                                       layerIdx,
                                                       itemIdx,
                                                       "l2mm",
-                                                      e.target.value,
-                                                    )
-                                                  }
+                                                      clean,
+                                                    );
+                                                  }}
                                                   placeholder="51.2"
-                                                  step="0.1"
                                                 />
                                               </td>
                                             </>
@@ -1904,20 +2016,21 @@ function BookingPage() {
                                           {/* PCS (Qty) */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.qty || ""}
-                                              min={1}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "qty",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 
@@ -1929,100 +2042,105 @@ function BookingPage() {
                                           {/* Hole */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.holes || ""}
-                                              min={0}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "holes",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 
                                           {/* Cut Out */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.cutouts || ""}
-                                              min={0}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "cutouts",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 
                                           {/* Big Hole */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.bigHoles || ""}
-                                              min={0}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "bigHoles",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 
                                           {/* Big Cut Out */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.bigCutouts || ""}
-                                              min={0}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "bigCutouts",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 
                                           {/* CSK */}
                                           <td className="py-1.5 px-1">
                                             <Input
-                                              type="number"
+                                              type="text"
+                                              inputMode="numeric"
                                               className="h-8 text-xs font-mono text-center w-full"
                                               value={item.csks || item.countersinks || ""}
-                                              min={0}
-                                              onChange={(e) =>
+                                              onKeyDown={handleIntegerKeyDown}
+                                              onChange={(e) => {
+                                                const s = e.target.value.replace(/[^0-9]/g, "");
+                                                e.target.value = s;
                                                 updateLayerItem(
                                                   layerIdx,
                                                   itemIdx,
                                                   "csks",
-                                                  e.target.value === ""
-                                                    ? ""
-                                                    : Number(e.target.value),
-                                                )
-                                              }
+                                                  s === "" ? "" : Number(s),
+                                                );
+                                              }}
                                             />
                                           </td>
 

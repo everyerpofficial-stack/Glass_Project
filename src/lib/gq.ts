@@ -281,6 +281,51 @@ export const SAMPLE_INVOICE_07321: any = {
   createdAt: "2026-03-16T12:30:00.000Z",
 };
 
+/* ---------- Customer Deduplication Helper ---------- */
+export function dedupeCustomers(customers: any[]): any[] {
+  if (!Array.isArray(customers) || customers.length === 0) return [];
+  const map = new Map<string, any>();
+
+  for (const c of customers) {
+    if (!c) continue;
+    const nameTrimmed = String(c.name || "").trim();
+    if (!nameTrimmed) continue;
+
+    const nameKey = nameTrimmed.toLowerCase();
+
+    if (map.has(nameKey)) {
+      const existing = map.get(nameKey);
+      map.set(nameKey, {
+        ...c,
+        ...existing,
+        id: existing.id || c.id,
+        name: existing.name || c.name || nameTrimmed,
+        phone: existing.phone || c.phone || "",
+        email: existing.email || c.email || "",
+        gstin: existing.gstin || c.gstin || "",
+        city: existing.city || c.city || "",
+        addr: existing.addr || c.addr || "",
+        ship: existing.ship || c.ship || "",
+        status: existing.status || c.status || "active",
+      });
+    } else {
+      map.set(nameKey, {
+        ...c,
+        name: nameTrimmed,
+        phone: c.phone || "",
+        email: c.email || "",
+        gstin: c.gstin || "",
+        city: c.city || "",
+        addr: c.addr || "",
+        ship: c.ship || "",
+        status: c.status || "active",
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 /* ---------- localStorage (same 'gq.' keys as the original app) ---------- */
 /* localStorage is this app's only offline copy, so a silent write failure means
    silent data loss. Storage can refuse a write for reasons the user can act on
@@ -318,17 +363,25 @@ export const LS = {
       return false;
     }
   },
+  /* Both keys are removed because early builds wrote un-prefixed keys. Removing
+     a key that is not there is a no-op, so a throw here can only mean storage
+     itself is unavailable — nothing to recover, and nothing worth interrupting
+     the user over. */
   del(k: string) {
     try {
       localStorage.removeItem("gq." + k);
       localStorage.removeItem(k);
-    } catch {}
+    } catch {
+      /* storage unavailable — the key is already effectively gone */
+    }
   },
   remove(k: string) {
     try {
       localStorage.removeItem("gq." + k);
       localStorage.removeItem(k);
-    } catch {}
+    } catch {
+      /* storage unavailable — the key is already effectively gone */
+    }
   },
 };
 
@@ -899,10 +952,22 @@ export function buildRecord(INV: any, TOT: any) {
    Apps Script web apps have no hard response-time ceiling: a cold start plus
    a slow sheet read can hang a fetch() for a minute. Every request therefore
    runs under an AbortController so a stalled network can never freeze the UI
-   or leave `sheetSyncing` stuck on. Reads use a short budget (the UI already
-   has cached data to fall back on); writes get a longer one because aborting
-   a write only loses the acknowledgement, not the row. */
-export const SHEET_READ_TIMEOUT_MS = 8000;
+   or leave `sheetSyncing` stuck on. Writes get a longer budget than reads
+   because aborting a write only loses the acknowledgement, not the row.
+
+   The read budget was 8s, on the reasoning that the UI has cached data to fall
+   back on. Measured against this deployment, that is under the floor rather
+   than a safety margin: eight `getAll` calls in a row came back in 19.9s, 9.6s,
+   3.3s, 5.4s, 2.9s, 7.0s, 4.0s, 3.1s. The first call after the script has gone
+   idle pays a cold start of roughly twenty seconds, so the poll aborted, every
+   tab was marked failed, and the header flipped to "Offline" while the backend
+   was in fact healthy and answering. Aborting also does not stop the Apps
+   Script execution — it keeps running server-side, and because Apps Script
+   serialises executions per user, the retry 30s later queued behind the
+   abandoned one and timed out too. That is the loop that made "Offline" stick.
+
+   30s clears the measured cold start with headroom and still bounds a hang. */
+export const SHEET_READ_TIMEOUT_MS = 30000;
 export const SHEET_WRITE_TIMEOUT_MS = 15000;
 
 export class SheetTimeoutError extends Error {
@@ -1255,8 +1320,6 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
   const terms = (S.terms || "").split("\n").filter((x: string) => x.trim());
   const unitCol = S.rateUnit === "sqft" ? "Sq.Ft" : "SqMtr";
-
-  let globalSr = 1;
   const productGroups: any[] = [];
 
   if (INV.layers && INV.layers.length > 0) {
@@ -1307,6 +1370,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     let grpAreaSqm = 0;
     let grpAreaSqft = 0;
     let grpAmount = 0;
+    let srNo = 1;
 
     let rowsHTML = "";
     grp.lines.forEach((x: any) => {
@@ -1325,7 +1389,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
       rowsHTML += `
         <tr>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${globalSr++}</td>
+          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${srNo++}</td>
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l1 || "")}</td>
           <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l2 || "")}</td>
           <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>

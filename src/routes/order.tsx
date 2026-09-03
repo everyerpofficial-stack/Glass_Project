@@ -53,6 +53,7 @@ import {
   getNextProformaNo,
   uid,
   workOrderBelongsTo,
+  dedupeCustomers,
   formatOrderId,
   formatPiNo,
 } from "@/lib/gq";
@@ -474,7 +475,7 @@ function ConfirmPaymentModalBody({
               className="h-8 text-xs font-bold px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer gap-1.5"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Confirm Payment & Save Invoice
+              Confirm Payment
             </Button>
           </div>
         </form>
@@ -486,7 +487,11 @@ function ConfirmPaymentModalBody({
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
   const navigate = useNavigate();
-  const searchParams = useSearch({ strict: false }) as { view?: string; id?: string };
+  const searchParams = useSearch({ strict: false }) as {
+    view?: string;
+    id?: string;
+    from?: string;
+  };
   const {
     inv,
     setInv,
@@ -499,6 +504,7 @@ function OrderPage() {
     saveCustomer,
     newInvoice,
     loadInvoice,
+    confirmPreProforma,
     confirmOrder,
     generateWorkOrder,
     saveWorkOrder,
@@ -597,9 +603,11 @@ function OrderPage() {
   };
 
   /* ── customer search ── */
+  const uniqueCustomers = useMemo(() => dedupeCustomers(customers), [customers]);
   const filteredCustomers = useMemo(
-    () => customers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
-    [customers, custSearch],
+    () =>
+      uniqueCustomers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
+    [uniqueCustomers, custSearch],
   );
 
   const selectCustomer = (c: any) => {
@@ -661,33 +669,33 @@ function OrderPage() {
 
   const handleConfirmPaymentAndMove = (paymentDetails: ConfirmPaymentDetails) => {
     if (!targetConfirmInvoice) return;
-    /* confirmOrder is what persists paidAmount / remainingBalance /
-       paymentStatus, writes the Payments row and flips the record to
-       order_confirmed. Without it the modal collected the payment and threw it
-       away: the invoice stayed a draft and no payment was ever recorded. */
-    confirmOrder(targetConfirmInvoice.id, paymentDetails);
 
-    /* Only mint a work order if this invoice does not already have one.
-       generateWorkOrder stamps a fresh uid every call, so saveWorkOrder would
-       append rather than update — confirming a second time (a double-click, or
-       re-confirming after an edit) piled up duplicate work orders. The list
-       view already guarded this; the modal did not. */
-    const existingWO = workOrders.find((w: any) => workOrderBelongsTo(w, targetConfirmInvoice));
-    if (!existingWO) {
-      const wo = generateWorkOrder(targetConfirmInvoice.id);
-      if (wo) {
-        saveWorkOrder(wo);
-        updateInvoiceStatus(targetConfirmInvoice.id, "work_order_generated");
+    let activeInv = targetConfirmInvoice;
+    if (activeInv.docType === "pre_proforma" || !activeInv.docType) {
+      const converted = confirmPreProforma(activeInv.id);
+      if (converted) {
+        activeInv = converted;
       }
     }
-    const confirmedId = targetConfirmInvoice.id;
+
+    confirmOrder(activeInv.id, paymentDetails);
+
+    const existingWO = workOrders.find((w: any) => workOrderBelongsTo(w, activeInv));
+    if (!existingWO) {
+      const wo = generateWorkOrder(activeInv.id);
+      if (wo) {
+        saveWorkOrder(wo);
+        updateInvoiceStatus(activeInv.id, "work_order_generated");
+      }
+    }
+
     setConfirmModalOpen(false);
     setTargetConfirmInvoice(null);
     setShowForm(false);
     toast.success(
-      `Proforma Invoice ${targetConfirmInvoice.no || targetConfirmInvoice.orderNo} saved & confirmed successfully!`,
+      `Payment confirmed for ${activeInv.no || activeInv.orderNo}! Moved to Order Confirm.`,
     );
-    navigate({ to: "/invoice", search: { id: confirmedId } });
+    navigate({ to: "/order", search: { view: undefined } as any });
   };
 
   const handleConfirmOrder = () => {
@@ -746,7 +754,14 @@ function OrderPage() {
               {" / "}
               {showForm ? (
                 <button
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    if (inv.docType === "pre_proforma" || searchParams?.from === "booking") {
+                      navigate({ to: "/booking" });
+                    } else {
+                      setShowForm(false);
+                      navigate({ to: "/order", search: { view: undefined } as any });
+                    }
+                  }}
                   className="hover:text-foreground transition-colors"
                 >
                   Order Confirm
@@ -784,7 +799,14 @@ function OrderPage() {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs gap-1.5"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    if (inv.docType === "pre_proforma" || searchParams?.from === "booking") {
+                      navigate({ to: "/booking" });
+                    } else {
+                      setShowForm(false);
+                      navigate({ to: "/order", search: { view: undefined } as any });
+                    }
+                  }}
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to Saved List
@@ -1296,13 +1318,13 @@ function OrderPage() {
                 <div className="overflow-x-auto -mx-3 sm:-mx-4">
                   <table
                     className="w-full text-[11px] border-collapse"
-                    style={{ minWidth: "850px" }}
+                    style={{ minWidth: "1000px" }}
                   >
                     <thead>
                       <tr className="border-b border-border bg-muted/20">
                         {[
                           "Sr.",
-                          "Proforma Invoice No",
+                          "PI No",
                           "Date",
                           "Product",
                           "Thick",
@@ -1316,7 +1338,7 @@ function OrderPage() {
                         ].map((h, i) => (
                           <th
                             key={i}
-                            className="py-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left"
+                            className="py-2 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left"
                           >
                             {h}
                           </th>
@@ -1330,46 +1352,71 @@ function OrderPage() {
                         took the whole page to the error boundary. */}
                       {(inv.items || []).map((item: any, idx: number) => {
                         const line = totals.lines?.[idx];
+                        const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
+                        const layerObj = inv.layers?.[layerIdx] || null;
+                        const productName =
+                          layerObj?.productName ||
+                          layerObj?.glassName ||
+                          item.productName ||
+                          inv.productName ||
+                          "—";
+                        const glassName =
+                          layerObj?.glassType ||
+                          layerObj?.glassName ||
+                          item.glassName ||
+                          item.glassType ||
+                          inv.glass?.desc ||
+                          "—";
+                        const thickness =
+                          layerObj?.thickness ||
+                          item.thickness ||
+                          item.thk ||
+                          inv.glass?.thickness ||
+                          "—";
+                        const lineWeight = line?.ok
+                          ? (line.totalSqm * Number(thickness || 5) * 2.5).toFixed(3)
+                          : "—";
+
                         return (
                           <tr key={item.id || idx} className="hover:bg-muted/10">
-                            <td className="py-1.5 px-2 text-center text-muted-foreground font-mono w-8">
+                            <td className="py-2 px-2.5 text-center text-muted-foreground font-mono whitespace-nowrap">
                               {idx + 1}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono text-muted-foreground w-[60px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium min-w-[90px]">
                               {inv.no || "—"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs text-muted-foreground w-[80px]">
+                            <td className="py-2 px-2.5 text-xs text-muted-foreground whitespace-nowrap min-w-[90px]">
                               {inv.date || "—"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs text-foreground">
-                              {inv.productName || item.desc || "—"}
+                            <td className="py-2 px-2.5 text-xs text-foreground whitespace-nowrap font-medium min-w-[140px]">
+                              {productName}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono text-center w-[45px]">
-                              {inv.glass?.thickness || "—"}
+                            <td className="py-2 px-2.5 text-xs font-mono text-center whitespace-nowrap min-w-[50px]">
+                              {thickness}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono text-center w-[40px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-center whitespace-nowrap min-w-[45px]">
                               {line?.ok ? line.qty : item.qty || "—"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono w-[65px]">
+                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
                               {line?.ok
                                 ? settings.rateUnit === "sqft"
                                   ? line.totalSqft
                                   : line.totalSqm
                                 : "—"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono font-semibold text-right w-[75px]">
+                            <td className="py-2 px-2.5 text-xs font-mono font-semibold text-right whitespace-nowrap min-w-[80px]">
                               {line?.ok ? nf(line.amount) : "—"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs text-foreground">
-                              {inv.glass?.desc || item.desc || "—"}
+                            <td className="py-2 px-2.5 text-xs text-foreground whitespace-nowrap font-medium min-w-[120px]">
+                              {glassName}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono w-[60px]">
-                              {totals.weightKg || "—"}
+                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
+                              {lineWeight}
                             </td>
-                            <td className="py-1.5 px-2 text-xs text-muted-foreground w-[85px]">
-                              {inv.jobType || "—"}
+                            <td className="py-2 px-2.5 text-xs text-muted-foreground whitespace-nowrap min-w-[100px]">
+                              {inv.jobType || "WITH MATERIAL"}
                             </td>
-                            <td className="py-1.5 px-2 text-xs font-mono w-[60px]">
+                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
                               {line?.ok
                                 ? settings.rateUnit === "sqft"
                                   ? line.totalSqft
@@ -1494,7 +1541,7 @@ function OrderPage() {
                   className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 shadow-md cursor-pointer"
                   onClick={handleConfirmOrder}
                 >
-                  <Save className="h-4 w-4" /> Save Invoice
+                  <Save className="h-4 w-4" /> Confirm Payment
                 </Button>
               </div>
             </div>

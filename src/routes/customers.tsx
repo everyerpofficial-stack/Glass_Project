@@ -55,7 +55,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGQ } from "@/lib/store";
 import { TableSkeleton } from "@/components/app/DataSkeleton";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
-import { blankInvoice, commercialRecords, dmy, isCancelled, nf, today } from "@/lib/gq";
+import {
+  blankInvoice,
+  commercialRecords,
+  dedupeCustomers,
+  dmy,
+  isCancelled,
+  nf,
+  today,
+} from "@/lib/gq";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/customers")({
@@ -279,31 +287,23 @@ function CustomersPage() {
     invoices.forEach((inv) => {
       if (inv.cust && inv.cust.name && String(inv.cust.name).trim()) {
         const nameLower = String(inv.cust.name).trim().toLowerCase();
-        const exists = list.some(
-          (c) =>
-            String(c.name || "")
-              .trim()
-              .toLowerCase() === nameLower,
-        );
-        if (!exists) {
-          list.push({
-            id:
-              inv.cust.id ||
-              "cus-" +
-                Math.abs(nameLower.split("").reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
-            name: inv.cust.name,
-            phone: inv.cust.phone || "",
-            email: inv.cust.email || "",
-            gstin: inv.cust.gstin || "",
-            city: inv.cust.city || inv.cust.ship || "",
-            addr: inv.cust.addr || "",
-            ship: inv.cust.ship || "",
-            status: "active",
-          });
-        }
+        list.push({
+          id:
+            inv.cust.id ||
+            "cus-" +
+              Math.abs(nameLower.split("").reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0)),
+          name: inv.cust.name,
+          phone: inv.cust.phone || "",
+          email: inv.cust.email || "",
+          gstin: inv.cust.gstin || "",
+          city: inv.cust.city || inv.cust.ship || "",
+          addr: inv.cust.addr || "",
+          ship: inv.cust.ship || "",
+          status: "active",
+        });
       }
     });
-    return list;
+    return dedupeCustomers(list);
   }, [customers, invoices]);
 
   /* Metrics counts */
@@ -316,6 +316,25 @@ function CustomersPage() {
     () => allCustomers.filter((c) => c.status === "pending").length,
     [allCustomers],
   );
+
+  const totalOutstandingDue = useMemo(() => {
+    return allCustomers.reduce((acc, c) => {
+      const cQuotes = invoices.filter(
+        (inv) =>
+          String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase() &&
+          !isCancelled(inv),
+      );
+      const cPays = payments.filter(
+        (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
+      );
+      const totAmt = cQuotes.reduce((sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0), 0);
+      const recAmt = Math.max(
+        cPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+        cQuotes.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0),
+      );
+      return acc + Math.max(0, totAmt - recAmt);
+    }, 0);
+  }, [allCustomers, invoices, payments]);
 
   /* Unique cities */
   const cities = useMemo(() => {
@@ -558,10 +577,10 @@ function CustomersPage() {
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Pending KYC / GST
+                Total Outstanding Due
               </div>
-              <div className="text-xl font-bold tracking-tight text-amber-600">
-                {pendingKycCount}
+              <div className="text-xl font-bold tracking-tight text-amber-600 font-mono">
+                ₹ {nf(totalOutstandingDue)}
               </div>
             </div>
           </div>
@@ -685,9 +704,9 @@ function CustomersPage() {
                   <th className="py-3 px-4">Contact</th>
                   <th className="py-3 px-4">City</th>
                   <th className="py-3 px-4 text-center">Invoices</th>
-                  <th className="py-3 px-4 text-right">Payments Received</th>
-                  <th className="py-3 px-4 text-center">KYC / GST</th>
-                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Total Amount</th>
+                  <th className="py-3 px-4 text-right">Received Amount</th>
+                  <th className="py-3 px-4 text-right">Due Amount</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -696,13 +715,26 @@ function CustomersPage() {
                   const customerQuotes = invoices.filter(
                     (inv) =>
                       String(inv.cust?.name || "").toLowerCase() ===
-                      String(c.name || "").toLowerCase(),
+                        String(c.name || "").toLowerCase() && !isCancelled(inv),
                   );
                   const custPays = payments.filter(
                     (p) =>
                       String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
                   );
-                  const totalPaid = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                  const totalPaidFromPayments = custPays.reduce(
+                    (sum, p) => sum + (Number(p.amount) || 0),
+                    0,
+                  );
+                  const totalPaidFromInvoices = customerQuotes.reduce(
+                    (sum, inv) => sum + (Number(inv.paidAmount) || 0),
+                    0,
+                  );
+                  const totalAmount = customerQuotes.reduce(
+                    (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
+                    0,
+                  );
+                  const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
+                  const dueAmount = Math.max(0, totalAmount - receivedAmount);
 
                   const colorClass = AVATAR_COLORS[i % AVATAR_COLORS.length];
                   const code = `CUS-${String(i + 230).padStart(4, "0")}`;
@@ -769,44 +801,26 @@ function CustomersPage() {
                         </span>
                       </td>
 
-                      {/* Payments Received */}
-                      <td className="py-3 px-4 text-right font-mono font-semibold">
-                        <span className="text-emerald-600 font-bold">₹ {nf(totalPaid)}</span>
-                        <div className="text-[10px] text-muted-foreground font-normal">
-                          {custPays.length} payments
-                        </div>
+                      {/* Total Amount */}
+                      <td className="py-3 px-4 text-right font-mono font-bold text-foreground">
+                        ₹ {nf(totalAmount)}
                       </td>
 
-                      {/* KYC / GST Status */}
-                      <td className="py-3 px-4 text-center">
-                        {c.gstin ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-semibold">
-                            <CheckCircle2 className="h-3 w-3" /> Verified
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-semibold">
-                            <Clock className="h-3 w-3" /> Pending
-                          </span>
-                        )}
+                      {/* Received Amount */}
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                        ₹ {nf(receivedAmount)}
                       </td>
 
-                      {/* Status */}
-                      <td className="py-3 px-4 text-center">
+                      {/* Due Amount */}
+                      <td className="py-3 px-4 text-right font-mono font-bold">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                            (c.status || "active") === "active"
-                              ? "bg-emerald-500/10 text-emerald-600"
-                              : "bg-amber-500/10 text-amber-600"
-                          }`}
+                          className={
+                            dueAmount > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }
                         >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              (c.status || "active") === "active"
-                                ? "bg-emerald-500"
-                                : "bg-amber-500"
-                            }`}
-                          />
-                          {(c.status || "active") === "active" ? "Active" : "Pending"}
+                          ₹ {nf(dueAmount)}
                         </span>
                       </td>
 

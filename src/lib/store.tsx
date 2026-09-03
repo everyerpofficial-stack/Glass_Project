@@ -18,6 +18,7 @@ import {
   blankInvoice,
   buildRecord,
   computeTotals,
+  dedupeCustomers,
   loadSettings,
   postInvoice,
   clearAllSheetData,
@@ -50,6 +51,23 @@ export type WorkflowStatus =
    floor between any two syncs (focus/visibility/interval all share it). */
 const SYNC_POLL_MS = 30000;
 const SYNC_MIN_INTERVAL_MS = 10000;
+
+/* ── Reporting the backend as down ─────────────────────────────────────
+   One failed poll is not an outage. Apps Script cold starts are slow and
+   erratic — a measured run of this deployment answered in 19.9s, 9.6s, then
+   3-7s — so a single slow response is the normal case, not a fault. Flipping
+   the header to "Offline" on the first failure told the user their database
+   had dropped when nothing was wrong, and, because a poll only runs every 30s,
+   the badge then stayed wrong until the next one happened to succeed.
+
+   A failure now has to repeat before it is reported, and repeated failures back
+   off. Backing off matters for more than politeness: an aborted request does
+   not stop the Apps Script execution behind it, and Apps Script serialises
+   executions per user, so polling straight back into a slow backend queues the
+   retry behind the request that just timed out and guarantees it times out
+   too. */
+const SYNC_FAILURES_BEFORE_OFFLINE = 2;
+const SYNC_BACKOFF_MS = [0, 15000, 45000, 120000];
 
 /* ── Pending deletions ─────────────────────────────────────────────
    Deleting a record removes it locally and fires a delete at the sheet. When
@@ -205,6 +223,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const syncInFlight = useRef(false);
+  /* Consecutive failed polls, and the earliest time the next one may run. */
+  const syncFailures = useRef(0);
+  const nextSyncAllowedAt = useRef(0);
   /* See patchInvoice: a cursor over `invoices` that also moves within a single
      handler, so two workflow mutations in the same tick cannot undo each other. */
   const invoicesRef = useRef<any[]>([]);
@@ -338,8 +359,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    setCustomers(initialCustomers);
-    LS.set("customers", initialCustomers);
+    const dedupedInitial = dedupeCustomers(initialCustomers);
+    setCustomers(dedupedInitial);
+    LS.set("customers", dedupedInitial);
 
     /* Load work orders */
     const savedWorkOrders = LS.get<any[] | null>("workOrders", null);
@@ -409,11 +431,23 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
         if (failed.length === 4) {
           const msg = failed[0]?.message || "Google Sheets is unreachable";
-          setSheetError(msg);
+          syncFailures.current += 1;
+          const step =
+            SYNC_BACKOFF_MS[Math.min(syncFailures.current, SYNC_BACKOFF_MS.length - 1)] || 0;
+          nextSyncAllowedAt.current = Date.now() + step;
+          /* A manual click asked for an answer, so it always gets one. A
+             background poll stays quiet until the failure repeats — the cached
+             rows are still on screen and still correct. */
+          if (!opts?.quiet || syncFailures.current >= SYNC_FAILURES_BEFORE_OFFLINE) {
+            setSheetError(msg);
+          }
           if (!opts?.quiet) toast.error("Could not refresh from Google Sheets: " + msg);
           return;
         }
 
+        /* The read landed, so the backend is up whatever the last poll did. */
+        syncFailures.current = 0;
+        nextSyncAllowedAt.current = 0;
         setSheetError(failed.length ? failed[0]!.message : null);
         setLastSyncedAt(Date.now());
         if (!opts?.quiet) {
@@ -428,7 +462,13 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       } catch (err: any) {
         /* fetchSheetSnapshot already swallows per-tab failures, so reaching here
            means something structural went wrong — still never clear state. */
-        setSheetError(err?.message || String(err));
+        syncFailures.current += 1;
+        const step =
+          SYNC_BACKOFF_MS[Math.min(syncFailures.current, SYNC_BACKOFF_MS.length - 1)] || 0;
+        nextSyncAllowedAt.current = Date.now() + step;
+        if (!opts?.quiet || syncFailures.current >= SYNC_FAILURES_BEFORE_OFFLINE) {
+          setSheetError(err?.message || String(err));
+        }
         if (!opts?.quiet) toast.error("Failed to load from sheet: " + (err?.message || err));
       } finally {
         syncInFlight.current = false;
@@ -452,6 +492,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       /* Focus fires on every alt-tab; throttle so a busy user cannot stampede
          the backend (Apps Script serialises executions per account). */
       if (Date.now() - lastSyncAttempt.current < SYNC_MIN_INTERVAL_MS) return;
+      /* Hold off while a failing backend is backing off, so the retry does not
+         queue behind the execution that just timed out. */
+      if (Date.now() < nextSyncAllowedAt.current) return;
       lastSyncAttempt.current = Date.now();
       /* Retry any delete the sheet has not confirmed. Without this a deletion
          made while offline would be honoured on this device forever but never
@@ -575,16 +618,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         updatedAt: new Date().toISOString(),
       });
       setCustomers((prev) => {
-        /* Match on id first. Matching on name alone meant renaming a customer
-           found no existing row and appended a second one carrying the same id. */
-        const ex =
-          prev.find((x) => x.id && custWithId.id && x.id === custWithId.id) ||
-          prev.find(
-            (x) => String(x.name || "").toLowerCase() === String(cust.name || "").toLowerCase(),
-          );
-        const next = ex
-          ? prev.map((x) => (x === ex ? Object.assign({}, x, custWithId) : x))
-          : [custWithId].concat(prev);
+        const next = dedupeCustomers([custWithId, ...prev]);
         LS.set("customers", next);
         return next;
       });
@@ -1242,7 +1276,12 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   }, [settings.sheetUrl, invoices, customers, workOrders, payments]);
 
   const clearAllData = useCallback(
-    async (options: { clearLocal?: boolean; clearSheet?: boolean } = { clearLocal: true, clearSheet: true }) => {
+    async (
+      options: { clearLocal?: boolean; clearSheet?: boolean } = {
+        clearLocal: true,
+        clearSheet: true,
+      },
+    ) => {
       const doLocal = options.clearLocal !== false;
       const doSheet = options.clearSheet !== false;
 
@@ -1282,7 +1321,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
       if (doLocal && doSheet) {
         if (sheetSuccess) {
-          toast.success("Total Clear Complete! Both local website data and Google Sheet database have been wiped clean.");
+          toast.success(
+            "Total Clear Complete! Both local website data and Google Sheet database have been wiped clean.",
+          );
         } else if (settings.sheetUrl) {
           toast.error(`Local website data cleared, but Google Sheet clear failed: ${sheetErr}`);
         } else {
