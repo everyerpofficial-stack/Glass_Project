@@ -1432,7 +1432,7 @@ function BookingPage() {
                     {/* Add Item Button */}
                     <Button
                       size="sm"
-                      className="h-7 text-[11px] px-2.5 gap-1 bg-primary text-primary-foreground font-semibold"
+                      className="h-7 text-[11px] px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
                       onClick={addLayer}
                     >
                       <Plus className="h-3 w-3" /> Add Item

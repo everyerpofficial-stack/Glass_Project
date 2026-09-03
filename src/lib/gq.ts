@@ -1650,7 +1650,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
         <div style="border:1px solid #000; border-top:0; padding:10px 8px 4px; text-align:center; font-size:8pt">
           <div style="font-weight:bold; text-align:center; margin-bottom:20px; font-size:8.5pt">Customer's Acceptance</div>
           <div class="sign" style="display:flex; justify-content:space-between; padding-top:16px">
-            <div style="text-align:center"><b>RAHUL</b><br><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:2px">Prepared By</span></div>
+            <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px">Prepared By</span></div>
             <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px">Checked By</span></div>
             <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px">Sign &amp; Seal</span></div>
             <div style="text-align:center"><span style="border-top:1px solid #000; display:inline-block; padding-top:2px; margin-top:16px"><b>Authorised Signatory</b></span></div>
