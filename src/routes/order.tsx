@@ -695,7 +695,8 @@ function OrderPage() {
     toast.success(
       `Payment confirmed for ${activeInv.no || activeInv.orderNo}! Moved to Order Confirm.`,
     );
-    navigate({ to: "/order", search: { view: undefined } as any });
+    loadInvoice(activeInv.id, false);
+    navigate({ to: "/invoice", search: { id: activeInv.id } });
   };
 
   const handleConfirmOrder = () => {
