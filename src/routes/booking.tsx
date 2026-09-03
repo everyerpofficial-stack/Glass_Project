@@ -50,7 +50,12 @@ import {
   dedupeCustomers,
   formatOrderId,
   formatPiNo,
+  workOrderBelongsTo,
 } from "@/lib/gq";
+import {
+  ConfirmPaymentModal,
+  type ConfirmPaymentDetails,
+} from "@/components/app/ConfirmPaymentModal";
 
 const BASE_GLASS_PRODUCTS = [
   "04 mm Clear Glass",
@@ -389,8 +394,12 @@ function BookingPage() {
     saveInvoice,
     newInvoice,
     confirmPreProforma,
+    confirmOrder,
+    generateWorkOrder,
+    saveWorkOrder,
     updateInvoiceStatus,
     toggleWhatsAppSent,
+    workOrders,
     hydrated,
   } = useGQ();
 
@@ -401,6 +410,38 @@ function BookingPage() {
   const [showForm, setShowForm] = useState(searchParams?.view === "form");
   const [detailInvoice, setDetailInvoice] = useState<any | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [targetConfirmInvoice, setTargetConfirmInvoice] = useState<any | null>(null);
+
+  const handleConfirmPaymentAndMove = (paymentDetails: ConfirmPaymentDetails) => {
+    if (!targetConfirmInvoice) return;
+
+    let activeInv = targetConfirmInvoice;
+    if (activeInv.docType === "pre_proforma" || !activeInv.docType) {
+      const converted = confirmPreProforma(activeInv.id);
+      if (converted) {
+        activeInv = converted;
+      }
+    }
+
+    confirmOrder(activeInv.id, paymentDetails);
+
+    const existingWO = workOrders.find((w: any) => workOrderBelongsTo(w, activeInv));
+    if (!existingWO) {
+      const wo = generateWorkOrder(activeInv.id);
+      if (wo) {
+        saveWorkOrder(wo);
+        updateInvoiceStatus(activeInv.id, "work_order_generated");
+      }
+    }
+
+    setConfirmModalOpen(false);
+    setTargetConfirmInvoice(null);
+    toast.success(
+      `✨ Payment confirmed for ${activeInv.no || activeInv.orderNo}! Moved to Order Confirm.`,
+    );
+    navigate({ to: "/order", search: { view: undefined } as any });
+  };
   useEffect(() => {
     if (searchParams?.view === "form") setShowForm(true);
     else if (searchParams?.view === "list") setShowForm(false);
@@ -835,24 +876,27 @@ function BookingPage() {
         {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
         {!showForm && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
-              <div className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
-                <FileText className="h-3 w-3" /> Total PI
+            {/* Card 1: TOTAL PI */}
+            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
+              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Total PI
               </div>
-              <div className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+              <div className="text-xl font-bold text-foreground mt-0.5">
                 {preProformaInvoices.length}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Total proforma invoices</div>
             </div>
-            <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
-              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
+            {/* Card 2: FOLLOWED UP */}
+            <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
+              <div className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
                 <CheckCircle2 className="h-3 w-3" /> Followed Up
               </div>
-              <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+              <div className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
                 {sentWhatsAppCount}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Follow up completed</div>
             </div>
+            {/* Card 3: PENDING FOLLOW UP */}
             <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
               <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1 tracking-wider">
                 <Clock className="h-3 w-3" /> Pending Follow Up
@@ -862,6 +906,7 @@ function BookingPage() {
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Awaiting follow up</div>
             </div>
+            {/* Card 4: INVOICE VALUE */}
             <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
               <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Invoice Value
@@ -1047,7 +1092,7 @@ function BookingPage() {
                                     loadInvoice(item.id, false);
                                     navigate({
                                       to: "/order",
-                                      search: { view: "form", id: item.id, from: "booking" } as any,
+                                      search: { view: "form", id: item.id, action: "confirm", from: "booking" } as any,
                                     });
                                   }}
                                   title={
@@ -2421,7 +2466,7 @@ function BookingPage() {
                         }
                       }}
                     >
-                      <Save className="h-4 w-4" /> Save Proforma Invoice
+                      <Save className="h-4 w-4" /> Save & Print PI
                     </Button>
                   </div>
                 </div>
@@ -2441,6 +2486,14 @@ function BookingPage() {
           }
         }}
         inputUnit={inputUnit}
+      />
+
+      {/* Confirm Payment & Order Modal */}
+      <ConfirmPaymentModal
+        open={confirmModalOpen}
+        invoice={targetConfirmInvoice}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={handleConfirmPaymentAndMove}
       />
     </div>
   );

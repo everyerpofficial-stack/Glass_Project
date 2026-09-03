@@ -407,32 +407,6 @@ export function InvoiceDetailModal({
 
           {/* Right: Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {!isDocCancelled && onEdit && (
-              <Button
-                size="sm"
-                className="h-7 text-[11px] gap-1 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs"
-                onClick={() => {
-                  onOpenChange(false);
-                  onEdit(invoice);
-                }}
-              >
-                <Edit3 className="h-3 w-3" />
-                Edit Invoice
-              </Button>
-            )}
-            {!isDocCancelled && (
-              <Button
-                size="sm"
-                className="h-7 text-[11px] gap-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs"
-                onClick={() => {
-                  setActiveTab("overview");
-                  setShowRecordPayment((v) => !v);
-                }}
-              >
-                <CreditCard className="h-3 w-3" />
-                {showRecordPayment ? "Close Payment" : "Record Payment"}
-              </Button>
-            )}
             <Button
               size="sm"
               className="h-7 text-[11px] gap-1 px-2.5 bg-slate-700 hover:bg-slate-800 text-white font-bold"
@@ -536,45 +510,33 @@ export function InvoiceDetailModal({
                 </div>
 
                 {/* Paid Amount */}
-                <div className="bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl p-3.5 shadow-sm">
-                  <div className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300 tracking-wider">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     ✓ Paid Amount
                   </div>
-                  <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300 font-mono mt-1">
+                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">
                     ₹ {nf(paidAmount)}
                   </div>
-                  <div className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     Received so far
                   </div>
                 </div>
 
                 {/* Pending Balance */}
-                <div
-                  className={`rounded-xl p-3.5 border-2 shadow-sm ${
-                    pendingAmount > 0
-                      ? "bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-700"
-                      : "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700"
-                  }`}
-                >
-                  <div
-                    className={`text-[10px] font-bold uppercase tracking-wider ${
-                      pendingAmount > 0
-                        ? "text-red-700 dark:text-red-300"
-                        : "text-emerald-700 dark:text-emerald-300"
-                    }`}
-                  >
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     {pendingAmount > 0 ? "⚠ Pending Balance" : "✓ No Balance Due"}
                   </div>
                   <div
                     className={`text-xl font-bold font-mono mt-1 ${
                       pendingAmount > 0
-                        ? "text-red-700 dark:text-red-300"
-                        : "text-emerald-700 dark:text-emerald-300"
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
                     }`}
                   >
                     ₹ {nf(pendingAmount)}
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     {pendingAmount > 0 ? "Remaining to pay" : "Fully cleared"}
                   </div>
                 </div>
@@ -806,7 +768,7 @@ export function InvoiceDetailModal({
               {/* Item Details Table */}
               <div className="border border-border rounded-xl overflow-hidden bg-card shadow-xs">
                 <div className="bg-muted/40 px-4 py-2.5 text-xs font-bold border-b border-border text-foreground flex items-center justify-between">
-                  <span>Item Details ({invoice.items?.length || 0} items)</span>
+                  <span>Item Details ({invoice.items?.length || invoice.layers?.length || 0} items)</span>
                   <span className="text-[11px] font-mono text-muted-foreground">
                     Total: ₹ {nf(grandTotal)}
                   </span>
@@ -825,10 +787,18 @@ export function InvoiceDetailModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40 font-mono text-xs">
-                      {invoice.items?.map((item: any, idx: number) => {
+                      {(invoice.items && invoice.items.length > 0
+                        ? invoice.items
+                        : totals?.lines && totals.lines.length > 0
+                          ? totals.lines
+                          : invoice.layers || []
+                      ).map((item: any, idx: number) => {
+                        const computedLine = totals?.lines?.[idx] || null;
                         const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
                         const layerObj = invoice.layers?.[layerIdx] || null;
                         const productName =
+                          computedLine?.productName ||
+                          computedLine?.desc ||
                           layerObj?.productName ||
                           layerObj?.glassName ||
                           item.productName ||
@@ -836,11 +806,32 @@ export function InvoiceDetailModal({
                           item.desc ||
                           "Glass Item";
                         const thickness =
+                          computedLine?.thickness ||
                           layerObj?.thickness ||
                           item.thickness ||
                           item.thk ||
                           invoice.glass?.thickness ||
                           5;
+                        const qty = computedLine?.pcs || computedLine?.qty || item.qty || item.pcs || 1;
+                        const areaVal =
+                          computedLine?.sqft || item.sqft || computedLine?.sqm || item.sqm || "—";
+
+                        const rateVal = Number(
+                          computedLine?.rate ??
+                          (item.rate !== "" && item.rate != null ? item.rate : null) ??
+                          (layerObj?.rate !== "" && layerObj?.rate != null ? layerObj.rate : null) ??
+                          invoice.glass?.defaultRate ??
+                          0
+                        );
+
+                        const amountVal = Number(
+                          computedLine?.amount ??
+                          computedLine?.lineTotal ??
+                          computedLine?.gross ??
+                          (item.amount !== "" && item.amount != null ? item.amount : null) ??
+                          (rateVal > 0 ? rateVal * (Number(computedLine?.sqft || item.sqft || item.sqm || 0) || Number(qty)) : 0)
+                        );
+
                         return (
                           <tr key={item.id || idx} className="hover:bg-muted/10">
                             <td className="p-2.5 text-muted-foreground">{idx + 1}</td>
@@ -850,11 +841,11 @@ export function InvoiceDetailModal({
                             <td className="p-2.5 text-center font-sans">
                               {thickness} mm
                             </td>
-                            <td className="p-2.5 text-center font-bold">{item.qty || 1}</td>
-                            <td className="p-2.5 text-right">{item.sqft || item.sqm || "—"}</td>
-                            <td className="p-2.5 text-right">₹ {nf(item.rate || 0)}</td>
+                            <td className="p-2.5 text-center font-bold">{qty}</td>
+                            <td className="p-2.5 text-right">{areaVal}</td>
+                            <td className="p-2.5 text-right font-bold">₹ {nf(rateVal)}</td>
                             <td className="p-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                              ₹ {nf(item.amount || 0)}
+                              ₹ {nf(amountVal)}
                             </td>
                           </tr>
                         );

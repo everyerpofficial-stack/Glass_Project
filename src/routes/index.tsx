@@ -158,22 +158,68 @@ function Dashboard() {
   const totalInvoiceAmount = useMemo(() => sumGrandTotal(ocRecords), [ocRecords]);
 
   const { amountReceived, cashAmount, bankAmount } = useMemo(() => {
-    let total = 0;
     let cash = 0;
     let bank = 0;
+
+    // Helper to check if a payment belongs to a cancelled invoice
+    const isPaymentForCancelledInv = (p: any) => {
+      const invNo = String(p.invoiceNo || "").trim().toLowerCase();
+      const invId = p.invoiceId ? String(p.invoiceId) : "";
+      if (!invNo && !invId) return false;
+      const inv = invoices.find(
+        (x: any) =>
+          (invId && String(x.id) === invId) ||
+          (invNo &&
+            (String(x.no || "").toLowerCase() === invNo ||
+             String(x.orderNo || "").toLowerCase() === invNo ||
+             String(x.preProformaNo || "").toLowerCase() === invNo)),
+      );
+      return Boolean(inv && isCancelled(inv));
+    };
+
+    // 1. Gather active payments in current range (excluding cancelled ones)
+    const activePayments = payments.filter((p: any) => {
+      if (!withinRange({ date: p.date, createdAt: p.createdAt }, range)) return false;
+      const amount = Number(p.amount) || 0;
+      if (amount <= 0) return false;
+      if (isPaymentForCancelledInv(p)) return false;
+      return true;
+    });
+
+    activePayments.forEach((p: any) => {
+      const amt = Number(p.amount) || 0;
+      const mode = String(p.mode || "").toLowerCase();
+      if (mode.includes("cash")) cash += amt;
+      else bank += amt;
+    });
+
+    // 2. Also account for any active order in ocRecords with paidAmount not already captured in payments
     for (const inv of ocRecords) {
       const p = Number(inv.paidAmount) || 0;
       if (!p) continue;
-      total += p;
-      /* The split used to read `inv.paymentMode` — a field this app never
-         writes — so both halves stayed at ₹0 whatever had been received. The
-         method is recorded on `delivery.paymentType`. */
-      const mode = String(inv.delivery?.paymentType || inv.paymentMode || "").toLowerCase();
-      if (mode.includes("cash")) cash += p;
-      else if (mode) bank += p;
+      const invNo = String(inv.no || "").toLowerCase();
+      const invOrderNo = String(inv.orderNo || "").toLowerCase();
+      const alreadyInPayments = activePayments
+        .filter((pay) => {
+          const pInv = String(pay.invoiceNo || "").toLowerCase();
+          return (
+            (pay.invoiceId && String(pay.invoiceId) === String(inv.id)) ||
+            (pInv && (pInv === invNo || pInv === invOrderNo))
+          );
+        })
+        .reduce((sum, pay) => sum + (Number(pay.amount) || 0), 0);
+
+      const delta = Math.max(0, p - alreadyInPayments);
+      if (delta > 0) {
+        const mode = String(inv.delivery?.paymentType || inv.paymentMode || "").toLowerCase();
+        if (mode.includes("cash")) cash += delta;
+        else bank += delta;
+      }
     }
+
+    const total = cash + bank;
     return { amountReceived: total, cashAmount: cash, bankAmount: bank };
-  }, [ocRecords]);
+  }, [ocRecords, payments, invoices, range]);
 
   const dueFromCustomer = useMemo(
     () =>
@@ -294,32 +340,15 @@ function Dashboard() {
     [quotationVsRevenueData],
   );
 
-  /* ── Chart 3: collection split, from the payments actually recorded ─── */
+  /* ── Chart 3: collection split, synchronized with active collections ─── */
   const collectionData = useMemo(() => {
-    let cash = 0;
-    let bank = 0;
-    payments.forEach((p: any) => {
-      if (!withinRange({ date: p.date, createdAt: p.createdAt }, range)) return;
-      const amount = Number(p.amount) || 0;
-      if (!amount) return;
-      if (
-        String(p.mode || "")
-          .toLowerCase()
-          .includes("cash")
-      )
-        cash += amount;
-      else bank += amount;
-    });
     const out: { name: string; value: number; color: string }[] = [];
-    if (cash > 0) out.push({ name: "Cash Collection", value: cash, color: "#10b981" });
-    if (bank > 0) out.push({ name: "Bank Transfer", value: bank, color: "#3b82f6" });
+    if (cashAmount > 0) out.push({ name: "Cash Collection", value: cashAmount, color: "#10b981" });
+    if (bankAmount > 0) out.push({ name: "Bank Transfer", value: bankAmount, color: "#3b82f6" });
     return out;
-  }, [payments, range]);
+  }, [cashAmount, bankAmount]);
 
-  const collectionTotal = useMemo(
-    () => collectionData.reduce((a, d) => a + d.value, 0),
-    [collectionData],
-  );
+  const collectionTotal = useMemo(() => amountReceived, [amountReceived]);
 
   /* ── Customer dues, from the open balances that actually exist ────────
      Overdue days come from getPaymentDueDateInfo, the same helper /order uses

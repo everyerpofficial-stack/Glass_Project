@@ -91,6 +91,20 @@ const AVATAR_COLORS = [
   "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
 ];
 
+function isPaymentForCancelledInv(p: any, invs: any[]) {
+  const invNo = String(p.invoiceNo || "").trim().toLowerCase();
+  if (!invNo && !p.invoiceId) return false;
+  const targetInv = invs.find(
+    (x: any) =>
+      (p.invoiceId && String(x.id) === String(p.invoiceId)) ||
+      (invNo &&
+        (String(x.no || "").toLowerCase() === invNo ||
+         String(x.orderNo || "").toLowerCase() === invNo ||
+         String(x.preProformaNo || "").toLowerCase() === invNo)),
+  );
+  return Boolean(targetInv && isCancelled(targetInv));
+}
+
 function CustomersPage() {
   const navigate = useNavigate();
   const {
@@ -101,6 +115,7 @@ function CustomersPage() {
     deleteCustomer,
     savePayment,
     deletePayment,
+    patchInvoice,
     setInv,
     settings,
     hydrated,
@@ -219,27 +234,23 @@ function CustomersPage() {
      Invoice raised from it both carry the same grandTotal, so the ledger was
      billing this customer twice for every confirmed order — and the Due Balance
      underneath, being Total Invoiced minus Total Paid, inherited the error. */
+  const viewCustNameLower = String(viewCust?.name || "").trim().toLowerCase();
+
   const customerInvoices = useMemo(() => {
-    if (!viewCust) return [];
-    const oneRowPerOrder = commercialRecords(invoices);
-    return oneRowPerOrder.filter(
+    if (!viewCustNameLower) return [];
+    return invoices.filter(
       (inv) =>
-        String(inv.cust?.name || "").toLowerCase() === String(viewCust.name || "").toLowerCase(),
+        String(inv.cust?.name || "").trim().toLowerCase() === viewCustNameLower,
     );
-  }, [invoices, viewCust]);
+  }, [invoices, viewCustNameLower]);
 
   const customerPayments = useMemo(() => {
-    if (!viewCust) return [];
+    if (!viewCustNameLower) return [];
     return payments.filter(
-      (p) => String(p.custName || "").toLowerCase() === String(viewCust.name || "").toLowerCase(),
+      (p) => String(p.custName || "").trim().toLowerCase() === viewCustNameLower,
     );
-  }, [payments, viewCust]);
+  }, [payments, viewCustNameLower]);
 
-  /* The list above still shows cancelled documents — that is the point of
-     cancelling rather than deleting — but they must not be billed for. Without
-     this a cancelled order kept inflating Total Invoiced, and the Due Balance
-     underneath (Total Invoiced minus Total Paid) inherited it, so the customer
-     appeared to owe money for an order that was called off. */
   const totalInvoicedForViewCust = useMemo(() => {
     return customerInvoices
       .filter((item) => !isCancelled(item))
@@ -247,10 +258,18 @@ function CustomersPage() {
   }, [customerInvoices]);
 
   const totalPaidForViewCust = useMemo(() => {
-    return customerPayments.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-  }, [customerPayments]);
+    const totalFromPayments = customerPayments
+      .filter((p) => !isPaymentForCancelledInv(p, invoices))
+      .reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
 
-  const dueBalanceForViewCust = totalInvoicedForViewCust - totalPaidForViewCust;
+    const totalFromInvoices = customerInvoices
+      .filter((item) => !isCancelled(item))
+      .reduce((acc, item) => acc + (Number(item.paidAmount) || 0), 0);
+
+    return Math.max(totalFromPayments, totalFromInvoices);
+  }, [customerPayments, customerInvoices, invoices]);
+
+  const dueBalanceForViewCust = Math.max(0, totalInvoicedForViewCust - totalPaidForViewCust);
 
   const handleAddPaymentSubmit = () => {
     if (!payFormData.amount || Number(payFormData.amount) <= 0) {
@@ -259,16 +278,39 @@ function CustomersPage() {
     }
     if (!viewCust) return;
 
+    const targetInvNo = payFormData.invoiceNo || customerInvoices[0]?.no || "";
     savePayment({
       custName: viewCust.name,
       custId: viewCust.id,
-      invoiceNo: payFormData.invoiceNo || customerInvoices[0]?.no || "",
+      invoiceNo: targetInvNo,
       date: payFormData.date,
       amount: Number(payFormData.amount),
       mode: payFormData.mode,
       refNo: payFormData.refNo,
       notes: payFormData.notes,
     });
+
+    if (targetInvNo) {
+      const targetInv = invoices.find(
+        (x) =>
+          String(x.no || "").toLowerCase() === String(targetInvNo).toLowerCase() ||
+          String(x.orderNo || "").toLowerCase() === String(targetInvNo).toLowerCase(),
+      );
+      if (targetInv && !isCancelled(targetInv)) {
+        const curPaid = Number(targetInv.paidAmount || 0);
+        const newPaid = curPaid + Number(payFormData.amount);
+        const gTotal = Number(targetInv.totals?.grandTotal || 0);
+        const newRemaining = Math.max(0, gTotal - newPaid);
+        const newPaymentStatus = newRemaining <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+        patchInvoice(targetInv.id, {
+          paidAmount: newPaid,
+          remainingBalance: newRemaining,
+          paymentStatus: newPaymentStatus,
+          paymentRef: payFormData.refNo || targetInv.paymentRef,
+          paymentNotes: payFormData.notes || targetInv.paymentNotes,
+        });
+      }
+    }
 
     setPayFormData({
       date: today(),
@@ -317,23 +359,45 @@ function CustomersPage() {
     [allCustomers],
   );
 
-  const totalOutstandingDue = useMemo(() => {
-    return allCustomers.reduce((acc, c) => {
-      const cQuotes = invoices.filter(
+  const customerTotals = useMemo(() => {
+    let grandTotalSum = 0;
+    let receivedSum = 0;
+    let dueSum = 0;
+
+    allCustomers.forEach((c) => {
+      const nameLower = String(c.name || "").trim().toLowerCase();
+      const customerQuotes = invoices.filter(
         (inv) =>
-          String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase() &&
+          String(inv.cust?.name || "").trim().toLowerCase() === nameLower &&
           !isCancelled(inv),
       );
-      const cPays = payments.filter(
-        (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
+      const custPays = payments.filter(
+        (p) =>
+          String(p.custName || "").trim().toLowerCase() === nameLower &&
+          !isPaymentForCancelledInv(p, invoices),
       );
-      const totAmt = cQuotes.reduce((sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0), 0);
-      const recAmt = Math.max(
-        cPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
-        cQuotes.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0),
+
+      const totalPaidFromPayments = custPays.reduce(
+        (sum, p) => sum + (Number(p.amount) || 0),
+        0,
       );
-      return acc + Math.max(0, totAmt - recAmt);
-    }, 0);
+      const totalPaidFromInvoices = customerQuotes.reduce(
+        (sum, inv) => sum + (Number(inv.paidAmount) || 0),
+        0,
+      );
+      const totalAmount = customerQuotes.reduce(
+        (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
+        0,
+      );
+      const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
+      const dueAmount = Math.max(0, totalAmount - receivedAmount);
+
+      grandTotalSum += totalAmount;
+      receivedSum += receivedAmount;
+      dueSum += dueAmount;
+    });
+
+    return { grandTotalSum, receivedSum, dueSum };
   }, [allCustomers, invoices, payments]);
 
 
@@ -531,6 +595,7 @@ function CustomersPage() {
 
       {/* ── Summary Metric Cards ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: TOTAL CUSTOMERS */}
         <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -547,49 +612,52 @@ function CustomersPage() {
           </div>
         </div>
 
+        {/* Card 2: TOTAL AMOUNT */}
+        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Amount
+              </div>
+              <div className="text-xl font-bold tracking-tight text-foreground font-mono">
+                ₹ {nf(customerTotals.grandTotalSum)}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: TOTAL RECEIVED AMOUNT */}
         <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="h-5 w-5" />
+              <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Active
+                Total Received Amount
               </div>
-              <div className="text-xl font-bold tracking-tight text-emerald-600">
-                {activeCount || totalCustomers}
+              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">
+                ₹ {nf(customerTotals.receivedSum)}
               </div>
             </div>
           </div>
         </div>
 
+        {/* Card 4: TOTAL DUE AMOUNT */}
         <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Outstanding Due
-              </div>
-              <div className="text-xl font-bold tracking-tight text-amber-600 font-mono">
-                ₹ {nf(totalOutstandingDue)}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
               <AlertCircle className="h-5 w-5" />
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Recorded Payments
+                Total Due Amount
               </div>
-              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">
-                ₹ {nf(payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0))}
+              <div className="text-xl font-bold tracking-tight text-amber-600 font-mono">
+                ₹ {nf(customerTotals.dueSum)}
               </div>
             </div>
           </div>
@@ -643,6 +711,8 @@ function CustomersPage() {
           })}
         </div>
       </div>
+
+
 
       {/* ── Customer Data Table ────────────────────────────────────────── */}
       <div className="bg-white border border-border rounded-xl overflow-hidden shadow-xs">
@@ -725,9 +795,6 @@ function CustomersPage() {
                             <div className="font-semibold text-foreground leading-tight hover:underline text-primary">
                               {c.name}
                             </div>
-                            <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                              {code}
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -762,11 +829,8 @@ function CustomersPage() {
                       </td>
 
                       {/* Invoices Count */}
-                      <td className="py-3 px-4 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 text-[11px] font-semibold inline-flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {customerQuotes.length} active
-                        </span>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-foreground">
+                        {customerQuotes.length}
                       </td>
 
                       {/* Total Amount */}
@@ -931,9 +995,6 @@ function CustomersPage() {
                   <div>
                     <DialogTitle className="text-lg font-bold text-foreground leading-tight flex items-center gap-2">
                       {viewCust.name}
-                      <span className="text-xs font-mono font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                        CUS-{viewCust.id?.slice(-4) || "0230"}
-                      </span>
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground mt-0.5 flex items-center gap-3 flex-wrap">
                       {viewCust.phone && (
@@ -1046,9 +1107,9 @@ function CustomersPage() {
                       </div>
                     </div>
                     <div
-                      className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-rose-500/10 border-rose-500/20 text-rose-700" : "bg-muted/30 border-border text-foreground"}`}
+                      className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"}`}
                     >
-                      <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      <div className="text-[10px] font-bold uppercase tracking-wider">
                         Due Balance
                       </div>
                       <div className="text-base font-bold font-mono mt-0.5">
@@ -1153,12 +1214,25 @@ function CustomersPage() {
                       <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
                         Payment Ledger Summary
                       </div>
-                      <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5">
-                        Total Payments Received:{" "}
-                        <span className="font-bold font-mono">₹ {nf(totalPaidForViewCust)}</span> |
-                        Remaining Due:{" "}
-                        <span className="font-bold font-mono">
-                          ₹ {nf(Math.max(0, dueBalanceForViewCust))}
+                      <div className="text-[11px] text-emerald-700/80 dark:text-emerald-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span>
+                          Total Payments Received:{" "}
+                          <span className="font-bold font-mono text-emerald-700 dark:text-emerald-300">
+                            ₹ {nf(totalPaidForViewCust)}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground/40">|</span>
+                        <span>
+                          Remaining Due:{" "}
+                          <span
+                            className={`font-bold font-mono px-1.5 py-0.5 rounded text-xs inline-block ${
+                              dueBalanceForViewCust > 0
+                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                                : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                            }`}
+                          >
+                            ₹ {nf(Math.max(0, dueBalanceForViewCust))}
+                          </span>
                         </span>
                       </div>
                     </div>
