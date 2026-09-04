@@ -1102,7 +1102,32 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       const woNo = "WO-" + (order.orderNo || order.no || Date.now());
       const pieces: any[] = [];
       let globalSr = 0;
-      (order.items || []).forEach((item: any, idx: number) => {
+
+      const allItems: any[] = [];
+      if (order.layers && order.layers.length > 0) {
+        order.layers.forEach((l: any, lIdx: number) => {
+          let lItems = l.items && l.items.length > 0 ? l.items : [];
+          if (lIdx === 0 && lItems.length === 0 && order.items && order.items.length > 0) {
+            lItems = order.items;
+          }
+          lItems.forEach((it: any) => {
+            allItems.push({
+              ...it,
+              layerIdx: lIdx,
+              layerNo: l.layerNo || `Item ${lIdx + 1}`,
+              productName: l.productName || l.glassName || it.productName || order.productName,
+              thickness: l.thickness || it.thickness || order.glass?.thickness,
+            });
+          });
+        });
+      }
+      if (!allItems.length) {
+        (order.items || []).forEach((it: any) => {
+          allItems.push({ ...it, layerIdx: 0 });
+        });
+      }
+
+      allItems.forEach((item: any, idx: number) => {
         const line = orderTotals.lines?.[idx];
         if (!line?.ok) return;
         const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
@@ -1113,7 +1138,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
           item.productName ||
           order.productName ||
           "Glass Product";
-        const layerNo = layerObj?.layerNo || `Item ${layerIdx + 1}`;
+        const layerNo = layerObj?.layerNo || item.layerNo || `Item ${layerIdx + 1}`;
         const qty = Number(item.qty) || 1;
         for (let p = 0; p < qty; p++) {
           globalSr++;
@@ -1126,6 +1151,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             layerIdx,
             layerNo,
             productName: prodName,
+            freq: item.freq || 8,
             l1: item.l1 || "",
             l2: item.l2 || "",
             l1mm: item.l1mm || line.lMM || "",
@@ -1162,6 +1188,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         thickness: order.glass?.thickness || "",
         productName: order.productName || "",
         jobType: order.jobType || "WITH MATERIAL",
+        inputUnit: order.inputUnit || "inch",
+        frequencyEnabled: Boolean(order.frequencyEnabled),
         layerInfo: order.layers || [],
         pieces,
         totalPieces: pieces.length,

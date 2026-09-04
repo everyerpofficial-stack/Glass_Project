@@ -258,8 +258,30 @@ function BulkEntryModal({
       .filter((l) => l);
     const items: any[] = [];
     for (const line of lines) {
-      // Parse formats: "60.3 x 51.2", "60.3,51.2", "60.3 51.2", "60.3×51.2"
-      const parts = line.split(/[x×,\s]+/).filter((p) => p);
+      // Parse formats: "60.3 x 51.2", "36 3/8 x 13 3/8", "34 6 x 66 7", "60.3, 51.2"
+      let parts: string[] = [];
+      if (/[xX×*]/.test(line)) {
+        parts = line
+          .split(/[xX×*]+/)
+          .map((p) => p.trim())
+          .filter(Boolean);
+      } else if (line.includes(",")) {
+        parts = line
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean);
+      } else if (line.includes("\t")) {
+        parts = line
+          .split("\t")
+          .map((p) => p.trim())
+          .filter(Boolean);
+      } else {
+        parts = line
+          .split(/\s+/)
+          .map((p) => p.trim())
+          .filter(Boolean);
+      }
+
       if (parts.length >= 2) {
         const item = blankItem();
         if (inputUnit === "mm") {
@@ -274,7 +296,11 @@ function BulkEntryModal({
       }
     }
     if (items.length === 0) {
-      toast.error("No valid sizes found. Use format: 60.3 x 51.2");
+      toast.error(
+        inputUnit === "mm"
+          ? "No valid sizes found. Use format: 60.3 x 51.2"
+          : "No valid sizes found. Use format: 36 3/8 x 13 3/8",
+      );
       return;
     }
     onApply(items);

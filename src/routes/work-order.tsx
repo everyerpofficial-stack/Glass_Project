@@ -770,6 +770,60 @@ function WorkOrderPage() {
                     0,
                   );
                   const grpPcs = grp.pieces.length;
+                  const woUnit = activeWO?.inputUnit || "inch";
+                  const isFreqOn = woUnit !== "mm" && Boolean(activeWO?.frequencyEnabled);
+                  const isMM = woUnit === "mm";
+
+                  const cutsheetHeaders = isMM
+                    ? [
+                        "SR\nNo",
+                        "Height\nMM",
+                        "Width\nMM",
+                        "Qty",
+                        "Act Totl",
+                        "Hole",
+                        "Big\nHole",
+                        "Cut Out",
+                        "Big\nCutout",
+                        "Shape",
+                        "Barcode",
+                        "Remark",
+                      ]
+                    : isFreqOn
+                      ? [
+                          "SR\nNo",
+                          "Freq",
+                          "L1-Inch",
+                          "L2-Inch",
+                          "Height\nMM",
+                          "Width\nMM",
+                          "Qty",
+                          "Act Totl",
+                          "Hole",
+                          "Big\nHole",
+                          "Cut Out",
+                          "Big\nCutout",
+                          "Shape",
+                          "Barcode",
+                          "Remark",
+                        ]
+                      : [
+                          "SR\nNo",
+                          "L1-Inch",
+                          "L2-Inch",
+                          "Height\nMM",
+                          "Width\nMM",
+                          "Qty",
+                          "Act Totl",
+                          "Hole",
+                          "Big\nHole",
+                          "Cut Out",
+                          "Big\nCutout",
+                          "Shape",
+                          "Barcode",
+                          "Remark",
+                        ];
+
                   return (
                     <div key={gIdx} className="border border-black overflow-hidden">
                       {/* Product Banner Header */}
@@ -784,26 +838,11 @@ function WorkOrderPage() {
 
                       <table
                         className="w-full text-[10px] border-collapse"
-                        style={{ minWidth: "900px" }}
+                        style={{ minWidth: isMM ? "750px" : "900px" }}
                       >
                         <thead>
                           <tr className="bg-gray-50 border-b border-black">
-                            {[
-                              "SR\nNo",
-                              "L1-Inch",
-                              "L2-Inch",
-                              "Height\nMM",
-                              "Width\nMM",
-                              "Qty",
-                              "Act Totl",
-                              "Hole",
-                              "Big\nHole",
-                              "Cut Out",
-                              "Big\nCutout",
-                              "Shape",
-                              "Barcode",
-                              "Remark",
-                            ].map((h, i) => (
+                            {cutsheetHeaders.map((h, i) => (
                               <th
                                 key={i}
                                 className="border border-gray-400 px-1.5 py-1 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center"
@@ -814,56 +853,71 @@ function WorkOrderPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {grp.pieces.map((piece: any, idx: number) => (
-                            <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                {piece.sr}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                {piece.l1 || "—"}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                {piece.l2 || "—"}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                {piece.heightMM}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                {piece.widthMM}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                {piece.qty}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
-                                {nf(piece.area, 3)}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                {piece.hole || ""}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                {piece.bigHole || ""}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                {piece.cutOut || ""}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                {piece.bigCutout || ""}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                {piece.shape}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
-                                {piece.barcode}
-                              </td>
-                              <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
-                                {piece.remark}
-                              </td>
-                            </tr>
-                          ))}
+                          {grp.pieces.map((piece: any, idx: number) => {
+                            const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
+                            return (
+                              <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                  {piece.sr}
+                                </td>
+                                {!isMM && isFreqOn && (
+                                  <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                    {freqLabel}
+                                  </td>
+                                )}
+                                {!isMM && (
+                                  <>
+                                    <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                      {piece.l1 || "—"}
+                                    </td>
+                                    <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                      {piece.l2 || "—"}
+                                    </td>
+                                  </>
+                                )}
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                  {piece.heightMM}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                  {piece.widthMM}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                  {piece.qty}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
+                                  {nf(piece.area, 3)}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.hole || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.bigHole || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.cutOut || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.bigCutout || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                  {piece.shape}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
+                                  {piece.barcode}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
+                                  {piece.remark}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                         <tfoot>
                           <tr className="bg-gray-100 border-t border-black font-bold">
-                            <td colSpan={5} className="border border-gray-400 px-2 py-1 text-right">
+                            <td
+                              colSpan={isMM ? 3 : isFreqOn ? 6 : 5}
+                              className="border border-gray-400 px-2 py-1 text-right"
+                            >
                               Subtotal (Item {gIdx + 1})
                             </td>
                             <td className="border border-gray-400 px-1.5 py-1 text-center">

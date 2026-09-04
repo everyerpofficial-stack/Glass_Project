@@ -1440,6 +1440,10 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
     });
   }
 
+  const inputUnit = INV.inputUnit || S.inputUnit || "inch";
+  const isFreqOn = inputUnit !== "mm" && Boolean(INV.frequencyEnabled);
+  const isMM = inputUnit === "mm";
+
   let productTablesHTML = "";
 
   productGroups.forEach((grp: any) => {
@@ -1464,23 +1468,106 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       grpAreaSqft += lineSqft;
       grpAmount += lineAmount;
 
-      rowsHTML += `
-        <tr>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${srNo++}</td>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l1 || "")}</td>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l2 || "")}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.wMM}</td>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
-          <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
-          <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
-        </tr>
-      `;
+      if (isMM) {
+        rowsHTML += `
+          <tr>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${srNo++}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.wMM}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
+          </tr>
+        `;
+      } else if (isFreqOn) {
+        const freqLabel = Number(it.freq) === 16 ? "1/16" : "1/8";
+        rowsHTML += `
+          <tr>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${srNo++}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${freqLabel}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l1 || "")}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l2 || "")}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.wMM}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
+          </tr>
+        `;
+      } else {
+        rowsHTML += `
+          <tr>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:600">${srNo++}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l1 || "")}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace">${esc(it.l2 || "")}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.lMM}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:center; font-family:monospace; font-weight:600">${lineObj.wMM}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold">${lineObj.qty}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(S.rateUnit === "sqft" ? lineSqft : lineSqm, 3)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace">${nf(lineObj.rate)}</td>
+            <td class="n" style="border:1px solid #000; padding:2px; text-align:right; font-family:monospace; font-weight:bold">${nf(lineObj.amount)}</td>
+            <td class="c" style="border:1px solid #000; padding:2px; text-align:center">${esc(it.remark || "")}</td>
+          </tr>
+        `;
+      }
     });
 
     const displayArea = S.rateUnit === "sqft" ? nf(grpAreaSqft, 2) : nf(grpAreaSqm, 3);
+    const totalColspan = isMM ? 3 : isFreqOn ? 6 : 5;
+
+    const theadHTML = isMM
+      ? `
+          <thead>
+            <tr style="background:#EDEDED; font-size:7.5pt; font-weight:bold">
+              <th style="border:1px solid #000; padding:3px; text-align:center; width:35px">SR No</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Height</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Width</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Qty</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
+            </tr>
+          </thead>
+        `
+      : isFreqOn
+        ? `
+          <thead>
+            <tr style="background:#EDEDED; font-size:7.5pt; font-weight:bold">
+              <th style="border:1px solid #000; padding:3px; text-align:center; width:35px">SR No</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center; width:45px">Freq</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L1-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L2-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Height</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Width</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Qty</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
+            </tr>
+          </thead>
+        `
+        : `
+          <thead>
+            <tr style="background:#EDEDED; font-size:7.5pt; font-weight:bold">
+              <th style="border:1px solid #000; padding:3px; text-align:center; width:35px">SR No</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L1-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">L2-Inch</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Height</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Width</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Qty</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
+              <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
+            </tr>
+          </thead>
+        `;
 
     productTablesHTML += `
       <div style="border:1px solid #000; border-top:0">
@@ -1498,24 +1585,11 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
 
         <!-- Product Size Items Table -->
         <table class="items2" style="width:100%; border-collapse:collapse; border-top:0">
-          <thead>
-            <tr style="background:#EDEDED; font-size:7.5pt; font-weight:bold">
-              <th style="border:1px solid #000; padding:3px; text-align:center; width:35px">SR No</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">L1-Inch</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">L2-Inch</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Height</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Width</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Qty</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Tot Area</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Chargable Rate/${unitCol}</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Amount</th>
-              <th style="border:1px solid #000; padding:3px; text-align:center">Remark</th>
-            </tr>
-          </thead>
+          ${theadHTML}
           <tbody>
             ${rowsHTML}
             <tr style="font-weight:bold; background:#f4f4f4; font-size:8pt">
-              <td colspan="5" style="border:1px solid #000; text-align:left; padding:3px 6px">Total</td>
+              <td colspan="${totalColspan}" style="border:1px solid #000; text-align:left; padding:3px 6px">Total</td>
               <td class="c" style="border:1px solid #000; text-align:center">${grpQty}</td>
               <td class="n" style="border:1px solid #000; text-align:right; font-family:monospace">${displayArea}</td>
               <td style="border:1px solid #000"></td>
