@@ -11,8 +11,6 @@ import {
   Trash2,
   Building,
   UserPlus,
-  Download,
-  Upload,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -199,6 +197,13 @@ function CustomersPage() {
     if (!payModalInvoice) return;
     const grandTotal = Number(payModalInvoice.totals?.grandTotal) || 0;
     const currentPaid = Number(payModalInvoice.paidAmount) || 0;
+    const pendingAmount = Math.max(0, grandTotal - currentPaid);
+
+    if (details.paidAmount > pendingAmount) {
+      toast.error(`Payment amount cannot exceed pending balance of ₹${nf(pendingAmount)}`);
+      return;
+    }
+
     const newPaidAmount = Math.min(grandTotal, currentPaid + details.paidAmount);
     const remaining = Math.max(0, grandTotal - newPaidAmount);
 
@@ -390,19 +395,44 @@ function CustomersPage() {
   const dueBalanceForViewCust = Math.max(0, totalInvoicedForViewCust - totalPaidForViewCust);
 
   const handleAddPaymentSubmit = () => {
-    if (!payFormData.amount || Number(payFormData.amount) <= 0) {
+    const enteredAmt = Number(payFormData.amount);
+    if (!payFormData.amount || isNaN(enteredAmt) || enteredAmt <= 0) {
       toast.error("Enter a valid payment amount");
       return;
     }
     if (!viewCust) return;
 
     const targetInvNo = payFormData.invoiceNo || customerInvoices[0]?.no || "";
+    const targetInv = targetInvNo
+      ? invoices.find(
+          (x) =>
+            String(x.no || "").toLowerCase() === String(targetInvNo).toLowerCase() ||
+            String(x.orderNo || "").toLowerCase() === String(targetInvNo).toLowerCase(),
+        )
+      : null;
+
+    const invPending = targetInv
+      ? Math.max(0, Number(targetInv.totals?.grandTotal || 0) - Number(targetInv.paidAmount || 0))
+      : dueBalanceForViewCust;
+
+    const maxAllowed = targetInv ? invPending : dueBalanceForViewCust;
+
+    if (maxAllowed <= 0 && dueBalanceForViewCust <= 0) {
+      toast.error("This customer has no pending balance due.");
+      return;
+    }
+
+    if (maxAllowed > 0 && enteredAmt > maxAllowed) {
+      toast.error(`Payment amount cannot exceed pending balance of ₹${nf(maxAllowed)}`);
+      return;
+    }
+
     savePayment({
       custName: viewCust.name,
       custId: viewCust.id,
       invoiceNo: targetInvNo,
       date: payFormData.date,
-      amount: Number(payFormData.amount),
+      amount: enteredAmt,
       mode: payFormData.mode,
       refNo: payFormData.refNo,
       notes: payFormData.notes,
@@ -596,23 +626,6 @@ function CustomersPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => toast.info("Exporting customer data...")}
-          >
-            <Download className="h-3.5 w-3.5" /> Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => toast.info("Import customer CSV feature ready.")}
-          >
-            <Upload className="h-3.5 w-3.5" /> Import
-          </Button>
-
           {/* Add / Edit Customer Modal */}
           <Dialog open={openModal} onOpenChange={setOpenModal}>
             <DialogTrigger asChild>
@@ -1561,16 +1574,57 @@ function CustomersPage() {
                         </div>
 
                         <div>
-                          <Label className="text-[10px]">Amount Received (₹) *</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[10px]">Amount Received (₹) *</Label>
+                            {dueBalanceForViewCust > 0 && (
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                                Max: ₹{nf(dueBalanceForViewCust)}
+                              </span>
+                            )}
+                          </div>
                           <Input
                             type="number"
-                            className="h-8 text-xs font-mono font-bold"
-                            placeholder="e.g. 10000"
-                            value={payFormData.amount}
-                            onChange={(e) =>
-                              setPayFormData({ ...payFormData, amount: e.target.value })
+                            step="any"
+                            min="0.01"
+                            max={dueBalanceForViewCust > 0 ? dueBalanceForViewCust : undefined}
+                            className={`h-8 text-xs font-mono font-bold mt-0.5 ${
+                              dueBalanceForViewCust > 0 &&
+                              Number(payFormData.amount) > dueBalanceForViewCust
+                                ? "text-rose-600 border-rose-500 focus-visible:ring-rose-500"
+                                : ""
+                            }`}
+                            placeholder={
+                              dueBalanceForViewCust > 0
+                                ? `Max ₹${nf(dueBalanceForViewCust)}`
+                                : "e.g. 10000"
                             }
+                            value={payFormData.amount}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "") {
+                                setPayFormData({ ...payFormData, amount: "" });
+                                return;
+                              }
+                              const num = Number(val);
+                              if (dueBalanceForViewCust > 0 && num > dueBalanceForViewCust) {
+                                toast.warning(
+                                  `Payment cannot exceed pending balance of ₹${nf(dueBalanceForViewCust)}`,
+                                );
+                                setPayFormData({
+                                  ...payFormData,
+                                  amount: String(dueBalanceForViewCust),
+                                });
+                              } else {
+                                setPayFormData({ ...payFormData, amount: val });
+                              }
+                            }}
                           />
+                          {dueBalanceForViewCust > 0 &&
+                            Number(payFormData.amount) > dueBalanceForViewCust && (
+                              <span className="text-[10px] text-rose-500 font-semibold mt-0.5 block">
+                                Amount cannot exceed pending balance of ₹{nf(dueBalanceForViewCust)}
+                              </span>
+                            )}
                         </div>
 
                         <div>

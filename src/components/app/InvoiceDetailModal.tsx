@@ -244,6 +244,16 @@ export function InvoiceDetailModal({
     () => (invoice && totals && settings ? buildPrintHTML(settings, invoice, totals) : ""),
     [settings, invoice, totals],
   );
+  const cutsheetHTML = useMemo(
+    () =>
+      invoice && totals && settings
+        ? buildPrintHTML(settings, invoice, totals, {
+            docTitle: "WORK ORDER",
+            woNo: activeWO?.woNo,
+          })
+        : "",
+    [settings, invoice, totals, activeWO],
+  );
 
   /* Product-Grouped Pieces for Work Order Cut Sheet */
   const woProductGroups = useMemo(() => {
@@ -343,6 +353,10 @@ export function InvoiceDetailModal({
       toast.error("Enter a valid payment amount");
       return;
     }
+    if (amt > pendingAmount) {
+      toast.error(`Payment amount cannot exceed pending balance of ₹${nf(pendingAmount)}`);
+      return;
+    }
 
     savePayment({
       id: uid("pay"),
@@ -405,15 +419,11 @@ export function InvoiceDetailModal({
   };
 
   const handlePrintProforma = () => printActive("portrait", "4mm 3mm");
-  /* The cut sheet's table is far wider than it is tall — print in landscape */
-  const handlePrintCutSheet = () => printActive("landscape", "5mm 4mm");
+  const handlePrintCutSheet = () => printActive("portrait", "4mm 3mm");
   const handlePrintStickers = () => printActive("portrait", "5mm");
 
   const handlePrintActive = () =>
-    printActive(
-      activeTab === "cutsheet" ? "landscape" : "portrait",
-      activeTab === "stickers" ? "5mm" : "4mm 3mm",
-    );
+    printActive("portrait", activeTab === "stickers" ? "5mm" : "4mm 3mm");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -695,17 +705,48 @@ export function InvoiceDetailModal({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
-                        Amount Received (₹) *
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                          Amount Received (₹) *
+                        </label>
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                          Max: ₹{nf(pendingAmount)}
+                        </span>
+                      </div>
                       <Input
                         type="number"
                         step="any"
-                        placeholder={`e.g. ${pendingAmount || 5000}`}
-                        className="h-8 text-xs font-mono font-bold mt-1 bg-background text-emerald-600"
+                        min="0.01"
+                        max={pendingAmount}
+                        placeholder={`Max ₹${nf(pendingAmount)}`}
+                        className={`h-8 text-xs font-mono font-bold mt-1 bg-background ${
+                          Number(payAmount) > pendingAmount
+                            ? "text-rose-600 border-rose-500 focus-visible:ring-rose-500"
+                            : "text-emerald-600"
+                        }`}
                         value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "") {
+                            setPayAmount("");
+                            return;
+                          }
+                          const num = Number(val);
+                          if (num > pendingAmount) {
+                            toast.warning(
+                              `Payment cannot exceed pending balance of ₹${nf(pendingAmount)}`,
+                            );
+                            setPayAmount(String(pendingAmount));
+                          } else {
+                            setPayAmount(val);
+                          }
+                        }}
                       />
+                      {Number(payAmount) > pendingAmount && (
+                        <span className="text-[10px] text-rose-500 font-semibold mt-0.5 block">
+                          Amount cannot exceed pending balance of ₹{nf(pendingAmount)}
+                        </span>
+                      )}
                     </div>
 
                     <div>
@@ -1134,269 +1175,27 @@ export function InvoiceDetailModal({
               <div className="flex items-center justify-between px-2 print:hidden">
                 <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
                   <Factory className="h-4 w-4 text-amber-500" />
-                  Work Order Cut Sheet for #{activeWO?.woNo || invoice.orderNo || invoice.no}
+                  A4 Printable Work Order PDF Preview for #
+                  {activeWO?.woNo || invoice.orderNo || invoice.no}
                 </span>
                 <Button
                   size="sm"
                   onClick={handlePrintCutSheet}
                   className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
                 >
-                  <Printer className="h-3.5 w-3.5" /> Print Cut Sheet
+                  <Printer className="h-3.5 w-3.5" /> Print Work Order
                 </Button>
               </div>
 
-              {!activeWO ? (
-                <div className="text-center py-16 text-xs text-muted-foreground">
-                  Generating Work Order Cut Sheet...
+              <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-2 sm:p-6 shadow-md max-w-4xl mx-auto overflow-hidden print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
+                <div className="pdf-scale-wrapper print:!transform-none print:!origin-top-left">
+                  <div
+                    ref={printRef}
+                    className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
+                    dangerouslySetInnerHTML={{ __html: cutsheetHTML || "" }}
+                  />
                 </div>
-              ) : (
-                <div
-                  ref={printRef}
-                  className="wo-print-area bg-white text-black rounded-xl border border-border/80 p-4 sm:p-6 shadow-md max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0"
-                >
-                  {/* WO Header */}
-                  <div className="border-b-2 border-black pb-3 mb-3">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
-                      <div className="text-[11px] space-y-0.5 min-w-0">
-                        <div className="truncate">
-                          <span className="font-bold">Customer :</span>{" "}
-                          {activeWO.customer || invoice.cust?.name}
-                        </div>
-                        <div>
-                          <span className="font-bold">PI No. :</span> {activeWO.piNo || invoice.no}
-                        </div>
-                        <div>
-                          <span className="font-bold">PI Date :</span>{" "}
-                          {dmy(activeWO.piDate || invoice.date)}
-                        </div>
-                        <div className="break-words">
-                          <span className="font-bold">Dispatch To :</span>{" "}
-                          {activeWO.dispatchTo || invoice.cust?.addr || "—"}
-                        </div>
-                      </div>
-                      <div className="text-left sm:text-right shrink-0">
-                        <div className="text-lg sm:text-xl font-black tracking-wide text-black">
-                          WORK ORDER
-                        </div>
-                        <div className="text-[11px] mt-1 space-y-0.5">
-                          <div>
-                            <span className="font-bold">Order No :</span>{" "}
-                            <span className="font-mono text-sm font-bold">
-                              {activeWO.orderNo || invoice.no}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="font-bold">Our Date :</span>{" "}
-                            {dmy(activeWO.piDate || invoice.date)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
-                      <div>
-                        <span className="font-bold">PO No. :</span>{" "}
-                        {activeWO.poNo || invoice.poNo || "—"} &nbsp;&nbsp;{" "}
-                        <span className="font-bold">Project :</span> {activeWO.project || "—"}
-                      </div>
-                      <div className="mt-1 font-bold text-sm">
-                        {activeWO.glassDesc ||
-                          `${activeWO.thickness || 5}mm ${activeWO.productName || "Glass"}`}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* WO Product-Grouped Tables */}
-                  <div className="space-y-4">
-                    {woProductGroups.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-muted-foreground">
-                        No cut pieces recorded
-                      </div>
-                    ) : (
-                      woProductGroups.map((grp: any, gIdx: number) => {
-                        const grpSqm = grp.pieces.reduce(
-                          (sum: number, p: any) => sum + (Number(p.area) || 0),
-                          0,
-                        );
-                        const grpPcs = grp.pieces.length;
-                        const docUnit = invoice?.inputUnit || activeWO?.inputUnit || "inch";
-                        const isFreqOn =
-                          docUnit !== "mm" &&
-                          Boolean(invoice?.frequencyEnabled ?? activeWO?.frequencyEnabled);
-                        const isMM = docUnit === "mm";
-
-                        const cutsheetHeaders = isMM
-                          ? [
-                              "SR\nNo",
-                              "Height\nMM",
-                              "Width\nMM",
-                              "Qty",
-                              "Act Totl",
-                              "Hole",
-                              "Cut Out",
-                              "Big\nHole",
-                              "Big\nCutout",
-                              "CSK",
-                              "Remark",
-                            ]
-                          : isFreqOn
-                            ? [
-                                "SR\nNo",
-                                "Freq",
-                                "L1-Inch",
-                                "L2-Inch",
-                                "Height\nMM",
-                                "Width\nMM",
-                                "Qty",
-                                "Act Totl",
-                                "Hole",
-                                "Cut Out",
-                                "Big\nHole",
-                                "Big\nCutout",
-                                "CSK",
-                                "Remark",
-                              ]
-                            : [
-                                "SR\nNo",
-                                "L1-Inch",
-                                "L2-Inch",
-                                "Height\nMM",
-                                "Width\nMM",
-                                "Qty",
-                                "Act Totl",
-                                "Hole",
-                                "Cut Out",
-                                "Big\nHole",
-                                "Big\nCutout",
-                                "CSK",
-                                "Remark",
-                              ];
-
-                        return (
-                          <div key={gIdx} className="border border-black overflow-hidden">
-                            {/* Product Banner Header */}
-                            <div className="bg-gray-100 border-b border-black px-3 py-1.5 font-bold text-[11px] uppercase flex items-center justify-between">
-                              <span>
-                                Item {gIdx + 1}: {grp.title}
-                              </span>
-                              <span className="text-[10px] font-mono font-normal">
-                                {grpPcs} Pcs • {nf(grpSqm, 3)} SQM
-                              </span>
-                            </div>
-
-                            <table
-                              className="w-full text-[10px] border-collapse"
-                              style={{ minWidth: isMM ? "650px" : "750px" }}
-                            >
-                              <thead>
-                                <tr className="bg-gray-50 border-b border-black">
-                                  {cutsheetHeaders.map((h, i) => (
-                                    <th
-                                      key={i}
-                                      className="border border-gray-400 px-1.5 py-1 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center"
-                                    >
-                                      {h}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {grp.pieces.map((piece: any, idx: number) => {
-                                  const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
-                                  const displayRemark =
-                                    piece.remark && !/^[FH]\d{3}$/.test(piece.remark)
-                                      ? piece.remark
-                                      : "";
-                                  return (
-                                    <tr
-                                      key={idx}
-                                      className="border-b border-gray-300 hover:bg-gray-50"
-                                    >
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                        {piece.sr}
-                                      </td>
-                                      {!isMM && isFreqOn && (
-                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                          {freqLabel}
-                                        </td>
-                                      )}
-                                      {!isMM && (
-                                        <>
-                                          <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                            {piece.l1 || "—"}
-                                          </td>
-                                          <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                            {piece.l2 || "—"}
-                                          </td>
-                                        </>
-                                      )}
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                        {piece.heightMM}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                        {piece.widthMM}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                        {piece.qty}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
-                                        {nf(piece.area, 3)}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.hole || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.cutOut || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.bigHole || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.bigCutout || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.csk || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
-                                        {displayRemark}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                              <tfoot>
-                                <tr className="bg-gray-100 border-t border-black font-bold">
-                                  <td
-                                    colSpan={isMM ? 3 : isFreqOn ? 6 : 5}
-                                    className="border border-gray-400 px-2 py-1 text-right"
-                                  >
-                                    Subtotal (Item {gIdx + 1})
-                                  </td>
-                                  <td className="border border-gray-400 px-1.5 py-1 text-center">
-                                    {grpPcs}
-                                  </td>
-                                  <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
-                                    {nf(grpSqm, 3)}
-                                  </td>
-                                  <td colSpan={8} className="border border-gray-400 px-2 py-1"></td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-                        );
-                      })
-                    )}
-
-                    {/* Overall Work Order Grand Summary Footer */}
-                    <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex flex-col sm:flex-row sm:justify-between gap-0.5">
-                      <div>Grand Total: {activeWO.totalPieces} Pcs</div>
-                      <div className="text-[10px] sm:text-[11px]">
-                        {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)}{" "}
-                        SQFT &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
 

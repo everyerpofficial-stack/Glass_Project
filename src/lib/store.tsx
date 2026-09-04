@@ -1101,7 +1101,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
 
       const grandTotal = Number(target.totals?.grandTotal) || 0;
-      const paidAmount = Number(paymentDetails?.paidAmount ?? target.paidAmount ?? 0);
+      const rawPaid = Number(paymentDetails?.paidAmount ?? target.paidAmount ?? 0);
+      const paidAmount =
+        grandTotal > 0 ? Math.min(grandTotal, Math.max(0, rawPaid)) : Math.max(0, rawPaid);
       const remainingBalance = Math.max(0, grandTotal - paidAmount);
       let paymentStatus = "Credit";
       if (paidAmount >= grandTotal && grandTotal > 0) {
@@ -1129,7 +1131,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         target,
       );
 
-      if (paymentDetails && Number(paymentDetails.paidAmount) > 0) {
+      if (paymentDetails && paidAmount > 0) {
         savePayment({
           id: uid("pay"),
           custName: updated?.cust?.name || target.cust?.name || "Customer",
@@ -1137,7 +1139,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
              sheet carries an id here because this read the null variable. */
           invoiceNo: updated?.no || target.no || bookingId,
           date: new Date().toISOString().slice(0, 10),
-          amount: Number(paymentDetails.paidAmount),
+          amount: paidAmount,
           mode: paymentDetails.paymentType || "Credit",
           refNo: paymentDetails.refNo || "",
           notes: paymentDetails.notes || "Order Confirmation Payment",

@@ -604,11 +604,25 @@ function BookingPage() {
       preProformaInvoices.filter((item: any) => {
         const query = savedSearch.toLowerCase().trim();
         if (!query) return true;
+
+        const piNoStr = formatPiNo(item.no).toLowerCase();
+        const rawNoStr = String(item.no || "").toLowerCase();
+        const preNoStr = String(item.preProformaNo || "").toLowerCase();
+        const orderNoStr = String(item.orderNo || "").toLowerCase();
+        const formattedOrderStr = formatOrderId(item.preProformaNo || item.orderNo).toLowerCase();
+        const custNameStr = String(item.cust?.name || item.custName || "").toLowerCase();
+        const custPhoneStr = String(item.cust?.phone || "").toLowerCase();
+        const custGstinStr = String(item.cust?.gstin || "").toLowerCase();
+
         return (
-          item.no?.toLowerCase().includes(query) ||
-          item.cust?.name?.toLowerCase().includes(query) ||
-          item.cust?.phone?.toLowerCase().includes(query) ||
-          item.cust?.gstin?.toLowerCase().includes(query)
+          piNoStr.includes(query) ||
+          rawNoStr.includes(query) ||
+          preNoStr.includes(query) ||
+          orderNoStr.includes(query) ||
+          formattedOrderStr.includes(query) ||
+          custNameStr.includes(query) ||
+          custPhoneStr.includes(query) ||
+          custGstinStr.includes(query)
         );
       }),
     [preProformaInvoices, savedSearch],
@@ -856,11 +870,19 @@ function BookingPage() {
 
   const uniqueCustomers = useMemo(() => dedupeCustomers(customers), [customers]);
 
-  const filteredCustomers = useMemo(
-    () =>
-      uniqueCustomers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
-    [uniqueCustomers, custSearch],
-  );
+  const filteredCustomers = useMemo(() => {
+    const q = custSearch.toLowerCase().trim();
+    if (!q) return uniqueCustomers;
+    return uniqueCustomers.filter(
+      (c: any) =>
+        String(c?.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c?.phone || "")
+          .toLowerCase()
+          .includes(q),
+    );
+  }, [uniqueCustomers, custSearch]);
 
   const selectCustomer = (c: any) => {
     const hasSeparateShip = Boolean(c.ship && c.ship.trim() !== "" && c.ship !== c.addr);

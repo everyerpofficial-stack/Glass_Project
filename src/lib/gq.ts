@@ -1455,7 +1455,16 @@ export function formatPiNo(idOrNo: string | undefined | null, defaultYear?: stri
 }
 
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */
-export function buildPrintHTML(S: any, INV: any, TOT: any) {
+export function buildPrintHTML(
+  S: any,
+  INV: any,
+  TOT: any,
+  options?: {
+    docTitle?: string;
+    noLabel?: string;
+    woNo?: string;
+  },
+) {
   const t = TOT,
     o = t.settings;
 
@@ -1717,12 +1726,22 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
   summary.push(fr("Grand Total", nf(t.grandTotal), "gt"));
 
   const isPre = INV.docType === "pre_proforma";
-  const docTitle = isPre ? "PROFORMA INVOICE" : S.title || "ORDER CONFIRM";
-  const noLabel = isPre ? "Proforma Invoice No." : "Order Confirm No.";
+  const docTitle = options?.docTitle || (isPre ? "PROFORMA INVOICE" : S.title || "ORDER CONFIRM");
+  const isWorkOrder = docTitle === "WORK ORDER";
+  const noLabel =
+    options?.noLabel ||
+    (isWorkOrder ? "Order Confirm No." : isPre ? "Proforma Invoice No." : "Order Confirm No.");
   const displayNo = formatPiNo(INV.no);
   const rawOrderNo =
     INV.preProformaNo || (INV.orderNo && INV.orderNo !== INV.no ? INV.orderNo : "");
   const displayOrderNo = formatOrderId(rawOrderNo);
+  const woNo =
+    options?.woNo ||
+    (INV.orderNo
+      ? String(INV.orderNo).startsWith("WO-")
+        ? INV.orderNo
+        : `WO-${INV.orderNo}`
+      : "");
 
   const grandTotalVal = Number(t.grandTotal || 0);
   const paidVal = Number(INV.paidAmount || 0);
@@ -1781,12 +1800,14 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
           <tr>
             <td style="width:50%; border:1px solid #000; padding:4px">
               <b>${noLabel} : ${esc(displayNo)}</b><br>
+              ${isWorkOrder && woNo ? `<b>Work Order No. &nbsp;&nbsp;: ${esc(woNo)}</b><br>` : ""}
               Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${dmy(INV.date)}<br>
               Order No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(displayOrderNo)}
             </td>
             <td style="border:1px solid #000; padding:4px">
               Sales Person &nbsp;&nbsp;&nbsp;: ${esc(INV.salesPerson || "Office")}<br>
-              Party PO No. &nbsp;&nbsp;&nbsp;: ${esc(INV.poNo || "—")}
+              Party PO No. &nbsp;&nbsp;&nbsp;: ${esc(INV.poNo || "—")}<br>
+              ${INV.projectRemark || INV.project || INV.projectTitle ? `Project &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${esc(INV.projectRemark || INV.project || INV.projectTitle)}<br>` : ""}
             </td>
           </tr>
           <tr>
@@ -1852,7 +1873,7 @@ export function buildPrintHTML(S: any, INV: any, TOT: any) {
       <!-- PAGE 2 -->
       <div style="page-break-before: always; margin-top: 28px" class="page page-2">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:8px; font-size:8.5pt; font-weight:bold">
-          <div>${noLabel} : ${esc(displayNo)}</div>
+          <div>${isWorkOrder && woNo ? `Work Order No. : ${esc(woNo)} (${displayNo})` : `${noLabel} : ${esc(displayNo)}`}</div>
           <div>${esc(docTitle)}</div>
           <div>Page : 2</div>
         </div>

@@ -21,7 +21,15 @@ import {
 } from "@/components/ui/select";
 import { useGQ } from "@/lib/store";
 import { ListSkeleton } from "@/components/app/DataSkeleton";
-import { nf, dmy, liveWorkOrders, workOrderBelongsTo, formatOrderId } from "@/lib/gq";
+import {
+  nf,
+  dmy,
+  liveWorkOrders,
+  workOrderBelongsTo,
+  formatOrderId,
+  buildPrintHTML,
+  computeTotals,
+} from "@/lib/gq";
 import { printElement } from "@/lib/print";
 import { SwipeHint } from "@/components/app/MobileRecord";
 import { toast } from "sonner";
@@ -511,14 +519,35 @@ function WorkOrderPage() {
     }
   };
 
-  /* Print just the document, out of the live page — the cut sheet in landscape,
-     the sticker sheet in portrait. A bare window.print() sent the whole route to
-     paper, sidebar and toolbar included. */
+  const targetInv = useMemo(() => {
+    if (!activeWO) return null;
+    return (
+      invoices.find((x) => workOrderBelongsTo(activeWO, x)) ||
+      (selectedOrderId ? invoices.find((x) => x.id === selectedOrderId) : null) ||
+      null
+    );
+  }, [invoices, activeWO, selectedOrderId]);
+
+  const totals = useMemo(() => {
+    if (!targetInv || !settings) return null;
+    return computeTotals(settings, targetInv);
+  }, [settings, targetInv]);
+
+  const cutsheetHTML = useMemo(() => {
+    if (!targetInv || !totals || !settings) return "";
+    return buildPrintHTML(settings, targetInv, totals, {
+      docTitle: "WORK ORDER",
+      woNo: activeWO?.woNo,
+    });
+  }, [settings, targetInv, totals, activeWO]);
+
+  /* Print just the document, out of the live page */
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = () => {
     if (
       !printElement(printRef.current, {
-        orientation: activeTab === "cutsheet" ? "landscape" : "portrait",
+        orientation: "portrait",
+        margin: activeTab === "stickers" ? "5mm" : "4mm 3mm",
       })
     ) {
       toast.error("Nothing to print yet.");
@@ -698,259 +727,13 @@ function WorkOrderPage() {
           </div>
         ) : activeTab === "cutsheet" ? (
           /* ══════════ TAB 1: WORK ORDER CUT SHEET ══════════ */
-          <div
-            ref={printRef}
-            className="wo-print-area bg-white text-black rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none"
-          >
-            {/* WO Header */}
-            <div className="border-b-2 border-black p-3 sm:p-4 print:p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start print:flex-row print:justify-between">
-                <div className="text-[11px] space-y-0.5">
-                  <div>
-                    <span className="font-bold">Customer :</span> {activeWO.customer}
-                  </div>
-                  <div>
-                    <span className="font-bold">PI No. :</span> {activeWO.piNo}
-                  </div>
-                  <div>
-                    <span className="font-bold">PI Date :</span> {dmy(activeWO.piDate)}
-                  </div>
-                  <div>
-                    <span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}
-                  </div>
-                </div>
-                <div className="text-left sm:text-right print:text-right">
-                  <div className="text-lg font-black tracking-wide text-black">WORK ORDER</div>
-                  <div className="text-[11px] mt-1 space-y-0.5">
-                    <div>
-                      <span className="font-bold">Order No :</span>{" "}
-                      <span className="font-mono text-sm font-bold">
-                        {formatOrderId(activeWO.orderNo)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold">Our Date :</span> {dmy(activeWO.piDate)}
-                    </div>
-                    <div>
-                      <span className="font-bold">Del Date :</span> —
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
-                <div>
-                  <span className="font-bold">PO No. :</span> {activeWO.poNo || "—"} &nbsp;&nbsp;{" "}
-                  <span className="font-bold">Project :</span> {activeWO.project || "—"}
-                </div>
-                <div className="mt-1 font-bold text-sm">
-                  {activeWO.glassDesc || `${activeWO.thickness}mm ${activeWO.productName}`}
-                </div>
-                {activeWO.layerInfo?.length > 0 && (
-                  <div className="text-[10px] text-gray-600 mt-0.5">
-                    {activeWO.layerInfo.map((l: any, i: number) => (
-                      <span key={i}>
-                        {l.layerNo}: {l.productName} {l.thickness}mm
-                        {i < activeWO.layerInfo.length - 1 ? " | " : ""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* WO Product-Grouped Tables */}
-            <SwipeHint className="px-3 print:hidden" />
-            <div className="scroll-x space-y-4">
-              {woProductGroups.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">
-                  No pieces recorded
-                </div>
-              ) : (
-                woProductGroups.map((grp: any, gIdx: number) => {
-                  const grpSqm = grp.pieces.reduce(
-                    (sum: number, p: any) => sum + (Number(p.area) || 0),
-                    0,
-                  );
-                  const grpPcs = grp.pieces.length;
-                  const woUnit = activeWO?.inputUnit || "inch";
-                  const isFreqOn = woUnit !== "mm" && Boolean(activeWO?.frequencyEnabled);
-                  const isMM = woUnit === "mm";
-
-                  const cutsheetHeaders = isMM
-                    ? [
-                        "SR\nNo",
-                        "Height\nMM",
-                        "Width\nMM",
-                        "Qty",
-                        "Act Totl",
-                        "Hole",
-                        "Cut Out",
-                        "Big\nHole",
-                        "Big\nCutout",
-                        "CSK",
-                        "Remark",
-                      ]
-                    : isFreqOn
-                      ? [
-                          "SR\nNo",
-                          "Freq",
-                          "L1-Inch",
-                          "L2-Inch",
-                          "Height\nMM",
-                          "Width\nMM",
-                          "Qty",
-                          "Act Totl",
-                          "Hole",
-                          "Cut Out",
-                          "Big\nHole",
-                          "Big\nCutout",
-                          "CSK",
-                          "Remark",
-                        ]
-                      : [
-                          "SR\nNo",
-                          "L1-Inch",
-                          "L2-Inch",
-                          "Height\nMM",
-                          "Width\nMM",
-                          "Qty",
-                          "Act Totl",
-                          "Hole",
-                          "Cut Out",
-                          "Big\nHole",
-                          "Big\nCutout",
-                          "CSK",
-                          "Remark",
-                        ];
-
-                  return (
-                    <div key={gIdx} className="border border-black overflow-hidden">
-                      {/* Product Banner Header */}
-                      <div className="bg-gray-100 border-b border-black px-3 py-1.5 font-bold text-[11px] uppercase flex items-center justify-between">
-                        <span>
-                          Item {gIdx + 1}: {grp.title}
-                        </span>
-                        <span className="text-[10px] font-mono font-normal">
-                          {grpPcs} Pcs • {nf(grpSqm, 3)} SQM
-                        </span>
-                      </div>
-
-                      <table
-                        className="w-full text-[10px] border-collapse"
-                        style={{ minWidth: isMM ? "650px" : "750px" }}
-                      >
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-black">
-                            {cutsheetHeaders.map((h, i) => (
-                              <th
-                                key={i}
-                                className="border border-gray-400 px-1.5 py-1 text-[9px] font-bold uppercase text-black whitespace-pre-line text-center"
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {grp.pieces.map((piece: any, idx: number) => {
-                            const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
-                            const displayRemark =
-                              piece.remark && !/^[FH]\d{3}$/.test(piece.remark) ? piece.remark : "";
-                            return (
-                              <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                  {piece.sr}
-                                </td>
-                                {!isMM && isFreqOn && (
-                                  <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                    {freqLabel}
-                                  </td>
-                                )}
-                                {!isMM && (
-                                  <>
-                                    <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                      {piece.l1 || "—"}
-                                    </td>
-                                    <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
-                                      {piece.l2 || "—"}
-                                    </td>
-                                  </>
-                                )}
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                  {piece.heightMM}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
-                                  {piece.widthMM}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                  {piece.qty}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
-                                  {nf(piece.area, 3)}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.hole || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.cutOut || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.bigHole || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.bigCutout || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.csk || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
-                                  {displayRemark}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr className="bg-gray-100 border-t border-black font-bold">
-                            <td
-                              colSpan={isMM ? 3 : isFreqOn ? 6 : 5}
-                              className="border border-gray-400 px-2 py-1 text-right"
-                            >
-                              Subtotal (Item {gIdx + 1})
-                            </td>
-                            <td className="border border-gray-400 px-1.5 py-1 text-center">
-                              {grpPcs}
-                            </td>
-                            <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
-                              {nf(grpSqm, 3)}
-                            </td>
-                            <td colSpan={8} className="border border-gray-400 px-2 py-1"></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  );
-                })
-              )}
-
-              {/* Overall Work Order Grand Summary Footer */}
-              <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex justify-between">
-                <div>Grand Total: {activeWO.totalPieces} Pcs</div>
-                <div>
-                  {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)} SQFT
-                  &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
-                </div>
-              </div>
-            </div>
-
-            {/* WO Footer */}
-            <div className="p-3 border-t-2 border-black text-[10px] flex justify-between print:p-2">
-              <div>
-                <span className="font-bold">Wastage :</span> — &nbsp;&nbsp;
-                <span className="font-bold">Total Pcs :</span> {activeWO.totalPieces} &nbsp;&nbsp;
-                <span className="font-bold">Weight :</span> {activeWO.weightKg || "—"} kg
-              </div>
-              <div className="text-right text-gray-500">Page 1</div>
+          <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-2 sm:p-6 shadow-md max-w-4xl mx-auto overflow-hidden print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
+            <div className="pdf-scale-wrapper print:!transform-none print:!origin-top-left">
+              <div
+                ref={printRef}
+                className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
+                dangerouslySetInnerHTML={{ __html: cutsheetHTML || "" }}
+              />
             </div>
           </div>
         ) : (

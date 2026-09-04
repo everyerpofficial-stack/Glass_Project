@@ -453,11 +453,19 @@ function OrderPage() {
 
   /* ── customer search ── */
   const uniqueCustomers = useMemo(() => dedupeCustomers(customers), [customers]);
-  const filteredCustomers = useMemo(
-    () =>
-      uniqueCustomers.filter((c: any) => c.name?.toLowerCase().includes(custSearch.toLowerCase())),
-    [uniqueCustomers, custSearch],
-  );
+  const filteredCustomers = useMemo(() => {
+    const q = custSearch.toLowerCase().trim();
+    if (!q) return uniqueCustomers;
+    return uniqueCustomers.filter(
+      (c: any) =>
+        String(c?.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c?.phone || "")
+          .toLowerCase()
+          .includes(q),
+    );
+  }, [uniqueCustomers, custSearch]);
 
   const selectCustomer = (c: any) => {
     const hasSeparateShip = Boolean(c.ship && c.ship.trim() !== "" && c.ship !== c.addr);

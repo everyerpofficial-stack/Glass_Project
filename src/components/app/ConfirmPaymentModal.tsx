@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Clock } from "lucide-react";
-import { cur, dmy, nf } from "@/lib/gq";
+import { nf } from "@/lib/gq";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export type ConfirmPaymentDetails = {
   paidAmount: number;
@@ -38,8 +39,12 @@ function ConfirmPaymentModalBody({
   onConfirm: (paymentDetails: ConfirmPaymentDetails) => void;
 }) {
   const grandTotal = Number(invoice.totals?.grandTotal) || 0;
+  const isPre = invoice.docType === "pre_proforma";
+  const alreadyPaid = isPre ? 0 : Number(invoice.paidAmount || 0);
+  const pendingAmount = Math.max(0, grandTotal - alreadyPaid);
+
   const [paidAmountStr, setPaidAmountStr] = useState<string>(
-    invoice.paidAmount !== undefined && invoice.paidAmount !== null
+    isPre && invoice.paidAmount !== undefined && invoice.paidAmount !== null
       ? String(invoice.paidAmount)
       : "0",
   );
@@ -53,18 +58,18 @@ function ConfirmPaymentModalBody({
   );
 
   const numericPaid = Number(paidAmountStr) || 0;
-  const remainingBalance = Math.max(0, grandTotal - numericPaid);
-  const isFullPaid = numericPaid >= grandTotal && grandTotal > 0;
+  const remainingBalance = Math.max(0, pendingAmount - numericPaid);
+  const isFullPaid = numericPaid >= pendingAmount && pendingAmount > 0;
   const hasPaidAmount = numericPaid > 0;
 
   const getStatusBadge = () => {
-    if (numericPaid >= grandTotal && grandTotal > 0) {
+    if (remainingBalance <= 0 && grandTotal > 0) {
       return (
         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
           <CheckCircle2 className="h-3.5 w-3.5" /> PAID IN FULL
         </span>
       );
-    } else if (numericPaid > 0) {
+    } else if (numericPaid > 0 || alreadyPaid > 0) {
       return (
         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
           <Clock className="h-3.5 w-3.5" /> PARTIALLY PAID
@@ -83,13 +88,21 @@ function ConfirmPaymentModalBody({
     if (type === "zero") {
       setPaidAmountStr("0");
     } else if (type === "full") {
-      setPaidAmountStr(String(grandTotal));
+      setPaidAmountStr(String(pendingAmount));
       if (paymentType === "Credit") setPaymentType("Cash");
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (numericPaid > pendingAmount) {
+      toast.error(`Payment amount cannot exceed pending balance of ₹${nf(pendingAmount)}`);
+      return;
+    }
+    if (numericPaid < 0) {
+      toast.error("Payment amount cannot be negative");
+      return;
+    }
     onConfirm({
       paidAmount: numericPaid,
       paymentType: hasPaidAmount ? paymentType : "Credit",
@@ -147,19 +160,35 @@ function ConfirmPaymentModalBody({
               {getStatusBadge()}
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div
+              className={cn(
+                "grid gap-2 text-center",
+                alreadyPaid > 0 ? "grid-cols-4" : "grid-cols-3",
+              )}
+            >
               <div className="bg-white dark:bg-slate-800 border border-border rounded-md p-1.5 shadow-2xs">
                 <span className="text-[8.5px] font-bold text-muted-foreground uppercase block">
-                  Total Amount
+                  Total
                 </span>
                 <span className="font-mono text-xs font-bold text-foreground block mt-0.5">
                   ₹ {nf(grandTotal)}
                 </span>
               </div>
 
+              {alreadyPaid > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/80 border border-border rounded-md p-1.5 shadow-2xs">
+                  <span className="text-[8.5px] font-bold text-muted-foreground uppercase block">
+                    Prev Paid
+                  </span>
+                  <span className="font-mono text-xs font-bold text-foreground block mt-0.5">
+                    ₹ {nf(alreadyPaid)}
+                  </span>
+                </div>
+              )}
+
               <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-md p-1.5 shadow-2xs">
                 <span className="text-[8.5px] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">
-                  Amount Paid
+                  {alreadyPaid > 0 ? "Paying Now" : "Amount Paid"}
                 </span>
                 <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300 block mt-0.5">
                   ₹ {nf(numericPaid)}
@@ -167,13 +196,16 @@ function ConfirmPaymentModalBody({
               </div>
 
               <div
-                className={`border rounded-md p-1.5 shadow-2xs ${
+                className={cn(
+                  "border rounded-md p-1.5 shadow-2xs",
                   remainingBalance > 0
                     ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
-                    : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                }`}
+                    : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400",
+                )}
               >
-                <span className="text-[8.5px] font-bold uppercase block">Remaining</span>
+                <span className="text-[8.5px] font-bold uppercase block">
+                  {alreadyPaid > 0 ? "Balance Left" : "Remaining"}
+                </span>
                 <span className="font-mono text-xs font-bold block mt-0.5">
                   ₹ {nf(remainingBalance)}
                 </span>
@@ -185,7 +217,11 @@ function ConfirmPaymentModalBody({
           <div>
             <div className="text-[9.5px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-between">
               <span>Quick Amount Presets</span>
-              <span className="text-muted-foreground font-mono">Total: ₹ {nf(grandTotal)}</span>
+              <span className="text-muted-foreground font-mono">
+                {alreadyPaid > 0
+                  ? `Pending: ₹${nf(pendingAmount)} (Total: ₹${nf(grandTotal)})`
+                  : `Total: ₹${nf(grandTotal)}`}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -203,35 +239,65 @@ function ConfirmPaymentModalBody({
               <button
                 type="button"
                 onClick={() => handleApplyPreset("full")}
+                disabled={pendingAmount <= 0}
                 className={cn(
                   "py-1.5 px-2.5 rounded-md border text-[11px] font-semibold transition-all cursor-pointer",
-                  numericPaid === grandTotal && grandTotal > 0
+                  numericPaid === pendingAmount && pendingAmount > 0
                     ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
                     : "bg-white dark:bg-slate-800 border-border hover:bg-slate-100 text-foreground",
+                  pendingAmount <= 0 && "opacity-50 cursor-not-allowed",
                 )}
               >
-                Full Paid (₹{nf(grandTotal)})
+                Full Paid (₹{nf(pendingAmount)})
               </button>
             </div>
           </div>
 
           {/* Amount Paid Input */}
           <div>
-            <label className="block text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-              Enter Paid Amount (₹)
-            </label>
+            <div className="flex items-center justify-between mb-0.5">
+              <label className="block text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                Enter Paid Amount (₹)
+              </label>
+              <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                Max: ₹{nf(pendingAmount)}
+              </span>
+            </div>
             <div className="relative flex items-center">
               <span className="absolute left-2.5 text-muted-foreground font-bold text-xs">₹</span>
               <Input
                 type="number"
                 min="0"
+                max={pendingAmount}
                 step="any"
-                className="pl-7 h-8 text-xs font-mono font-bold bg-white dark:bg-slate-800 border-border"
-                placeholder="0.00"
+                className={cn(
+                  "pl-7 h-8 text-xs font-mono font-bold bg-white dark:bg-slate-800 border-border",
+                  numericPaid > pendingAmount &&
+                    "text-rose-600 border-rose-500 focus-visible:ring-rose-500",
+                )}
+                placeholder={`Max ₹${nf(pendingAmount)}`}
                 value={paidAmountStr}
-                onChange={(e) => setPaidAmountStr(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setPaidAmountStr("");
+                    return;
+                  }
+                  const num = Number(val);
+                  if (num > pendingAmount) {
+                    toast.warning(`Payment cannot exceed pending balance of ₹${nf(pendingAmount)}`);
+                    setPaidAmountStr(String(pendingAmount));
+                  } else {
+                    setPaidAmountStr(val);
+                  }
+                }}
               />
             </div>
+            {numericPaid > pendingAmount && (
+              <span className="text-[10px] text-rose-500 font-semibold mt-1 block">
+                Amount cannot exceed pending balance of ₹{nf(pendingAmount)}
+              </span>
+            )}
           </div>
 
           {/* TWO RECTANGULAR OPTIONS: CASH & BANK ONLY (Shown ONLY if paid amount > 0) */}
@@ -370,7 +436,8 @@ function ConfirmPaymentModalBody({
             <Button
               type="submit"
               size="sm"
-              className="h-8 text-xs font-bold px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer gap-1.5"
+              disabled={numericPaid > pendingAmount}
+              className="h-8 text-xs font-bold px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               Confirm Payment
