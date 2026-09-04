@@ -1230,6 +1230,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             chgHeightMM: line.lChgMM || line.lMM,
             chgWidthMM: line.wChgMM || line.wMM,
             chgArea: line.chargeAreaSqm ?? line.totalSqm,
+            chgAreaFt: line.chargeAreaSqft ?? line.totalSqft,
+            amount: line.amount ? Number(line.amount) / qty : 0,
             shape: item.shape || "BLOCK",
             barcode: barcodeNum,
             remark: item.remark || "",

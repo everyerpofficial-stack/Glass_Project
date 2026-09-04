@@ -244,16 +244,6 @@ export function InvoiceDetailModal({
     () => (invoice && totals && settings ? buildPrintHTML(settings, invoice, totals) : ""),
     [settings, invoice, totals],
   );
-  const cutsheetHTML = useMemo(
-    () =>
-      invoice && totals && settings
-        ? buildPrintHTML(settings, invoice, totals, {
-            docTitle: "WORK ORDER",
-            woNo: activeWO?.woNo,
-          })
-        : "",
-    [settings, invoice, totals, activeWO],
-  );
 
   /* Product-Grouped Pieces for Work Order Cut Sheet */
   const woProductGroups = useMemo(() => {
@@ -412,6 +402,16 @@ export function InvoiceDetailModal({
      approach copied the element's HTML into a blank second window that had no
      stylesheet at all, so the sticker's colour, grid and type sizes were all
      dropped and it printed as plain text. */
+  const handleGenerateWO = () => {
+    if (!invoice?.id) return;
+    const wo = generateWorkOrder(invoice.id);
+    if (wo) {
+      saveWorkOrder(wo);
+      updateInvoiceStatus(invoice.id, "work_order_generated");
+      toast.success(`Work Order #${wo.woNo} generated successfully!`);
+    }
+  };
+
   const printActive = (orientation: "portrait" | "landscape", margin = "6mm 4mm") => {
     if (!printElement(printRef.current, { orientation, margin })) {
       toast.error("Nothing to print on this tab yet.");
@@ -419,11 +419,14 @@ export function InvoiceDetailModal({
   };
 
   const handlePrintProforma = () => printActive("portrait", "4mm 3mm");
-  const handlePrintCutSheet = () => printActive("portrait", "4mm 3mm");
+  const handlePrintCutSheet = () => printActive("landscape", "5mm 4mm");
   const handlePrintStickers = () => printActive("portrait", "5mm");
 
   const handlePrintActive = () =>
-    printActive("portrait", activeTab === "stickers" ? "5mm" : "4mm 3mm");
+    printActive(
+      activeTab === "cutsheet" ? "landscape" : "portrait",
+      activeTab === "stickers" ? "5mm" : "4mm 3mm",
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1172,30 +1175,450 @@ export function InvoiceDetailModal({
           {/* ─── TAB 3: WORK ORDER CUT SHEET ─── */}
           {activeTab === "cutsheet" && (
             <div className="animate-in fade-in-50 space-y-4">
-              <div className="flex items-center justify-between px-2 print:hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-2 print:hidden">
                 <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
                   <Factory className="h-4 w-4 text-amber-500" />
-                  A4 Printable Work Order PDF Preview for #
-                  {activeWO?.woNo || invoice.orderNo || invoice.no}
+                  Work Order Cut Sheet for #{activeWO?.woNo || invoice.orderNo || invoice.no}
                 </span>
                 <Button
                   size="sm"
                   onClick={handlePrintCutSheet}
                   className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
                 >
-                  <Printer className="h-3.5 w-3.5" /> Print Work Order
+                  <Printer className="h-3.5 w-3.5" /> Print Cut Sheet
                 </Button>
               </div>
 
-              <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-2 sm:p-6 shadow-md max-w-4xl mx-auto overflow-hidden print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
-                <div className="pdf-scale-wrapper print:!transform-none print:!origin-top-left">
-                  <div
-                    ref={printRef}
-                    className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
-                    dangerouslySetInnerHTML={{ __html: cutsheetHTML || "" }}
-                  />
+              {!activeWO ? (
+                <div className="text-center py-16 bg-card border border-border rounded-xl">
+                  <Factory className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-semibold text-foreground">
+                    No Work Order generated yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">
+                    Generate a work order cut sheet and barcode stickers for this confirmed order.
+                  </p>
+                  <Button
+                    onClick={handleGenerateWO}
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold"
+                  >
+                    <Factory className="h-3.5 w-3.5 mr-1.5" />
+                    Generate Work Order
+                  </Button>
                 </div>
-              </div>
+              ) : (
+                <div
+                  ref={printRef}
+                  className="wo-print-area bg-white text-black p-4 sm:p-6 border border-gray-300 rounded-xl shadow-xs max-w-5xl mx-auto space-y-4 print:p-0 print:border-none print:shadow-none print:max-w-full print:w-full print:m-0"
+                >
+                  {/* WO Header */}
+                  <div className="border-b-2 border-black pb-3 mb-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+                      <div className="text-[11px] space-y-0.5 min-w-0">
+                        <div className="truncate">
+                          <span className="font-bold">Customer :</span>{" "}
+                          {activeWO.customer || invoice.cust?.name || "—"}
+                        </div>
+                        <div>
+                          <span className="font-bold">PI No. :</span>{" "}
+                          <span className="font-mono font-bold">
+                            {activeWO.piNo || invoice.no || "—"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-bold">PI Date :</span>{" "}
+                          {dmy(activeWO.piDate || invoice.date)}
+                        </div>
+                        <div className="break-words">
+                          <span className="font-bold">Dispatch To :</span>{" "}
+                          {activeWO.dispatchTo || invoice.cust?.addr || "—"}
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right shrink-0">
+                        <div className="text-lg sm:text-xl font-black tracking-wide text-black">
+                          WORK ORDER
+                        </div>
+                        <div className="text-[11px] mt-1 space-y-0.5">
+                          <div>
+                            <span className="font-bold">Order No :</span>{" "}
+                            <span className="font-mono text-sm font-bold">
+                              {activeWO.orderNo || invoice.orderNo || invoice.no || "—"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-bold">Our Date :</span>{" "}
+                            {dmy(activeWO.piDate || invoice.date || new Date())}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
+                      <div>
+                        <span className="font-bold">PO No. :</span>{" "}
+                        {activeWO.poNo || invoice.poNo || "—"} &nbsp;&nbsp;{" "}
+                        <span className="font-bold">Project :</span>{" "}
+                        {activeWO.project || invoice.projectRemark || "—"}
+                      </div>
+                      <div className="mt-1 font-bold text-sm">
+                        {activeWO.glassDesc ||
+                          (activeWO.thickness
+                            ? `${activeWO.thickness}mm ${activeWO.productName || "Glass"}`
+                            : invoice.productName || "Glass")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* WO Product-Grouped Tables */}
+                  <div className="space-y-4">
+                    {woProductGroups.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-muted-foreground">
+                        No cut pieces recorded
+                      </div>
+                    ) : (
+                      woProductGroups.map((grp: any, gIdx: number) => {
+                        const docUnit = invoice?.inputUnit || activeWO?.inputUnit || "inch";
+                        const isFreqOn =
+                          docUnit !== "mm" &&
+                          Boolean(invoice?.frequencyEnabled ?? activeWO?.frequencyEnabled);
+                        const isMM = docUnit === "mm";
+                        const isSqft = settings?.rateUnit === "sqft";
+                        const areaUnitLabel = isSqft ? "sq.ft." : "sq.mtr";
+
+                        let grpPcs = 0;
+                        let grpActualArea = 0;
+                        let grpChargeArea = 0;
+                        let grpAmount = 0;
+
+                        return (
+                          <div key={gIdx} className="border border-black overflow-hidden mb-4">
+                            {/* Product Banner Header */}
+                            <div className="bg-gray-100 border-b border-black px-3 py-1.5 font-bold text-[11px] uppercase flex items-center justify-between">
+                              <span>
+                                Item {gIdx + 1}: {grp.title}
+                              </span>
+                              <span className="text-[10px] font-mono font-normal">
+                                {grp.pieces.length} Pcs •{" "}
+                                {nf(
+                                  grp.pieces.reduce(
+                                    (sum: number, p: any) => sum + (Number(p.area) || 0),
+                                    0,
+                                  ),
+                                  3,
+                                )}{" "}
+                                SQM
+                              </span>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                              <table
+                                className="w-full text-[10px] border-collapse"
+                                style={{ minWidth: isMM ? "750px" : "920px" }}
+                              >
+                                <thead>
+                                  <tr className="bg-gray-100 border-b border-black font-bold text-[9px] uppercase text-black text-center">
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1.5 py-1 text-center w-8"
+                                    >
+                                      SR NO
+                                    </th>
+                                    {!isMM && isFreqOn && (
+                                      <th
+                                        rowSpan={2}
+                                        className="border border-gray-400 px-1.5 py-1 text-center w-10"
+                                      >
+                                        FREQ
+                                      </th>
+                                    )}
+                                    {!isMM && (
+                                      <>
+                                        <th
+                                          rowSpan={2}
+                                          className="border border-gray-400 px-1.5 py-1 text-center w-12"
+                                        >
+                                          <div>L1 IN</div>
+                                          <div className="text-[7.5px] font-normal normal-case">
+                                            (INCH)
+                                          </div>
+                                        </th>
+                                        <th
+                                          rowSpan={2}
+                                          className="border border-gray-400 px-1.5 py-1 text-center w-12"
+                                        >
+                                          <div>L2 IN</div>
+                                          <div className="text-[7.5px] font-normal normal-case">
+                                            (INCH)
+                                          </div>
+                                        </th>
+                                      </>
+                                    )}
+                                    <th
+                                      colSpan={4}
+                                      className="border border-gray-400 px-1.5 py-1 text-center"
+                                    >
+                                      ACTUAL SIZE (ENTER)
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1 py-1 text-center w-9"
+                                    >
+                                      HOLE
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1 py-1 text-center w-11"
+                                    >
+                                      CUT OUT
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1 py-1 text-center w-10"
+                                    >
+                                      <div>BIG</div>
+                                      <div>HOLE</div>
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1 py-1 text-center w-11"
+                                    >
+                                      <div>BIG</div>
+                                      <div>CUT OUT</div>
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1 py-1 text-center w-9"
+                                    >
+                                      CSK
+                                    </th>
+                                    <th
+                                      colSpan={4}
+                                      className="border border-gray-400 px-1.5 py-1 text-center"
+                                    >
+                                      CHARGEABLE SIZE (MM)
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1.5 py-1 text-right w-16"
+                                    >
+                                      AMOUNT
+                                    </th>
+                                    <th
+                                      rowSpan={2}
+                                      className="border border-gray-400 px-1.5 py-1 text-left w-16"
+                                    >
+                                      REMARK
+                                    </th>
+                                  </tr>
+                                  <tr className="bg-gray-100 border-b border-black font-bold text-[9px] uppercase text-black text-center">
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-11">
+                                      <div>HEIGHT</div>
+                                      <div className="text-[7.5px] font-normal normal-case">
+                                        (MM)
+                                      </div>
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-11">
+                                      <div>WIDTH</div>
+                                      <div className="text-[7.5px] font-normal normal-case">
+                                        (MM)
+                                      </div>
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-8">
+                                      PCS
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-12">
+                                      <div>AREA</div>
+                                      <div className="text-[7.5px] font-normal normal-case">
+                                        ({areaUnitLabel})
+                                      </div>
+                                    </th>
+
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-11">
+                                      <div>HEIGHT</div>
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-11">
+                                      <div>WIDTH</div>
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-8">
+                                      PCS
+                                    </th>
+                                    <th className="border border-gray-400 px-1 py-0.5 text-center w-12">
+                                      <div>AREA</div>
+                                      <div className="text-[7.5px] font-normal normal-case">
+                                        ({areaUnitLabel})
+                                      </div>
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {grp.pieces.map((piece: any, idx: number) => {
+                                    const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
+                                    const displayRemark =
+                                      piece.remark && !/^[FH]\d{3}$/.test(piece.remark)
+                                        ? piece.remark
+                                        : "";
+
+                                    const pQty = Number(piece.qty) || 1;
+                                    const pActArea =
+                                      Number(isSqft ? (piece.areaFt ?? piece.area) : piece.area) ||
+                                      0;
+                                    const pChgArea =
+                                      Number(
+                                        isSqft
+                                          ? (piece.chgAreaFt ?? piece.chgArea ?? pActArea)
+                                          : (piece.chgArea ?? pActArea),
+                                      ) || 0;
+
+                                    let pieceAmt = Number(piece.amount) || 0;
+                                    if (!pieceAmt && totals?.lines) {
+                                      const matchedLine =
+                                        totals.lines.find(
+                                          (l: any) =>
+                                            l.lMM === piece.heightMM && l.wMM === piece.widthMM,
+                                        ) || totals.lines[piece.layerIdx ?? idx];
+                                      if (matchedLine?.amount) {
+                                        pieceAmt =
+                                          Number(matchedLine.amount) / (matchedLine.qty || 1);
+                                      }
+                                    }
+
+                                    grpPcs += pQty;
+                                    grpActualArea += pActArea;
+                                    grpChargeArea += pChgArea;
+                                    grpAmount += pieceAmt;
+
+                                    return (
+                                      <tr
+                                        key={idx}
+                                        className="border-b border-gray-300 hover:bg-gray-50"
+                                      >
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                          {piece.sr}
+                                        </td>
+                                        {!isMM && isFreqOn && (
+                                          <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                            {freqLabel}
+                                          </td>
+                                        )}
+                                        {!isMM && (
+                                          <>
+                                            <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                              {piece.l1 || "—"}
+                                            </td>
+                                            <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                              {piece.l2 || "—"}
+                                            </td>
+                                          </>
+                                        )}
+                                        {/* ACTUAL SIZE */}
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                          {piece.heightMM}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono font-semibold">
+                                          {piece.widthMM}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
+                                          {pQty}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-right font-mono">
+                                          {nf(pActArea, 3)}
+                                        </td>
+
+                                        {/* FABRICATION */}
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                          {piece.hole > 0 ? piece.hole : ""}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                          {piece.cutOut > 0 ? piece.cutOut : ""}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                          {piece.bigHole > 0 ? piece.bigHole : ""}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                          {piece.bigCutout > 0 ? piece.bigCutout : ""}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono">
+                                          {piece.csk > 0 ? piece.csk : ""}
+                                        </td>
+
+                                        {/* CHARGEABLE SIZE */}
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-gray-700">
+                                          {piece.chgHeightMM || piece.heightMM}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-gray-700">
+                                          {piece.chgWidthMM || piece.widthMM}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                          {pQty}
+                                        </td>
+                                        <td className="border border-gray-300 px-1.5 py-1 text-right font-mono font-semibold">
+                                          {nf(pChgArea, 3)}
+                                        </td>
+
+                                        {/* AMOUNT */}
+                                        <td className="border border-gray-300 px-1.5 py-1 text-right font-mono font-bold">
+                                          {pieceAmt > 0 ? nf(pieceAmt) : "—"}
+                                        </td>
+
+                                        {/* REMARK */}
+                                        <td className="border border-gray-300 px-1.5 py-1 text-left text-[9px]">
+                                          {displayRemark}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="bg-gray-100 border-t border-black font-bold">
+                                    <td
+                                      colSpan={isMM ? 3 : isFreqOn ? 6 : 5}
+                                      className="border border-gray-400 px-2 py-1 text-right"
+                                    >
+                                      Subtotal (Item {gIdx + 1})
+                                    </td>
+                                    <td className="border border-gray-400 px-1.5 py-1 text-center font-bold">
+                                      {grpPcs}
+                                    </td>
+                                    <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
+                                      {nf(grpActualArea, 3)}
+                                    </td>
+                                    <td
+                                      colSpan={5}
+                                      className="border border-gray-400 px-1 py-1"
+                                    ></td>
+                                    <td
+                                      colSpan={2}
+                                      className="border border-gray-400 px-1 py-1"
+                                    ></td>
+                                    <td className="border border-gray-400 px-1.5 py-1 text-center font-bold">
+                                      {grpPcs}
+                                    </td>
+                                    <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
+                                      {nf(grpChargeArea, 3)}
+                                    </td>
+                                    <td className="border border-gray-400 px-1.5 py-1 text-right font-mono font-bold">
+                                      {grpAmount > 0 ? nf(grpAmount) : "—"}
+                                    </td>
+                                    <td className="border border-gray-400 px-1 py-1"></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Overall Work Order Grand Summary Footer */}
+                    <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex flex-col sm:flex-row sm:justify-between gap-0.5">
+                      <div>Grand Total: {activeWO.totalPieces} Pcs</div>
+                      <div className="text-[10px] sm:text-[11px]">
+                        {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)}{" "}
+                        SQFT &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
