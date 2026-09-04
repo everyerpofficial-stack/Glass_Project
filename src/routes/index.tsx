@@ -532,6 +532,7 @@ function Dashboard() {
       receivedAmount: number;
       dueAmount: number;
       status: string;
+      whatsappSent?: boolean;
       link: string;
     };
 
