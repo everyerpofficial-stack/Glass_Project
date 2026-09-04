@@ -622,46 +622,221 @@ textarea::placeholder {
   font-weight: 400 !important;
 }
 
-/* ── Mobile: minimum touch target size (44px) ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE INTERFACE SYSTEM
+
+   This app is used on the shop floor and at the customer's site as often as at
+   a desk, so the phone layout is a first-class target rather than a shrunken
+   desktop one. The rules below are the shared foundation: safe-area aware
+   chrome heights, real touch targets, scroll containers that belong to the one
+   element that is genuinely wide, and a card-list vocabulary that replaces the
+   ten-column tables on small screens.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --app-header-h: 3.5rem; /* sticky top bar */
+  --app-bottom-nav-h: 3.5rem; /* mobile tab bar, safe-area added on top of it */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+html {
+  /* Landscape rotation on iOS otherwise inflates every font size. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* One rogue wide child used to make the whole document pan sideways. The
+   horizontal scroll now belongs to the element that is actually wide. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Grey flash on every tap reads as lag on a phone; the components own their
+   pressed states instead. */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Removes the 300ms click delay without disabling pinch-zoom on the page. */
+button,
+[role="button"],
+a,
+summary {
+  touch-action: manipulation;
+}
+
+/* ── Mobile utilities ────────────────────────────────────────────────────── */
+
+/* A scroll container that keeps momentum on iOS and a hairline bar elsewhere. */
+@utility scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Apple's and Google's minimum comfortable target. */
+@utility tap {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@utility pb-safe {
+  padding-bottom: var(--safe-bottom);
+}
+
+@utility pt-safe {
+  padding-top: var(--safe-top);
+}
+
+/* ── Mobile record cards ─────────────────────────────────────────────────── */
+/* The list pages carry 8–10 column tables. Below `md` those tables are swapped
+   for these cards: same data, one record per card, no sideways panning. */
+@utility m-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color 0.15s ease,
+    transform 0.1s ease;
+
+  &:active {
+    transform: scale(0.995);
+    border-color: color-mix(in oklch, var(--color-ring) 40%, transparent);
+  }
+}
+
+/* Label / value pair inside a record card. */
+@utility m-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+@utility m-field-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility m-field-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* A page's own commit bar (Save, Confirm) outranks the shell's generic quick
+   action: two floating controls in the same corner is one too many. */
+body:has(.app-action-bar) .app-fab {
+  display: none;
+}
+
+/* ── Phone (< md) ────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  /* Prevent horizontal overflow from any rogue element */
   .app-shell {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
-  /* Ensure tap targets meet 44px minimum */
+  /* Clears the fixed tab bar and the quick-action button, so the last row of a
+     list is never parked underneath either of them. */
+  .app-shell main {
+    padding-bottom: calc(var(--app-bottom-nav-h) + var(--safe-bottom) + 1.25rem);
+  }
+
+  /* Buttons and anything acting as one get a real target. Inline text links are
+     left alone — a min-height on a run of text pushes the paragraph apart. */
   button,
   [role="button"],
-  a {
+  [role="tab"],
+  a[data-nav] {
     min-height: 36px;
   }
 
-  /* Improve input touch UX on mobile — prevent iOS zoom on focus (font-size >= 16px) */
+  /* iOS zooms the page whenever a focused field is under 16px. */
   input,
   textarea,
   select {
     font-size: max(16px, 0.75rem);
   }
 
-  /* Better scroll momentum on mobile */
+  /* Momentum scrolling for every pane that scrolls. */
   .overflow-y-auto,
-  .overflow-x-auto {
+  .overflow-x-auto,
+  .scroll-x {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Document preview mobile container */
+  /* A table that stays a table on mobile scrolls sideways on its own rather
+     than dragging the page with it. */
+  .overflow-x-auto,
+  .scroll-x {
+    overscroll-behavior-x: contain;
+  }
+
+  /* The printable document keeps its A4 proportions; the phone pans it. */
   .doc-preview {
     padding: 6px 4px !important;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Radix menus, selects and popovers should never exceed the viewport. */
+  [data-radix-popper-content-wrapper] {
+    max-width: calc(100vw - 1rem) !important;
+  }
+
+  /* Recharts measures its parent; without this the SVG can pin a minimum
+     width and reintroduce the sideways scroll it was meant to avoid. */
+  .recharts-wrapper,
+  .recharts-surface {
+    max-width: 100%;
+  }
 }
 
-/* ── XS screens (< 375px) fine-tuning ── */
+/* ── XS screens (< 375px) ────────────────────────────────────────────────── */
 @media (max-width: 374px) {
-  /* reduce base padding even further */
-  main {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+  :root {
+    --app-bottom-nav-h: 3.25rem;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

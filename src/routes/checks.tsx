@@ -75,11 +75,11 @@ function SystemChecksPage() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-5 px-3 pt-4 pb-2 sm:space-y-6 sm:px-6 sm:pt-6 sm:pb-16 lg:px-8">
       {/* ---------- Top Header ---------- */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-emerald-500" /> Calculation Engine & System Checks
           </h1>
           <p className="text-xs text-muted-foreground mt-1">

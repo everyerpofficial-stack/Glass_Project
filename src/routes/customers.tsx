@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Users,
   Plus,
@@ -31,7 +31,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,8 +72,14 @@ import {
   today,
 } from "@/lib/gq";
 import { toast } from "sonner";
+import { DesktopOnly, MobileList, MobileRecordCard } from "@/components/app/MobileRecord";
 
 export const Route = createFileRoute("/customers")({
+  /* ?action=new opens the Add Customer dialog straight away — the target of
+     the mobile quick-action button. */
+  validateSearch: (search: Record<string, unknown>): { action?: string | undefined } => ({
+    action: typeof search["action"] === "string" ? (search["action"] as string) : undefined,
+  }),
   component: CustomersPage,
 });
 
@@ -85,6 +91,35 @@ function getInitials(name: string) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return name.substring(0, 2).toUpperCase();
+}
+
+/* Everything the customer list shows about one customer. Extracted from the
+   table row so the phone card computes it exactly the same way. */
+function customerSummary(c: any, invoices: any[], payments: any[]) {
+  const customerQuotes = invoices.filter(
+    (inv) =>
+      String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase() &&
+      !isCancelled(inv),
+  );
+  const custPays = payments.filter(
+    (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
+  );
+  const totalPaidFromPayments = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalPaidFromInvoices = customerQuotes.reduce(
+    (sum, inv) => sum + (Number(inv.paidAmount) || 0),
+    0,
+  );
+  const totalAmount = customerQuotes.reduce(
+    (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
+    0,
+  );
+  const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
+  return {
+    customerQuotes,
+    totalAmount,
+    receivedAmount,
+    dueAmount: Math.max(0, totalAmount - receivedAmount),
+  };
 }
 
 /* Color palettes for avatars */
@@ -114,6 +149,7 @@ function isPaymentForCancelledInv(p: any, invs: any[]) {
 
 function CustomersPage() {
   const navigate = useNavigate();
+  const searchParams = useSearch({ strict: false }) as { action?: string };
   const {
     customers,
     invoices,
@@ -216,6 +252,21 @@ function CustomersPage() {
     setFormData({ name: "", phone: "", email: "", gstin: "", city: "", addr: "", ship: "" });
     setOpenModal(true);
   };
+
+  /* One-shot: consume ?action=new once, then drop it from the URL so a refresh
+     does not reopen the dialog over work already in progress. */
+  const quickAddConsumed = useRef(false);
+  useEffect(() => {
+    if (searchParams?.action === "new") {
+      if (quickAddConsumed.current) return;
+      quickAddConsumed.current = true;
+      handleOpenAdd();
+      navigate({ to: "/customers", search: {} as any, replace: true });
+    } else {
+      quickAddConsumed.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams?.action]);
 
   const handleOpenEdit = (c: any, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -534,7 +585,7 @@ function CustomersPage() {
   }, [filteredCustomers, page, pageSize]);
 
   return (
-    <div className="w-full space-y-5 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+    <div className="w-full space-y-4 px-3 pt-4 pb-2 sm:space-y-5 sm:px-6 sm:pt-6 sm:pb-12 lg:px-8">
       {/* ── Page Title Header ───────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -596,6 +647,9 @@ function CustomersPage() {
                   <div>
                     <Label>Phone Number</Label>
                     <Input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       className="h-8 text-xs font-mono"
                       value={formData.phone}
                       onChange={(e) =>
@@ -622,6 +676,10 @@ function CustomersPage() {
                 <div>
                   <Label>Email Address</Label>
                   <Input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
                     className="h-8 text-xs"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -804,187 +862,264 @@ function CustomersPage() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">Address</th>
-                  <th className="py-3 px-4 text-center">Invoices</th>
-                  <th className="py-3 px-4 text-right">Total Amount</th>
-                  <th className="py-3 px-4 text-right">Received Amount</th>
-                  <th className="py-3 px-4 text-right">Due Amount</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40 text-xs">
-                {paginatedCustomers.map((c, i) => {
-                  const customerQuotes = invoices.filter(
-                    (inv) =>
-                      String(inv.cust?.name || "").toLowerCase() ===
-                        String(c.name || "").toLowerCase() && !isCancelled(inv),
-                  );
-                  const custPays = payments.filter(
-                    (p) =>
-                      String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
-                  );
-                  const totalPaidFromPayments = custPays.reduce(
-                    (sum, p) => sum + (Number(p.amount) || 0),
-                    0,
-                  );
-                  const totalPaidFromInvoices = customerQuotes.reduce(
-                    (sum, inv) => sum + (Number(inv.paidAmount) || 0),
-                    0,
-                  );
-                  const totalAmount = customerQuotes.reduce(
-                    (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
-                    0,
-                  );
-                  const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
-                  const dueAmount = Math.max(0, totalAmount - receivedAmount);
-
-                  const colorClass = AVATAR_COLORS[i % AVATAR_COLORS.length];
-                  const code = `CUS-${String(i + 230).padStart(4, "0")}`;
-
-                  return (
-                    <tr
-                      key={c.id || i}
-                      className="hover:bg-muted/30 transition-colors cursor-pointer"
-                      onClick={(e) => handleOpenDetails(c, e)}
-                    >
-                      {/* Customer Info */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`h-8 w-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${colorClass}`}
+          <>
+            {/* ── Phone: one card per customer ── */}
+            <MobileList className="p-2.5">
+              {paginatedCustomers.map((c: any, i: number) => {
+                const { customerQuotes, totalAmount, receivedAmount, dueAmount } = customerSummary(
+                  c,
+                  invoices,
+                  payments,
+                );
+                const colorClass = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                return (
+                  <MobileRecordCard
+                    key={c.id || i}
+                    accent={dueAmount > 0 ? "bg-amber-500" : "bg-emerald-500"}
+                    onClick={() => handleOpenDetails(c)}
+                    subject={
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${colorClass}`}
+                        >
+                          {getInitials(c.name)}
+                        </span>
+                        <span className="truncate">{c.name}</span>
+                      </span>
+                    }
+                    meta={[
+                      c.phone || null,
+                      c.addr || c.city || null,
+                      `${customerQuotes.length} invoice${customerQuotes.length === 1 ? "" : "s"}`,
+                    ]}
+                    fields={[
+                      { label: "Total", value: `₹ ${nf(totalAmount)}` },
+                      { label: "Received", value: `₹ ${nf(receivedAmount)}`, tone: "positive" },
+                      {
+                        label: "Due",
+                        value: `₹ ${nf(dueAmount)}`,
+                        tone: dueAmount > 0 ? "warning" : "positive",
+                      },
+                    ]}
+                    actions={
+                      <>
+                        {c.phone && (
+                          <a
+                            href={`tel:${String(c.phone).replace(/\s+/g, "")}`}
+                            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background text-xs font-semibold text-foreground"
                           >
-                            {getInitials(c.name)}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-foreground leading-tight hover:underline text-primary">
-                              {c.name}
+                            <Phone className="h-3.5 w-3.5" /> Call
+                          </a>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 text-amber-600 border-amber-500/30"
+                          title="Work Order & Stickers"
+                          onClick={() => openWorkOrderForCust(c)}
+                        >
+                          <Factory className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          title="View details"
+                          onClick={() => handleOpenDetails(c)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          title="Edit customer"
+                          onClick={() => handleOpenEdit(c)}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <ConfirmDelete
+                          title={`Delete ${c.name || "this customer"}?`}
+                          description="This permanently removes the customer profile from this device and from your Google Sheet. Their invoices and payments are kept, but will no longer be linked to a saved profile."
+                          onConfirm={() => deleteCustomer(c.id)}
+                        >
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 text-rose-600 border-rose-500/30"
+                            title="Delete customer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </ConfirmDelete>
+                      </>
+                    }
+                  />
+                );
+              })}
+            </MobileList>
+
+            {/* ── Tablet and up: the full table ── */}
+            <DesktopOnly className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <th className="py-3 px-4">Customer</th>
+                    <th className="py-3 px-4">Contact</th>
+                    <th className="py-3 px-4">Address</th>
+                    <th className="py-3 px-4 text-center">Invoices</th>
+                    <th className="py-3 px-4 text-right">Total Amount</th>
+                    <th className="py-3 px-4 text-right">Received Amount</th>
+                    <th className="py-3 px-4 text-right">Due Amount</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 text-xs">
+                  {paginatedCustomers.map((c, i) => {
+                    const { customerQuotes, totalAmount, receivedAmount, dueAmount } =
+                      customerSummary(c, invoices, payments);
+
+                    const colorClass = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                    const code = `CUS-${String(i + 230).padStart(4, "0")}`;
+
+                    return (
+                      <tr
+                        key={c.id || i}
+                        className="hover:bg-muted/30 transition-colors cursor-pointer"
+                        onClick={(e) => handleOpenDetails(c, e)}
+                      >
+                        {/* Customer Info */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`h-8 w-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${colorClass}`}
+                            >
+                              {getInitials(c.name)}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-foreground leading-tight hover:underline text-primary">
+                                {c.name}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Contact Info */}
-                      <td className="py-3 px-4">
-                        {c.phone ? (
-                          <div className="flex items-center gap-1.5 font-mono text-foreground">
-                            <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span>{c.phone}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                        {c.email && (
-                          <div className="text-[10px] text-muted-foreground truncate max-w-[150px] mt-0.5">
-                            {c.email}
-                          </div>
-                        )}
-                      </td>
+                        {/* Contact Info */}
+                        <td className="py-3 px-4">
+                          {c.phone ? (
+                            <div className="flex items-center gap-1.5 font-mono text-foreground">
+                              <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span>{c.phone}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          {c.email && (
+                            <div className="text-[10px] text-muted-foreground truncate max-w-[150px] mt-0.5">
+                              {c.email}
+                            </div>
+                          )}
+                        </td>
 
-                      {/* Address */}
-                      <td className="py-3 px-4 text-muted-foreground max-w-[220px]">
-                        {c.addr || c.city ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-                            <span className="truncate">{c.addr || c.city}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/60">—</span>
-                        )}
-                      </td>
+                        {/* Address */}
+                        <td className="py-3 px-4 text-muted-foreground max-w-[220px]">
+                          {c.addr || c.city ? (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                              <span className="truncate">{c.addr || c.city}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/60">—</span>
+                          )}
+                        </td>
 
-                      {/* Invoices Count */}
-                      <td className="py-3 px-4 text-center font-mono font-bold text-foreground">
-                        {customerQuotes.length}
-                      </td>
+                        {/* Invoices Count */}
+                        <td className="py-3 px-4 text-center font-mono font-bold text-foreground">
+                          {customerQuotes.length}
+                        </td>
 
-                      {/* Total Amount */}
-                      <td className="py-3 px-4 text-right font-mono font-bold text-foreground">
-                        ₹ {nf(totalAmount)}
-                      </td>
+                        {/* Total Amount */}
+                        <td className="py-3 px-4 text-right font-mono font-bold text-foreground">
+                          ₹ {nf(totalAmount)}
+                        </td>
 
-                      {/* Received Amount */}
-                      <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                        ₹ {nf(receivedAmount)}
-                      </td>
+                        {/* Received Amount */}
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                          ₹ {nf(receivedAmount)}
+                        </td>
 
-                      {/* Due Amount */}
-                      <td className="py-3 px-4 text-right font-mono font-bold">
-                        <span
-                          className={
-                            dueAmount > 0
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-emerald-600 dark:text-emerald-400"
-                          }
-                        >
-                          ₹ {nf(dueAmount)}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        <div
-                          className="flex items-center justify-end gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openWorkOrderForCust(c);
-                            }}
-                            title="Generate / View Work Order & Stickers for this Customer"
+                        {/* Due Amount */}
+                        <td className="py-3 px-4 text-right font-mono font-bold">
+                          <span
+                            className={
+                              dueAmount > 0
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }
                           >
-                            <Factory className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-primary"
-                            onClick={(e) => handleOpenDetails(c, e)}
-                            title="View Details, Invoices & Payment History"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            onClick={(e) => handleOpenEdit(c, e)}
-                            title="Edit Customer"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                          </Button>
-                          <ConfirmDelete
-                            title={`Delete ${c.name || "this customer"}?`}
-                            description="This permanently removes the customer profile from this device and from your Google Sheet. Their invoices and payments are kept, but will no longer be linked to a saved profile."
-                            onConfirm={() => deleteCustomer(c.id)}
+                            ₹ {nf(dueAmount)}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-4 text-right">
+                          <div
+                            className="flex items-center justify-end gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                              title="Delete Customer"
+                              className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openWorkOrderForCust(c);
+                              }}
+                              title="Generate / View Work Order & Stickers for this Customer"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Factory className="h-3.5 w-3.5" />
                             </Button>
-                          </ConfirmDelete>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={(e) => handleOpenDetails(c, e)}
+                              title="View Details, Invoices & Payment History"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={(e) => handleOpenEdit(c, e)}
+                              title="Edit Customer"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </Button>
+                            <ConfirmDelete
+                              title={`Delete ${c.name || "this customer"}?`}
+                              description="This permanently removes the customer profile from this device and from your Google Sheet. Their invoices and payments are kept, but will no longer be linked to a saved profile."
+                              onConfirm={() => deleteCustomer(c.id)}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-red-500"
+                                title="Delete Customer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </ConfirmDelete>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </DesktopOnly>
+          </>
         )}
 
         {/* ── Pagination Bar ────────────────────────────────────────── */}
@@ -1054,7 +1189,7 @@ function CustomersPage() {
 
       {/* ── CUSTOMER DETAILS & PAYMENT HISTORY POPUP MODAL ─────────────── */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto p-3 sm:w-full sm:p-6">
           {viewCust && (
             <div className="space-y-4">
               {/* Header */}
@@ -1206,74 +1341,133 @@ function CustomersPage() {
                       No invoices or quotes recorded yet for {viewCust.name}.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto border border-border rounded-lg">
-                      <table className="w-full text-xs text-left">
-                        <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
-                          <tr>
-                            <th className="p-2.5">Doc No</th>
-                            <th className="p-2.5">Date</th>
-                            <th className="p-2.5">Type</th>
-                            <th className="p-2.5 text-center">Items</th>
-                            <th className="p-2.5 text-right">Grand Total</th>
-                            <th className="p-2.5 text-center">Status</th>
-                            <th className="p-2.5 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/40 font-mono">
-                          {customerInvoices.map((inv) => (
-                            <tr key={inv.id} className="hover:bg-muted/20">
-                              <td className="p-2.5 font-bold text-foreground">{inv.no}</td>
-                              <td className="p-2.5 text-muted-foreground font-sans">{inv.date}</td>
-                              <td className="p-2.5 font-sans">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
-                                  {inv.docType === "proforma"
-                                    ? "Order Confirm"
-                                    : "Proforma Invoice"}
-                                </span>
-                              </td>
-                              <td className="p-2.5 text-center font-sans">
-                                {inv.items?.length || 0}
-                              </td>
-                              <td className="p-2.5 text-right font-bold text-emerald-600">
-                                ₹ {nf(inv.totals?.grandTotal || 0)}
-                              </td>
-                              <td className="p-2.5 text-center font-sans">
-                                {/* Cancelled rows stay listed but no longer feed
+                    <>
+                      <MobileList>
+                        {customerInvoices.map((inv: any) => (
+                          <MobileRecordCard
+                            key={inv.id}
+                            accent={
+                              isCancelled(inv)
+                                ? "bg-rose-500"
+                                : inv.status === "order_confirmed"
+                                  ? "bg-emerald-500"
+                                  : "bg-amber-500"
+                            }
+                            dimmed={isCancelled(inv)}
+                            code={inv.no}
+                            badge={
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  isCancelled(inv)
+                                    ? "bg-rose-500/10 text-rose-600"
+                                    : inv.status === "order_confirmed"
+                                      ? "bg-emerald-500/10 text-emerald-600"
+                                      : "bg-amber-500/10 text-amber-600"
+                                }`}
+                              >
+                                {isCancelled(inv)
+                                  ? "Cancelled (not billed)"
+                                  : inv.status || "Draft"}
+                              </span>
+                            }
+                            subject={
+                              inv.docType === "proforma" ? "Order Confirm" : "Proforma Invoice"
+                            }
+                            meta={[inv.date, `${inv.items?.length || 0} items`]}
+                            fields={[
+                              {
+                                label: "Grand Total",
+                                value: `₹ ${nf(inv.totals?.grandTotal || 0)}`,
+                                tone: "positive",
+                              },
+                            ]}
+                            actions={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 w-full gap-1.5 text-xs"
+                                onClick={() => {
+                                  setDetailModalOpen(false);
+                                  navigate({ to: "/invoice", search: { id: inv.id } });
+                                }}
+                              >
+                                <Printer className="h-3.5 w-3.5" /> Open PDF
+                              </Button>
+                            }
+                          />
+                        ))}
+                      </MobileList>
+                      <DesktopOnly className="overflow-x-auto border border-border rounded-lg">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
+                            <tr>
+                              <th className="p-2.5">Doc No</th>
+                              <th className="p-2.5">Date</th>
+                              <th className="p-2.5">Type</th>
+                              <th className="p-2.5 text-center">Items</th>
+                              <th className="p-2.5 text-right">Grand Total</th>
+                              <th className="p-2.5 text-center">Status</th>
+                              <th className="p-2.5 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/40 font-mono">
+                            {customerInvoices.map((inv) => (
+                              <tr key={inv.id} className="hover:bg-muted/20">
+                                <td className="p-2.5 font-bold text-foreground">{inv.no}</td>
+                                <td className="p-2.5 text-muted-foreground font-sans">
+                                  {inv.date}
+                                </td>
+                                <td className="p-2.5 font-sans">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">
+                                    {inv.docType === "proforma"
+                                      ? "Order Confirm"
+                                      : "Proforma Invoice"}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-center font-sans">
+                                  {inv.items?.length || 0}
+                                </td>
+                                <td className="p-2.5 text-right font-bold text-emerald-600">
+                                  ₹ {nf(inv.totals?.grandTotal || 0)}
+                                </td>
+                                <td className="p-2.5 text-center font-sans">
+                                  {/* Cancelled rows stay listed but no longer feed
                                     Total Invoiced, so they have to look
                                     different or the ledger looks like it lost
                                     money. */}
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    isCancelled(inv)
-                                      ? "bg-rose-500/10 text-rose-600"
-                                      : inv.status === "order_confirmed"
-                                        ? "bg-emerald-500/10 text-emerald-600"
-                                        : "bg-amber-500/10 text-amber-600"
-                                  }`}
-                                >
-                                  {isCancelled(inv)
-                                    ? "Cancelled (not billed)"
-                                    : inv.status || "Draft"}
-                                </span>
-                              </td>
-                              <td className="p-2.5 text-right font-sans">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-2 gap-1"
-                                  onClick={() => {
-                                    setDetailModalOpen(false);
-                                    navigate({ to: "/invoice", search: { id: inv.id } });
-                                  }}
-                                >
-                                  <Printer className="h-3 w-3" /> PDF
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      isCancelled(inv)
+                                        ? "bg-rose-500/10 text-rose-600"
+                                        : inv.status === "order_confirmed"
+                                          ? "bg-emerald-500/10 text-emerald-600"
+                                          : "bg-amber-500/10 text-amber-600"
+                                    }`}
+                                  >
+                                    {isCancelled(inv)
+                                      ? "Cancelled (not billed)"
+                                      : inv.status || "Draft"}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-right font-sans">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-[10px] px-2 gap-1"
+                                    onClick={() => {
+                                      setDetailModalOpen(false);
+                                      navigate({ to: "/invoice", search: { id: inv.id } });
+                                    }}
+                                  >
+                                    <Printer className="h-3 w-3" /> PDF
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </DesktopOnly>
+                    </>
                   )}
                 </TabsContent>
 
@@ -1445,61 +1639,97 @@ function CustomersPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto border border-border rounded-lg">
-                      <table className="w-full text-xs text-left">
-                        <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
-                          <tr>
-                            <th className="p-2.5">Date</th>
-                            <th className="p-2.5">Payment Mode</th>
-                            <th className="p-2.5">Ref / Txn ID</th>
-                            <th className="p-2.5">Invoice #</th>
-                            <th className="p-2.5 text-right">Amount Paid</th>
-                            <th className="p-2.5">Notes</th>
-                            <th className="p-2.5 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/40 text-xs">
-                          {customerPayments.map((pay) => (
-                            <tr key={pay.id} className="hover:bg-muted/20">
-                              <td className="p-2.5 font-mono text-muted-foreground">{pay.date}</td>
-                              <td className="p-2.5">
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                                  {pay.mode || "UPI"}
-                                </span>
-                              </td>
-                              <td className="p-2.5 font-mono text-muted-foreground">
-                                {pay.refNo || "—"}
-                              </td>
-                              <td className="p-2.5 font-mono font-medium text-foreground">
-                                {pay.invoiceNo || "—"}
-                              </td>
-                              <td className="p-2.5 text-right font-mono font-bold text-emerald-600">
-                                ₹ {nf(pay.amount)}
-                              </td>
-                              <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">
-                                {pay.notes || "—"}
-                              </td>
-                              <td className="p-2.5 text-right">
-                                <ConfirmDelete
-                                  title="Delete this payment record?"
-                                  description={`This permanently removes the ${settings.currency || "₹"} ${nf(pay.amount || 0)} payment dated ${dmy(pay.date)} from this device and from your Google Sheet. The customer’s outstanding balance will go back up by that amount.`}
-                                  onConfirm={() => deletePayment(pay.id)}
+                    <>
+                      <MobileList>
+                        {customerPayments.map((pay: any) => (
+                          <MobileRecordCard
+                            key={pay.id}
+                            accent="bg-emerald-500"
+                            code={pay.invoiceNo || "—"}
+                            badge={
+                              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                {pay.mode || "UPI"}
+                              </span>
+                            }
+                            subject={`₹ ${nf(pay.amount)}`}
+                            meta={[pay.date, pay.refNo ? `Ref ${pay.refNo}` : null]}
+                            footer={pay.notes || null}
+                            actions={
+                              <ConfirmDelete
+                                title="Delete this payment record?"
+                                description={`This permanently removes the ${settings.currency || "₹"} ${nf(pay.amount || 0)} payment dated ${dmy(pay.date)} from this device and from your Google Sheet. The customer’s outstanding balance will go back up by that amount.`}
+                                onConfirm={() => deletePayment(pay.id)}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 w-full gap-1.5 text-xs text-rose-600 border-rose-500/30"
                                 >
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-muted-foreground hover:text-red-500"
-                                    title="Delete Payment Record"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </ConfirmDelete>
-                              </td>
+                                  <Trash2 className="h-3.5 w-3.5" /> Delete payment
+                                </Button>
+                              </ConfirmDelete>
+                            }
+                          />
+                        ))}
+                      </MobileList>
+                      <DesktopOnly className="overflow-x-auto border border-border rounded-lg">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-muted/40 border-b border-border text-[10px] font-bold uppercase text-muted-foreground">
+                            <tr>
+                              <th className="p-2.5">Date</th>
+                              <th className="p-2.5">Payment Mode</th>
+                              <th className="p-2.5">Ref / Txn ID</th>
+                              <th className="p-2.5">Invoice #</th>
+                              <th className="p-2.5 text-right">Amount Paid</th>
+                              <th className="p-2.5">Notes</th>
+                              <th className="p-2.5 text-right">Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="divide-y divide-border/40 text-xs">
+                            {customerPayments.map((pay) => (
+                              <tr key={pay.id} className="hover:bg-muted/20">
+                                <td className="p-2.5 font-mono text-muted-foreground">
+                                  {pay.date}
+                                </td>
+                                <td className="p-2.5">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                    {pay.mode || "UPI"}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 font-mono text-muted-foreground">
+                                  {pay.refNo || "—"}
+                                </td>
+                                <td className="p-2.5 font-mono font-medium text-foreground">
+                                  {pay.invoiceNo || "—"}
+                                </td>
+                                <td className="p-2.5 text-right font-mono font-bold text-emerald-600">
+                                  ₹ {nf(pay.amount)}
+                                </td>
+                                <td className="p-2.5 text-muted-foreground truncate max-w-[150px]">
+                                  {pay.notes || "—"}
+                                </td>
+                                <td className="p-2.5 text-right">
+                                  <ConfirmDelete
+                                    title="Delete this payment record?"
+                                    description={`This permanently removes the ${settings.currency || "₹"} ${nf(pay.amount || 0)} payment dated ${dmy(pay.date)} from this device and from your Google Sheet. The customer’s outstanding balance will go back up by that amount.`}
+                                    onConfirm={() => deletePayment(pay.id)}
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                                      title="Delete Payment Record"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </ConfirmDelete>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </DesktopOnly>
+                    </>
                   )}
                 </TabsContent>
               </Tabs>

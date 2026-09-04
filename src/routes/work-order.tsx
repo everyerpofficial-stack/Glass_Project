@@ -23,6 +23,7 @@ import { useGQ } from "@/lib/store";
 import { ListSkeleton } from "@/components/app/DataSkeleton";
 import { nf, dmy, liveWorkOrders, workOrderBelongsTo, formatOrderId } from "@/lib/gq";
 import { printElement } from "@/lib/print";
+import { SwipeHint } from "@/components/app/MobileRecord";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/work-order")({
@@ -629,7 +630,7 @@ function WorkOrderPage() {
               )}
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
             {/* Searchable Order & Customer Selector */}
             <SearchableOrderSelector
               confirmedOrders={confirmedOrders}
@@ -702,8 +703,8 @@ function WorkOrderPage() {
             className="wo-print-area bg-white text-black rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none"
           >
             {/* WO Header */}
-            <div className="border-b-2 border-black p-4 print:p-3">
-              <div className="flex justify-between items-start">
+            <div className="border-b-2 border-black p-3 sm:p-4 print:p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start print:flex-row print:justify-between">
                 <div className="text-[11px] space-y-0.5">
                   <div>
                     <span className="font-bold">Customer :</span> {activeWO.customer}
@@ -718,7 +719,7 @@ function WorkOrderPage() {
                     <span className="font-bold">Dispatch To :</span> {activeWO.dispatchTo || "—"}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right print:text-right">
                   <div className="text-lg font-black tracking-wide text-black">WORK ORDER</div>
                   <div className="text-[11px] mt-1 space-y-0.5">
                     <div>
@@ -758,7 +759,8 @@ function WorkOrderPage() {
             </div>
 
             {/* WO Product-Grouped Tables */}
-            <div className="overflow-x-auto space-y-4">
+            <SwipeHint className="px-3 print:hidden" />
+            <div className="scroll-x space-y-4">
               {woProductGroups.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">
                   No pieces recorded

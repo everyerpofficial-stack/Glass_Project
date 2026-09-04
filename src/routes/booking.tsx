@@ -25,7 +25,7 @@ import {
   Users,
   UserCheck,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,6 +116,13 @@ function extractThicknessFromProductName(name: string): number | null {
 }
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
+import {
+  DesktopOnly,
+  MobileActionBar,
+  MobileList,
+  MobileRecordCard,
+  SwipeHint,
+} from "@/components/app/MobileRecord";
 
 export const Route = createFileRoute("/booking")({
   /* /order already accepted ?view=; /booking did not, so Edit and Duplicate
@@ -310,8 +317,11 @@ function BulkEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4">
+      <div
+        style={{ paddingBottom: "var(--safe-bottom)" }}
+        className="bg-card border border-border rounded-t-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto sm:rounded-xl"
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-sm font-semibold text-foreground flex items-center gap-2">
             <ClipboardPaste className="h-4 w-4 text-primary" />
@@ -489,6 +499,22 @@ function BookingPage() {
     );
     navigate({ to: "/order", search: { view: undefined } as any });
   };
+  /* ?view=form&action=new opens an empty Proforma Invoice — the target of the
+     mobile quick-action button. The one-shot param is stripped straight after
+     it is consumed so that a refresh, or a Back into this entry, does not wipe
+     a draft the user has already started typing. */
+  const quickNewConsumed = useRef(false);
+  useEffect(() => {
+    if (searchParams?.action === "new" && searchParams?.view === "form" && !searchParams?.id) {
+      if (quickNewConsumed.current) return;
+      quickNewConsumed.current = true;
+      newInvoice("pre_proforma");
+      setShowForm(true);
+      navigate({ to: "/booking", search: { view: "form" } as any, replace: true });
+    } else if (searchParams?.action !== "new") {
+      quickNewConsumed.current = false;
+    }
+  }, [searchParams?.action, searchParams?.view, searchParams?.id, newInvoice, navigate]);
   useEffect(() => {
     if (searchParams?.id && searchParams?.view === "form") {
       loadInvoice(searchParams.id, false);
@@ -1054,222 +1080,385 @@ function BookingPage() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table
-                  className="w-full text-xs text-left border-collapse"
-                  style={{ minWidth: "820px" }}
-                >
-                  <thead>
-                    <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">PI No</th>
-                      <th className="py-2.5 px-3">Date</th>
-                      <th className="py-2.5 px-3">Customer Name</th>
-                      <th className="py-2.5 px-3">Phone No.</th>
-                      <th className="py-2.5 px-3 text-center">Items</th>
-                      <th className="py-2.5 px-3 text-right">Grand Total</th>
-                      <th className="py-2.5 px-3 text-center">Follow Up</th>
-                      <th className="py-2.5 px-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-xs">
-                    {filteredSavedInvoices.map((item: any) => {
-                      const isConfirmed =
-                        item.status === "order_confirmed" || item.status === "work_order_generated";
-                      const isCancelled = item.status === "cancelled";
-
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-muted/30 transition-colors cursor-pointer"
-                          onClick={() => {
-                            setDetailInvoice(item);
-                            setDetailOpen(true);
-                          }}
-                        >
-                          <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={
-                                  isCancelled
-                                    ? "line-through text-rose-600 dark:text-rose-400 font-bold"
-                                    : "hover:underline font-bold"
-                                }
-                              >
-                                {formatPiNo(item.no)}
-                              </span>
-                              {isCancelled && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
-                                  Cancelled
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3 text-muted-foreground font-mono">
-                            {dmy(item.date)}
-                          </td>
-                          <td className="py-2.5 px-3 font-medium text-foreground">
-                            {item.cust?.name || "—"}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-muted-foreground">
-                            {item.cust?.phone || "—"}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-mono">
-                            {item.items?.length || 0}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
-                            ₹ {nf(item.totals?.grandTotal || 0)}
-                          </td>
-                          <td
-                            className="py-2.5 px-3 text-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isCancelled) {
-                                  toast.error("Cancelled invoice cannot be followed up");
-                                  return;
-                                }
-                                toggleWhatsAppSent(item.id);
-                              }}
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
-                                isCancelled
-                                  ? "bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60"
-                                  : item.whatsappSent
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
-                                    : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
-                              }`}
-                              title={
-                                isCancelled
-                                  ? "Cancelled invoice"
-                                  : item.whatsappSent
-                                    ? "Status: Yes (Click to toggle)"
-                                    : "Status: No (Click to toggle)"
+              <>
+                {/* ── Phone: one card per Proforma Invoice ── */}
+                <MobileList>
+                  {filteredSavedInvoices.map((item: any) => {
+                    const isConfirmed =
+                      item.status === "order_confirmed" || item.status === "work_order_generated";
+                    const rowCancelled = item.status === "cancelled";
+                    return (
+                      <MobileRecordCard
+                        key={item.id}
+                        dimmed={rowCancelled}
+                        accent={
+                          rowCancelled
+                            ? "bg-rose-500"
+                            : isConfirmed
+                              ? "bg-emerald-500"
+                              : "bg-blue-500"
+                        }
+                        onClick={() => {
+                          setDetailInvoice(item);
+                          setDetailOpen(true);
+                        }}
+                        code={
+                          <span className={rowCancelled ? "line-through text-rose-600" : undefined}>
+                            {formatPiNo(item.no)}
+                          </span>
+                        }
+                        badge={
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (rowCancelled) {
+                                toast.error("Cancelled invoice cannot be followed up");
+                                return;
                               }
-                            >
-                              {item.whatsappSent ? (
-                                <>
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                                  <span>Yes</span>
-                                </>
-                              ) : (
-                                <>
-                                  <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                  <span>No</span>
-                                </>
-                              )}
-                            </button>
-                          </td>
-                          <td
-                            className="py-2.5 px-3 text-right"
-                            onClick={(e) => e.stopPropagation()}
+                              toggleWhatsAppSent(item.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!rowCancelled) toggleWhatsAppSent(item.id);
+                              }
+                            }}
+                            title={
+                              rowCancelled
+                                ? "Cancelled invoice"
+                                : "Follow up status — tap to toggle"
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              rowCancelled
+                                ? "bg-muted text-muted-foreground border border-border"
+                                : item.whatsappSent
+                                  ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/40"
+                                  : "bg-red-500/15 text-red-600 border border-red-500/40"
+                            }`}
                           >
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Confirm & Convert Action Button */}
-                              {!isCancelled && (
-                                <Button
-                                  size="sm"
-                                  className={`h-7 px-2 text-[11px] font-bold gap-1 transition-all ${
-                                    isConfirmed
-                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
-                                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                                  }`}
-                                  onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    navigate({
-                                      to: "/order",
-                                      search: {
-                                        view: "form",
-                                        id: item.id,
-                                        action: "confirm",
-                                        from: "booking",
-                                      } as any,
-                                    });
-                                  }}
-                                  title={
-                                    isConfirmed
-                                      ? "Proforma Invoice Confirmed - Click to open Order Confirm"
-                                      : "Confirm Proforma Invoice & Open Order Confirm"
-                                  }
-                                >
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
-                                </Button>
-                              )}
-
-                              {/* Edit Symbol Button */}
-                              {!isCancelled && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
-                                  onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    setShowForm(true);
-                                    toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
-                                  }}
-                                  title="Edit Proforma Invoice"
-                                >
-                                  <Edit3 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-
-                              {/* Print Symbol Button */}
+                            {item.whatsappSent ? (
+                              <CheckCircle2 className="h-3 w-3" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
+                            Follow up
+                          </span>
+                        }
+                        subject={item.cust?.name || "—"}
+                        meta={[dmy(item.date), item.cust?.phone || null]}
+                        fields={[
+                          {
+                            label: "Grand Total",
+                            value: `₹ ${nf(item.totals?.grandTotal || 0)}`,
+                            tone: "positive",
+                          },
+                          { label: "Items", value: item.items?.length || 0 },
+                        ]}
+                        actions={
+                          rowCancelled ? (
+                            <span className="rounded bg-rose-500/15 px-2 py-1 text-[10px] font-extrabold uppercase text-rose-600 border border-rose-500/30">
+                              Cancelled
+                            </span>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                className={`h-9 flex-1 gap-1.5 text-xs font-bold ${
+                                  isConfirmed
+                                    ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                    : "bg-emerald-600 text-white hover:bg-emerald-700"
+                                }`}
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
+                                  navigate({
+                                    to: "/order",
+                                    search: {
+                                      view: "form",
+                                      id: item.id,
+                                      action: "confirm",
+                                      from: "booking",
+                                    } as any,
+                                  });
+                                }}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {isConfirmed ? "Confirmed" : "Confirm"}
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                className="h-9 w-9 text-primary border-primary/30"
+                                title="Edit Proforma Invoice"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
-                                  toast.success(
-                                    `Generating PDF for Proforma Invoice ${item.no}...`,
-                                  );
+                                  setShowForm(true);
+                                  toast.success(`Loaded Proforma Invoice ${item.no} for editing`);
+                                }}
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9 text-emerald-600 border-emerald-500/30"
+                                title="Print / Generate PDF"
+                                onClick={() => {
+                                  loadInvoice(item.id, false);
                                   navigate({ to: "/invoice", search: { id: item.id } });
                                 }}
-                                title="Print / Generate PDF"
                               >
-                                <Printer className="h-3.5 w-3.5" />
+                                <Printer className="h-4 w-4" />
                               </Button>
-
-                              {/* Cancel Booking Button */}
-                              {isCancelled ? (
-                                <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                                  Cancelled
-                                </span>
-                              ) : (
-                                <ConfirmDelete
-                                  title={`Cancel Proforma Invoice ${item.no}?`}
-                                  description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
-                                  confirmLabel="Cancel Proforma Invoice"
-                                  onConfirm={() => {
-                                    updateInvoiceStatus(item.id, "cancelled");
-                                    toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
-                                  }}
+                              <ConfirmDelete
+                                title={`Cancel Proforma Invoice ${item.no}?`}
+                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                confirmLabel="Cancel Proforma Invoice"
+                                onConfirm={() => {
+                                  updateInvoiceStatus(item.id, "cancelled");
+                                  toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
+                                }}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 text-amber-600 border-amber-500/30"
+                                  title="Cancel Proforma Invoice"
                                 >
+                                  <Ban className="h-4 w-4" />
+                                </Button>
+                              </ConfirmDelete>
+                            </>
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </MobileList>
+
+                {/* ── Tablet and up: the full table ── */}
+                <DesktopOnly className="overflow-x-auto -mx-3 sm:-mx-4">
+                  <table
+                    className="w-full text-xs text-left border-collapse"
+                    style={{ minWidth: "820px" }}
+                  >
+                    <thead>
+                      <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="py-2.5 px-3">PI No</th>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Customer Name</th>
+                        <th className="py-2.5 px-3">Phone No.</th>
+                        <th className="py-2.5 px-3 text-center">Items</th>
+                        <th className="py-2.5 px-3 text-right">Grand Total</th>
+                        <th className="py-2.5 px-3 text-center">Follow Up</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 text-xs">
+                      {filteredSavedInvoices.map((item: any) => {
+                        const isConfirmed =
+                          item.status === "order_confirmed" ||
+                          item.status === "work_order_generated";
+                        const isCancelled = item.status === "cancelled";
+
+                        return (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setDetailInvoice(item);
+                              setDetailOpen(true);
+                            }}
+                          >
+                            <td className="py-2.5 px-3 font-mono font-semibold text-primary">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={
+                                    isCancelled
+                                      ? "line-through text-rose-600 dark:text-rose-400 font-bold"
+                                      : "hover:underline font-bold"
+                                  }
+                                >
+                                  {formatPiNo(item.no)}
+                                </span>
+                                {isCancelled && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
+                                    Cancelled
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-muted-foreground font-mono">
+                              {dmy(item.date)}
+                            </td>
+                            <td className="py-2.5 px-3 font-medium text-foreground">
+                              {item.cust?.name || "—"}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                              {item.cust?.phone || "—"}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-mono">
+                              {item.items?.length || 0}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600">
+                              ₹ {nf(item.totals?.grandTotal || 0)}
+                            </td>
+                            <td
+                              className="py-2.5 px-3 text-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isCancelled) {
+                                    toast.error("Cancelled invoice cannot be followed up");
+                                    return;
+                                  }
+                                  toggleWhatsAppSent(item.id);
+                                }}
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+                                  isCancelled
+                                    ? "bg-muted text-muted-foreground border border-border cursor-not-allowed opacity-60"
+                                    : item.whatsappSent
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                      : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40 hover:bg-red-500/25"
+                                }`}
+                                title={
+                                  isCancelled
+                                    ? "Cancelled invoice"
+                                    : item.whatsappSent
+                                      ? "Status: Yes (Click to toggle)"
+                                      : "Status: No (Click to toggle)"
+                                }
+                              >
+                                {item.whatsappSent ? (
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span>Yes</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                    <span>No</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                            <td
+                              className="py-2.5 px-3 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center justify-end gap-1">
+                                {/* Confirm & Convert Action Button */}
+                                {!isCancelled && (
+                                  <Button
+                                    size="sm"
+                                    className={`h-7 px-2 text-[11px] font-bold gap-1 transition-all ${
+                                      isConfirmed
+                                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25"
+                                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                                    }`}
+                                    onClick={() => {
+                                      loadInvoice(item.id, false);
+                                      navigate({
+                                        to: "/order",
+                                        search: {
+                                          view: "form",
+                                          id: item.id,
+                                          action: "confirm",
+                                          from: "booking",
+                                        } as any,
+                                      });
+                                    }}
+                                    title={
+                                      isConfirmed
+                                        ? "Proforma Invoice Confirmed - Click to open Order Confirm"
+                                        : "Confirm Proforma Invoice & Open Order Confirm"
+                                    }
+                                  >
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>{isConfirmed ? "Confirmed" : "Confirm"}</span>
+                                  </Button>
+                                )}
+
+                                {/* Edit Symbol Button */}
+                                {!isCancelled && (
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-                                    title="Cancel Proforma Invoice"
+                                    className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                    onClick={() => {
+                                      loadInvoice(item.id, false);
+                                      setShowForm(true);
+                                      toast.success(
+                                        `Loaded Proforma Invoice ${item.no} for editing`,
+                                      );
+                                    }}
+                                    title="Edit Proforma Invoice"
                                   >
-                                    <Ban className="h-3.5 w-3.5" />
+                                    <Edit3 className="h-3.5 w-3.5" />
                                   </Button>
-                                </ConfirmDelete>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                )}
+
+                                {/* Print Symbol Button */}
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                  onClick={() => {
+                                    loadInvoice(item.id, false);
+                                    toast.success(
+                                      `Generating PDF for Proforma Invoice ${item.no}...`,
+                                    );
+                                    navigate({ to: "/invoice", search: { id: item.id } });
+                                  }}
+                                  title="Print / Generate PDF"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
+
+                                {/* Cancel Booking Button */}
+                                {isCancelled ? (
+                                  <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                    Cancelled
+                                  </span>
+                                ) : (
+                                  <ConfirmDelete
+                                    title={`Cancel Proforma Invoice ${item.no}?`}
+                                    description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                    confirmLabel="Cancel Proforma Invoice"
+                                    onConfirm={() => {
+                                      updateInvoiceStatus(item.id, "cancelled");
+                                      toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
+                                    }}
+                                  >
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                      title="Cancel Proforma Invoice"
+                                    >
+                                      <Ban className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </ConfirmDelete>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </DesktopOnly>
+              </>
             )}
           </Section>
         </div>
       ) : (
         /* ── PROFORMA INVOICE CREATION / EDITING FORM SECTION ─────────────── */
-        <div id="order-booking-form" className="p-3 sm:p-4 w-full">
+        <div id="order-booking-form" className="p-3 pb-24 sm:p-4 md:pb-4 w-full">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 w-full">
             {/* ════ LEFT COLUMN ════ */}
             <div className="space-y-4 min-w-0">
@@ -1416,6 +1605,9 @@ function BookingPage() {
                   <div>
                     <FieldLabel>Phone</FieldLabel>
                     <Input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       className="h-8 text-xs font-mono"
                       value={inv.cust?.phone || ""}
                       onChange={(e) =>
@@ -1636,7 +1828,7 @@ function BookingPage() {
                           >
                             {/* Product Header Row for this layer */}
                             <div className="rounded-md border border-border/80 overflow-hidden bg-card shadow-xs">
-                              <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              <div className="hidden md:grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2 bg-green-500/10 border-b border-border/60 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                 <div className="text-center">ITEM</div>
                                 <div>GLASS TYPE</div>
                                 <div>PRODUCT NAME</div>
@@ -1644,10 +1836,11 @@ function BookingPage() {
                                 <div className="text-center">RATE</div>
                                 <div></div>
                               </div>
-                              <div className="grid grid-cols-[90px_1fr_1.2fr_65px_85px_36px] gap-2 items-center px-3 py-2">
-                                <div>
+                              <div className="grid grid-cols-2 gap-2 px-3 py-2.5 md:grid-cols-[90px_1fr_1.2fr_65px_85px_36px] md:items-center md:py-2">
+                                <div className="order-1 md:order-none">
+                                  <span className="field-label md:hidden">Item</span>
                                   <Input
-                                    className="h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
+                                    className="h-9 md:h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
                                     value={
                                       layer.layerNo !== undefined && layer.layerNo !== ""
                                         ? layer.layerNo
@@ -1660,7 +1853,8 @@ function BookingPage() {
                                 </div>
 
                                 {/* 1. GLASS TYPE Dropdown */}
-                                <div>
+                                <div className="order-3 col-span-2 md:order-none md:col-span-1">
+                                  <span className="field-label md:hidden">Glass type</span>
                                   <Select
                                     value={
                                       layer.glassType ||
@@ -1684,7 +1878,7 @@ function BookingPage() {
                                       }
                                     }}
                                   >
-                                    <SelectTrigger className="h-7 text-xs w-full bg-background border-border font-medium">
+                                    <SelectTrigger className="h-9 md:h-7 text-xs w-full bg-background border-border font-medium">
                                       <SelectValue placeholder="Select Glass Type" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-64">
@@ -1698,12 +1892,13 @@ function BookingPage() {
                                 </div>
 
                                 {/* 2. PRODUCT NAME Dropdown */}
-                                <div>
+                                <div className="order-4 col-span-2 md:order-none md:col-span-1">
+                                  <span className="field-label md:hidden">Product name</span>
                                   {isCustomMode ? (
                                     <div className="flex items-center gap-1">
                                       <Input
                                         autoFocus
-                                        className="h-7 text-xs w-full bg-background"
+                                        className="h-9 md:h-7 text-xs w-full bg-background"
                                         value={layer.productName ?? layer.glassName ?? ""}
                                         placeholder="Enter custom product name..."
                                         onChange={(e) => {
@@ -1716,7 +1911,7 @@ function BookingPage() {
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                                        className="h-9 w-9 md:h-7 md:w-7 text-muted-foreground hover:text-foreground shrink-0"
                                         title="Select from dropdown list"
                                         onClick={() => {
                                           updateLayer(layerIdx, "isCustomProduct", false);
@@ -1745,7 +1940,7 @@ function BookingPage() {
                                         }
                                       }}
                                     >
-                                      <SelectTrigger className="h-7 text-xs w-full bg-background border-border">
+                                      <SelectTrigger className="h-9 md:h-7 text-xs w-full bg-background border-border">
                                         <SelectValue placeholder="Select Product Name" />
                                       </SelectTrigger>
                                       <SelectContent className="max-h-64">
@@ -1779,11 +1974,12 @@ function BookingPage() {
                                     </Select>
                                   )}
                                 </div>
-                                <div>
+                                <div className="order-5 md:order-none">
+                                  <span className="field-label md:hidden">Thickness (mm)</span>
                                   <Input
                                     type="text"
                                     inputMode="decimal"
-                                    className="h-7 text-xs font-mono w-full text-center"
+                                    className="h-9 md:h-7 text-xs font-mono w-full text-center"
                                     value={layer.thickness || ""}
                                     onKeyDown={handleDecimalKeyDown}
                                     onChange={(e) => {
@@ -1793,11 +1989,12 @@ function BookingPage() {
                                     }}
                                   />
                                 </div>
-                                <div>
+                                <div className="order-6 md:order-none">
+                                  <span className="field-label md:hidden">Rate</span>
                                   <Input
                                     type="text"
                                     inputMode="decimal"
-                                    className="h-7 text-xs font-mono w-full text-center"
+                                    className="h-9 md:h-7 text-xs font-mono w-full text-center"
                                     value={layer.rate || ""}
                                     onKeyDown={handleDecimalKeyDown}
                                     onChange={(e) => {
@@ -1807,10 +2004,11 @@ function BookingPage() {
                                     }}
                                   />
                                 </div>
-                                <div className="flex justify-center">
+                                <div className="order-2 flex items-end justify-end md:order-none md:items-center md:justify-center">
                                   <button
                                     title="Remove"
-                                    className="h-7 w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                    aria-label="Remove item"
+                                    className="h-9 w-9 md:h-7 md:w-7 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                                     onClick={() => removeLayer(layerIdx)}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -1842,7 +2040,8 @@ function BookingPage() {
                                 </div>
                               }
                             >
-                              <div className="overflow-x-auto -mx-3 sm:-mx-4 border rounded-md border-emerald-600/20">
+                              <SwipeHint />
+                              <div className="scroll-x -mx-3 sm:-mx-4 border rounded-md border-emerald-600/20">
                                 <table
                                   className="w-full text-[11px] border-collapse"
                                   style={{
@@ -2425,7 +2624,7 @@ function BookingPage() {
 
             {/* ════ RIGHT COLUMN: Totals Panel ════ */}
             <div className="space-y-4">
-              <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14 shadow-sm">
+              <div className="bg-card border border-border rounded-lg overflow-hidden xl:sticky xl:top-16 shadow-sm">
                 <div className="px-3.5 py-2.5 border-b border-border bg-emerald-500/5 flex items-center justify-between gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
                     <span className="w-1.5 h-3.5 rounded-full bg-emerald-500 inline-block" />
@@ -2566,6 +2765,20 @@ function BookingPage() {
               </div>
             </div>
           </div>
+          {/* Phone: the running total and the commit action, always in reach */}
+          <MobileActionBar label="Grand total" value={`₹ ${nf(totals.grandTotal ?? 0)}`}>
+            <Button
+              className="h-10 gap-2 bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700"
+              onClick={() => {
+                const ok = saveInvoice();
+                if (ok && inv.id) {
+                  navigate({ to: "/invoice", search: { id: inv.id } });
+                }
+              }}
+            >
+              <Save className="h-4 w-4" /> Save & Print
+            </Button>
+          </MobileActionBar>
         </div>
       )}
 

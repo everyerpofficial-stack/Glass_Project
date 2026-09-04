@@ -79,7 +79,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      /* viewport-fit=cover lets the fixed tab bar sit under the home
+         indicator and paint its safe-area padding itself. maximum-scale is
+         deliberately not set: pinch-zoom stays available. */
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
       { title: "Glass Quote Pro" },
       {
         name: "description",
@@ -90,7 +96,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Glass Quote Pro" },
       { property: "og:description", content: "Professional glass quotation management" },
       { property: "og:type", content: "website" },
-      { name: "theme-color", content: "#1a1f2e" },
+      { name: "theme-color", content: "#ffffff" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Glass Quote" },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
+      },
+      { name: "format-detection", content: "telephone=no" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -126,7 +140,8 @@ function RootComponent() {
         <AppShell>
           <Outlet />
         </AppShell>
-        <Toaster position="top-right" richColors />
+        {/* Placement is responsive; see components/ui/sonner.tsx */}
+        <Toaster richColors />
       </GlassQuoteProvider>
     </QueryClientProvider>
   );

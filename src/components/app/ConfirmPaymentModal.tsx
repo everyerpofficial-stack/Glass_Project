@@ -100,10 +100,13 @@ function ConfirmPaymentModalBody({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in-50">
-      <div className="bg-white dark:bg-slate-900 border border-border rounded-xl shadow-2xl max-w-md w-full overflow-hidden my-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in-50 sm:items-center sm:p-4">
+      <div
+        style={{ paddingBottom: "var(--safe-bottom)" }}
+        className="w-full max-w-md overflow-hidden rounded-t-2xl border border-border bg-white shadow-2xl dark:bg-slate-900 max-h-[92dvh] animate-in slide-in-from-bottom-4 sm:my-auto sm:max-h-[90vh] sm:rounded-xl sm:slide-in-from-bottom-0"
+      >
         {/* Modal Header */}
-        <div className="bg-slate-900 px-4 py-2.5 text-white flex items-center justify-between">
+        <div className="bg-slate-900 px-4 py-3 text-white flex items-start justify-between gap-2">
           <div>
             <div className="text-[9px] uppercase font-bold tracking-widest text-blue-400 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -125,7 +128,7 @@ function ConfirmPaymentModalBody({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full h-7 w-7 flex items-center justify-center transition-colors text-xs font-bold cursor-pointer"
+            className="text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full h-9 w-9 shrink-0 flex items-center justify-center transition-colors text-sm font-bold cursor-pointer sm:h-7 sm:w-7 sm:text-xs"
           >
             ✕
           </button>
@@ -133,7 +136,7 @@ function ConfirmPaymentModalBody({
 
         <form
           onSubmit={handleSubmit}
-          className="p-3.5 space-y-2.5 text-xs overflow-y-auto max-h-[calc(90vh-60px)]"
+          className="p-3.5 space-y-2.5 text-xs overflow-y-auto overscroll-contain max-h-[calc(92dvh-72px)] sm:max-h-[calc(90vh-60px)]"
         >
           {/* Main Calculation Summary Card */}
           <div className="bg-slate-50 dark:bg-slate-800/40 border border-border rounded-lg p-2.5 space-y-2">

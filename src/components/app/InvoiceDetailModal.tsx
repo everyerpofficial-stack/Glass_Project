@@ -45,6 +45,8 @@ import {
   Sparkles,
   CreditCard,
   Plus,
+  History,
+  Trash2,
 } from "lucide-react";
 
 /* ── Pure JS Code128B barcode SVG generator ────────────────────────── */
@@ -196,6 +198,7 @@ export function InvoiceDetailModal({
     saveWorkOrder,
     updateInvoiceStatus,
     savePayment,
+    deletePayment,
     patchInvoice,
   } = useGQ();
 
@@ -281,14 +284,17 @@ export function InvoiceDetailModal({
   if (!open || !invoice) return null;
 
   const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
-  const matchedPaymentsSum = (payments || [])
-    .filter((p: any) => {
+
+  const invoicePayments = useMemo(() => {
+    if (!invoice || !payments) return [];
+    const iNo = String(invoice.no || "").trim().toLowerCase();
+    const oNo = String(invoice.orderNo || "").trim().toLowerCase();
+    const preNo = String(invoice.preProformaNo || "").trim().toLowerCase();
+    const pId = String(invoice.id || "").trim().toLowerCase();
+
+    return (payments || []).filter((p: any) => {
       if (!p || !p.invoiceNo) return false;
       const pNo = String(p.invoiceNo).trim().toLowerCase();
-      const iNo = String(invoice.no || "").trim().toLowerCase();
-      const oNo = String(invoice.orderNo || "").trim().toLowerCase();
-      const preNo = String(invoice.preProformaNo || "").trim().toLowerCase();
-      const pId = String(invoice.id || "").trim().toLowerCase();
       return (
         pNo === iNo ||
         (oNo && pNo === oNo) ||
@@ -296,8 +302,13 @@ export function InvoiceDetailModal({
         pNo === pId ||
         formatPiNo(pNo) === formatPiNo(iNo)
       );
-    })
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    });
+  }, [invoice, payments]);
+
+  const matchedPaymentsSum = useMemo(() => {
+    return invoicePayments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  }, [invoicePayments]);
+
   const paidAmount = Math.max(Number(invoice.paidAmount || 0), matchedPaymentsSum);
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
@@ -398,13 +409,16 @@ export function InvoiceDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[98vw] h-[94vh] max-h-[94vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl border border-border/80 shadow-2xl bg-background [&>button.absolute]:hidden">
+      <DialogContent
+        style={{ paddingTop: "var(--safe-top)", paddingBottom: "var(--safe-bottom)" }}
+        className="h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-hidden overflow-y-hidden rounded-none border-0 p-0 gap-0 flex flex-col shadow-2xl bg-background [&>button.absolute]:hidden sm:h-[94vh] sm:max-h-[94vh] sm:w-[98vw] sm:max-w-7xl sm:rounded-2xl sm:border sm:border-border/80"
+      >
         <DialogTitle className="sr-only">
           {docTypeLabel} {invoice.no} Details
         </DialogTitle>
 
         {/* ════ HEADER ROW 1: Invoice Info + Actions ════ */}
-        <div className="bg-card text-card-foreground px-5 py-3 border-b border-border shrink-0 flex items-center justify-between gap-4 print:hidden">
+        <div className="bg-card text-card-foreground px-3 py-2.5 sm:px-5 sm:py-3 border-b border-border shrink-0 flex items-center justify-between gap-2 sm:gap-4 print:hidden">
           {/* Left: Invoice identity */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-xs shrink-0">
@@ -415,7 +429,7 @@ export function InvoiceDetailModal({
                 <span className="text-sm font-mono font-bold text-primary">
                   #{formatPiNo(invoice.no)}
                 </span>
-                <span className="text-sm font-bold text-foreground truncate max-w-[220px]">
+                <span className="hidden max-w-[220px] truncate text-sm font-bold text-foreground sm:inline">
                   {invoice.cust?.name || "Customer"}
                 </span>
                 {isPaidFull ? (
@@ -432,8 +446,11 @@ export function InvoiceDetailModal({
                   </span>
                 )}
               </div>
+              <div className="truncate text-[13px] font-bold text-foreground sm:hidden">
+                {invoice.cust?.name || "Customer"}
+              </div>
               <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                Date: {dmy(invoice.date)} &nbsp;•&nbsp; Grand Total: ₹ {nf(grandTotal)}
+                {dmy(invoice.date)} &nbsp;•&nbsp; ₹ {nf(grandTotal)}
               </div>
             </div>
           </div>
@@ -442,16 +459,17 @@ export function InvoiceDetailModal({
           <div className="flex items-center gap-2 shrink-0">
             <Button
               size="sm"
-              className="h-7 text-[11px] gap-1 px-2.5 bg-slate-700 hover:bg-slate-800 text-white font-bold"
+              className="h-9 gap-1 px-2.5 text-[11px] font-bold bg-slate-700 hover:bg-slate-800 text-white sm:h-7"
               onClick={handlePrintActive}
             >
-              <Printer className="h-3 w-3" />
-              Print
+              <Printer className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Print</span>
             </Button>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-7 h-7 rounded-lg bg-muted hover:bg-rose-600 text-muted-foreground hover:text-white flex items-center justify-center transition-colors text-xs font-bold"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-sm font-bold text-muted-foreground transition-colors hover:bg-rose-600 hover:text-white sm:h-7 sm:w-7 sm:text-xs"
               title="Close"
+              aria-label="Close"
             >
               ✕
             </button>
@@ -459,7 +477,7 @@ export function InvoiceDetailModal({
         </div>
 
         {/* ════ HEADER ROW 2: Tab Navigation ════ */}
-        <div className="bg-muted/40 px-5 py-1.5 border-b border-border shrink-0 flex items-center gap-1.5 overflow-x-auto print:hidden">
+        <div className="bg-muted/40 px-3 py-1.5 sm:px-5 border-b border-border shrink-0 flex items-center gap-1.5 overflow-x-auto hide-scrollbar print:hidden">
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
@@ -520,7 +538,7 @@ export function InvoiceDetailModal({
         </div>
 
         {/* ════ MAIN MODAL BODY AREA (SCROLLABLE EDGE-TO-EDGE) ════ */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 bg-muted/20">
           {/* ─── TAB 1: OVERVIEW & DETAILS ─── */}
           {activeTab === "overview" && (
             <div className="space-y-5 animate-in fade-in-50">
@@ -729,6 +747,91 @@ export function InvoiceDetailModal({
                   </div>
                 </div>
               )}
+
+              {/* Payment History Section */}
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Payment History
+                    </span>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      {invoicePayments.length} {invoicePayments.length === 1 ? "record" : "records"}
+                    </span>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-foreground">
+                    Total Paid:{" "}
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      ₹ {nf(paidAmount)}
+                    </span>
+                  </div>
+                </div>
+
+                {invoicePayments.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          <th className="py-2 px-3">Date</th>
+                          <th className="py-2 px-3">Payment Mode</th>
+                          <th className="py-2 px-3">Ref / Txn No</th>
+                          <th className="py-2 px-3">Notes / Remarks</th>
+                          <th className="py-2 px-3 text-right">Amount Received</th>
+                          {!isDocCancelled && <th className="py-2 px-3 text-center">Action</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono">
+                        {invoicePayments.map((p: any, idx: number) => (
+                          <tr key={p.id || idx} className="hover:bg-muted/20 transition-colors">
+                            <td className="py-2 px-3 text-foreground font-medium whitespace-nowrap">
+                              {dmy(p.date || p.createdAt)}
+                            </td>
+                            <td className="py-2 px-3 font-sans whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                {p.mode || p.paymentType || "Cash"}
+                              </span>
+                            </td>
+                            <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap">
+                              {p.refNo || "—"}
+                            </td>
+                            <td className="py-2 px-3 text-muted-foreground font-sans truncate max-w-[200px]">
+                              {p.notes || "—"}
+                            </td>
+                            <td className="py-2 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                              ₹ {nf(Number(p.amount || 0))}
+                            </td>
+                            {!isDocCancelled && (
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                  title="Delete payment record"
+                                  onClick={() => {
+                                    if (
+                                      confirm("Are you sure you want to delete this payment record?")
+                                    ) {
+                                      deletePayment(p.id);
+                                      toast.success("Payment record deleted");
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-xs text-muted-foreground font-medium bg-muted/20 rounded-lg border border-dashed border-border/60">
+                    No payment transactions recorded for this document yet.
+                  </div>
+                )}
+              </div>
 
               {/* Customer & Order Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

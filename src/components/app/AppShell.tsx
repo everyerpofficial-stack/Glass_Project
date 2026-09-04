@@ -7,21 +7,23 @@ import {
   ClipboardList,
   FileText,
   LayoutDashboard,
-  Menu,
+  MoreHorizontal,
+  Plus,
   Search,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Users,
   Factory,
-  Tag,
   Calendar,
   ChevronRight,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useGQ } from "@/lib/store";
 import { GlobalSearch } from "./GlobalSearch";
@@ -33,6 +35,28 @@ const NAV = [
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
+] as const;
+
+/* The phone tab bar carries four destinations plus More. Six tabs at 9px — what
+   this used to be — is below the size at which a label is readable or a target
+   is hittable, so the long tail moved into the More sheet. */
+const MOBILE_TABS = [
+  { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/booking", label: "Proforma", icon: ClipboardList },
+  { to: "/order", label: "Orders", icon: ShoppingCart },
+  { to: "/customers", label: "Customers", icon: Users },
+] as const;
+
+const MORE_LINKS = [
+  {
+    to: "/work-order",
+    label: "Work Order & Stickers",
+    icon: Factory,
+    hint: "Cut sheets, barcodes",
+  },
+  { to: "/reports", label: "Reports", icon: BarChart3, hint: "Revenue and volume trends" },
+  { to: "/settings", label: "Settings", icon: Settings, hint: "Company, terms, numbering" },
+  { to: "/checks", label: "System Checks", icon: ShieldCheck, hint: "Storage, sync, calculations" },
 ] as const;
 
 const TITLES: Record<string, string> = {
@@ -108,9 +132,13 @@ function formatDate() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const locationSearch = useRouterState({ select: (s) => s.location.search }) as Record<
+    string,
+    unknown
+  >;
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { settings, loadFromSheet, sheetSyncing, sheetError, lastSyncedAt } = useGQ();
   const title = TITLES[pathname] ?? "Glass Quote";
 
@@ -132,6 +160,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  /* A route change closes the More sheet; leaving it open over the new page is
+     the single most common bottom-sheet bug on a phone. */
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   const company = settings.coName || "Your Company";
   const userName = settings.salesPerson || "Admin";
@@ -157,9 +191,36 @@ export function AppShell({ children }: { children: ReactNode }) {
     [userName],
   );
 
+  /* The primary action of the page the user is standing on, as a thumb-reach
+     button. It is suppressed inside a form view, where the page already owns
+     Save / Back and a second "new" would discard the draft in progress. */
+  const quickAction = useMemo(() => {
+    if (locationSearch?.["view"] === "form") return null;
+    if (pathname === "/" || pathname === "/booking") {
+      return {
+        label: "New Proforma Invoice",
+        to: "/booking" as const,
+        search: { view: "form", action: "new" },
+      };
+    }
+    if (pathname === "/order") {
+      return {
+        label: "New Order Confirm",
+        to: "/order" as const,
+        search: { view: "form", action: "new" },
+      };
+    }
+    if (pathname === "/customers") {
+      return { label: "Add Customer", to: "/customers" as const, search: { action: "new" } };
+    }
+    return null;
+  }, [pathname, locationSearch]);
+
+  const syncLabel = sheetSyncing ? "Syncing…" : sheetError ? "Offline" : "Live Sync";
+
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="app-shell flex min-h-screen bg-background text-foreground">
+      <div className="app-shell flex min-h-[100dvh] bg-background text-foreground">
         {/* ══════════ DESKTOP SIDEBAR ══════════ */}
         <aside
           className={cn(
@@ -311,80 +372,33 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* ══════════ MAIN COLUMN ══════════ */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* ── Top header ── */}
-          <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-white">
-            <div className="flex flex-1 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-              {/* Left: Mobile hamburger + search */}
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Mobile hamburger → Sheet */}
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 md:hidden shrink-0"
-                      aria-label="Open navigation menu"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="left"
-                    className="w-[272px] p-0 bg-sidebar border-sidebar-border"
-                  >
-                    {/* Sheet header */}
-                    <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-                      {settings.logo ? (
-                        <img
-                          src={settings.logo}
-                          alt="Company Logo"
-                          className="h-9 w-auto max-w-[180px] object-contain bg-white/10 p-1 rounded-lg"
-                        />
-                      ) : (
-                        <>
-                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-[12px] font-bold tracking-wider text-white">
-                            {initials.slice(0, 2)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate text-[14px] font-bold text-white tracking-tight leading-tight">
-                              {company.split(" ").slice(0, 2).join(" ")}
-                            </div>
-                            <div className="truncate text-[10px] uppercase tracking-[0.12em] text-sidebar-foreground/40 font-medium">
-                              {company.split(" ").slice(2).join(" ") || "GLASS PVT. LTD."}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {/* Nav links */}
-                    <nav className="flex flex-col gap-1 px-3 py-4">
-                      {NAV.map((item) => (
-                        <NavLink
-                          key={item.to}
-                          item={item}
-                          pathname={pathname}
-                          onClick={() => setMobileMenuOpen(false)}
-                        />
-                      ))}
-                    </nav>
-                    {/* Company row at bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border/50 p-3 bg-sidebar">
-                      <div className="flex items-center gap-2.5">
-                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[10px] font-bold tracking-wide text-sidebar-accent-foreground">
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-[12px] font-semibold text-sidebar-foreground/90">
-                            {company}
-                          </div>
-                          <div className="truncate text-[10px] text-sidebar-foreground/40">
-                            {settings.gstin || "Add GSTIN in settings"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
+          {/* ── Top header ──
+              On a phone this is the only chrome at the top of the screen: brand
+              mark, page title, and the three controls worth a thumb. Navigation
+              itself lives in the bottom tab bar, so there is no hamburger to
+              reach for at the far corner of the device. */}
+          <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-sm pt-safe">
+            <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
+              {/* Left: identity + current page */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* Mobile brand mark */}
+                <Link
+                  to="/"
+                  aria-label="Dashboard"
+                  className="md:hidden shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {settings.logo ? (
+                    <img
+                      src={settings.logo}
+                      alt="Logo"
+                      className="h-9 w-9 rounded-lg object-contain"
+                    />
+                  ) : (
+                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-[11px] font-bold tracking-wider text-white">
+                      {initials.slice(0, 2)}
+                    </span>
+                  )}
+                </Link>
 
                 {/* Company selector (Desktop) */}
                 <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-background/60 hover:bg-muted/50 transition-colors cursor-default">
@@ -398,13 +412,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 {/* Mobile: page title */}
-                <span className="text-sm font-semibold text-foreground md:hidden truncate">
-                  {title}
-                </span>
+                <div className="min-w-0 md:hidden">
+                  <div className="truncate text-[15px] font-bold leading-tight text-foreground">
+                    {title}
+                  </div>
+                  <div className="truncate text-[10px] leading-tight text-muted-foreground">
+                    {company}
+                  </div>
+                </div>
               </div>
 
-              {/* Right: search, notifications, date, user profile */}
-              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {/* Right: search, sync, notifications, date, profile */}
+              <div className="flex shrink-0 items-center gap-1 sm:gap-3">
                 {/* Desktop search box */}
                 <button
                   onClick={() => setSearchOpen(true)}
@@ -417,27 +436,27 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </kbd>
                 </button>
                 {/* Mobile search icon */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 lg:hidden"
+                <button
+                  className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 active:bg-muted lg:hidden"
                   onClick={() => setSearchOpen(true)}
                   aria-label="Search"
                 >
-                  <Search className="h-4 w-4" />
-                </Button>
+                  <Search className="h-[18px] w-[18px]" />
+                </button>
 
                 {/* Live Sync Status & Manual Refresh Button.
                     This is the only thing on screen that reacts to a background
                     sync — the data underneath it is never cleared or hidden
                     while a refresh is in flight, so a slow or failing Apps
-                    Script degrades to a red badge instead of a blank page. */}
+                    Script degrades to a red badge instead of a blank page.
+                    On a phone it shrinks to the dot and the refresh glyph. */}
                 <button
                   onClick={() => loadFromSheet()}
                   disabled={sheetSyncing || !settings.sheetUrl}
                   title={syncTitle}
+                  aria-label={syncLabel}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50",
+                    "flex h-9 items-center gap-1.5 rounded-full border px-2 sm:px-2.5 text-xs font-semibold transition-colors disabled:opacity-50",
                     sheetError
                       ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 hover:bg-red-500/20"
                       : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20",
@@ -450,14 +469,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                       sheetSyncing && "animate-ping",
                     )}
                   />
-                  <span className="hidden md:inline">
-                    {sheetSyncing ? "Syncing..." : sheetError ? "Offline" : "Live Sync"}
-                  </span>
+                  <span className="hidden md:inline">{syncLabel}</span>
                   <RefreshCw className={cn("h-3 w-3", sheetSyncing && "animate-spin")} />
                 </button>
 
-                {/* Notification bell */}
-                <button className="relative h-9 w-9 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors">
+                {/* Notification bell — desktop only; on a phone it lives in the
+                    More sheet rather than stealing a thumb-sized slot. */}
+                <button className="relative hidden h-9 w-9 items-center justify-center rounded-lg hover:bg-muted/60 transition-colors md:flex">
                   <Bell className="h-[18px] w-[18px] text-muted-foreground" />
                   <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center ring-2 ring-white">
                     2
@@ -465,77 +483,255 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </button>
 
                 {/* Date display (Desktop) */}
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />
                   <span className="font-medium">{formatDate()}</span>
                 </div>
 
-                {/* User avatar + name */}
-                <div className="flex items-center gap-2 pl-2 border-l border-border">
-                  <div className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
+                {/* User avatar + name. Tapping it on a phone opens the same
+                    account / navigation sheet as the More tab. */}
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen(true)}
+                  className="flex items-center gap-2 rounded-lg pl-1 sm:pl-2 sm:border-l sm:border-border md:pointer-events-none"
+                  aria-label="Account and more"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
                     {userInitials}
-                  </div>
-                  <div className="hidden sm:block min-w-0">
-                    <div className="text-[12px] font-semibold text-foreground leading-tight truncate">
+                  </span>
+                  <span className="hidden text-left md:block min-w-0">
+                    <span className="block text-[12px] font-semibold text-foreground leading-tight truncate">
                       {userName}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground leading-tight">Admin</div>
-                  </div>
-                  <ChevronDown className="h-3 w-3 text-muted-foreground hidden sm:block" />
-                </div>
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground leading-tight">
+                      Admin
+                    </span>
+                  </span>
+                  <ChevronDown className="hidden h-3 w-3 text-muted-foreground md:block" />
+                </button>
               </div>
             </div>
           </header>
 
           {/* ── Page content ── */}
-          <main className="min-w-0 flex-1 pb-24 md:pb-10">{children}</main>
+          <main className="min-w-0 flex-1 md:pb-10">{children}</main>
         </div>
 
-        {/* ══════════ MOBILE BOTTOM NAV ══════════ */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-sidebar-border bg-sidebar px-1 pb-[env(safe-area-inset-bottom)] md:hidden">
-          {NAV.slice(0, 5).map((item) => {
+        {/* ══════════ MOBILE QUICK ACTION ══════════
+            The one thing the current page is for, parked in the thumb arc just
+            above the tab bar. */}
+        {quickAction && (
+          <Link
+            to={quickAction.to}
+            search={quickAction.search as never}
+            aria-label={quickAction.label}
+            title={quickAction.label}
+            style={{
+              bottom: "calc(var(--app-bottom-nav-h) + var(--safe-bottom) + 0.875rem)",
+              right: "calc(var(--safe-right) + 1rem)",
+            }}
+            className="app-fab fixed z-40 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/30 transition-transform active:scale-95 md:hidden print:hidden"
+          >
+            <Plus className="h-6 w-6" />
+          </Link>
+        )}
+
+        {/* ══════════ MOBILE BOTTOM TAB BAR ══════════ */}
+        <nav
+          aria-label="Primary"
+          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card/95 backdrop-blur-sm pb-safe md:hidden print:hidden"
+        >
+          {MOBILE_TABS.map((item) => {
             const active = pathname === item.to;
             return (
               <Link
                 key={item.to}
                 to={item.to}
+                data-nav
+                aria-current={active ? "page" : undefined}
+                style={{ height: "var(--app-bottom-nav-h)" }}
                 className={cn(
-                  "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[9.5px] font-medium transition-colors min-w-0",
-                  active ? "text-blue-400" : "text-sidebar-foreground/55",
+                  "relative flex min-w-0 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors",
+                  active ? "text-blue-600" : "text-muted-foreground",
                 )}
               >
                 {active && (
-                  <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-blue-500" />
+                  <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-blue-600" />
                 )}
                 <item.icon
-                  className={cn(
-                    "h-[18px] w-[18px] transition-transform duration-150",
-                    active && "scale-110",
-                  )}
+                  className={cn("h-5 w-5 transition-transform", active && "scale-110")}
+                  strokeWidth={active ? 2.4 : 1.9}
                 />
-                <span className="truncate max-w-full px-0.5">{item.label}</span>
+                <span className="max-w-full truncate px-0.5">{item.label}</span>
               </Link>
             );
           })}
-          <Link
-            to="/settings"
+
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            style={{ height: "var(--app-bottom-nav-h)" }}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
             className={cn(
-              "relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[9.5px] font-medium transition-colors min-w-0",
-              pathname === "/settings" ? "text-blue-400" : "text-sidebar-foreground/55",
+              "relative flex min-w-0 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors",
+              MORE_LINKS.some((l) => l.to === pathname) || moreOpen
+                ? "text-blue-600"
+                : "text-muted-foreground",
             )}
           >
-            {pathname === "/settings" && (
-              <span className="absolute top-1 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-blue-500" />
+            {MORE_LINKS.some((l) => l.to === pathname) && (
+              <span className="absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-blue-600" />
             )}
-            <Settings
-              className={cn(
-                "h-[18px] w-[18px] transition-transform duration-150",
-                pathname === "/settings" && "scale-110",
-              )}
-            />
-            <span className="truncate max-w-full px-0.5">Settings</span>
-          </Link>
+            <MoreHorizontal className="h-5 w-5" strokeWidth={1.9} />
+            <span>More</span>
+          </button>
         </nav>
+
+        {/* ══════════ MOBILE "MORE" SHEET ══════════ */}
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent
+            side="bottom"
+            style={{ paddingBottom: "var(--safe-bottom)" }}
+            className="max-h-[88dvh] overflow-y-auto rounded-t-2xl border-border p-0 [&>button.absolute]:hidden md:hidden"
+          >
+            <SheetTitle className="sr-only">Account and navigation</SheetTitle>
+
+            {/* Grab handle */}
+            <div className="sticky top-0 z-10 flex flex-col items-center bg-background pt-2.5 pb-1">
+              <span className="h-1 w-10 rounded-full bg-border" />
+            </div>
+
+            <div className="space-y-4 px-4 pb-6">
+              {/* Company / account card */}
+              <Link
+                to="/settings"
+                className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3"
+              >
+                {settings.logo ? (
+                  <img
+                    src={settings.logo}
+                    alt="Logo"
+                    className="h-11 w-11 shrink-0 rounded-lg object-contain"
+                  />
+                ) : (
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-blue-600 text-xs font-bold tracking-wide text-white">
+                    {initials}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-foreground">
+                    {company}
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {settings.gstin || "Add GSTIN in settings"}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+
+              {/* Sync state, in words rather than as a coloured dot */}
+              <button
+                type="button"
+                onClick={() => loadFromSheet()}
+                disabled={sheetSyncing || !settings.sheetUrl}
+                className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors active:bg-muted/50 disabled:opacity-60"
+              >
+                <span
+                  className={cn(
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
+                    sheetError
+                      ? "bg-red-500/10 text-red-600"
+                      : "bg-emerald-500/10 text-emerald-600",
+                  )}
+                >
+                  <RefreshCw className={cn("h-4 w-4", sheetSyncing && "animate-spin")} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-foreground">
+                    {sheetSyncing
+                      ? "Syncing…"
+                      : sheetError
+                        ? "Offline — tap to retry"
+                        : "Refresh data"}
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {!settings.sheetUrl
+                      ? "Add a Sheet URL in Settings"
+                      : lastSyncedAt
+                        ? `Last synced ${new Date(lastSyncedAt).toLocaleTimeString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}`
+                        : "Live synced across all devices"}
+                  </span>
+                </span>
+              </button>
+
+              {/* Secondary destinations */}
+              <div className="overflow-hidden rounded-xl border border-border">
+                {MORE_LINKS.map((item, i) => {
+                  const active = pathname === item.to;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      data-nav
+                      className={cn(
+                        "flex items-center gap-3 p-3 transition-colors active:bg-muted/60",
+                        i > 0 && "border-t border-border",
+                        active && "bg-blue-600/8",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
+                          active ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block text-[13px] font-semibold",
+                            active ? "text-blue-700" : "text-foreground",
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {item.hint}
+                        </span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 px-1 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {formatDate()}
+                </span>
+                <span className="truncate">
+                  Signed in as <span className="font-semibold text-foreground">{userName}</span>
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => setMoreOpen(false)}
+                type="button"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
       </div>

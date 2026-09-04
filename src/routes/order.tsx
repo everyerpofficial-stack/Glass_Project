@@ -23,7 +23,7 @@ import {
   ArrowRight,
   ArrowLeft,
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,14 @@ import {
   ConfirmPaymentModal,
   type ConfirmPaymentDetails,
 } from "@/components/app/ConfirmPaymentModal";
+
+import {
+  DesktopOnly,
+  MobileActionBar,
+  MobileList,
+  MobileRecordCard,
+  SwipeHint,
+} from "@/components/app/MobileRecord";
 
 export const Route = createFileRoute("/order")({
   validateSearch: (
@@ -166,6 +174,41 @@ function Section({
   );
 }
 
+/* What a row owes. A payment is matched to a document by any of the numbers
+   that document has been known by, and the recorded `paidAmount` wins when it
+   is the larger of the two. Shared by the phone card and the desktop row so the
+   two can never show different money for the same record. */
+function settleAmounts(item: any, payments: any[]) {
+  const grandTotal = Number(item.totals?.grandTotal || 0);
+  const matchedPaymentsSum = (payments || [])
+    .filter((p: any) => {
+      if (!p || !p.invoiceNo) return false;
+      const pNo = String(p.invoiceNo).trim().toLowerCase();
+      const iNo = String(item.no || "")
+        .trim()
+        .toLowerCase();
+      const oNo = String(item.orderNo || "")
+        .trim()
+        .toLowerCase();
+      const preNo = String(item.preProformaNo || "")
+        .trim()
+        .toLowerCase();
+      const pId = String(item.id || "")
+        .trim()
+        .toLowerCase();
+      return (
+        pNo === iNo ||
+        (oNo && pNo === oNo) ||
+        (preNo && pNo === preNo) ||
+        pNo === pId ||
+        formatPiNo(pNo) === formatPiNo(iNo)
+      );
+    })
+    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  const paidAmount = Math.max(Number(item.paidAmount || 0), matchedPaymentsSum);
+  return { grandTotal, paidAmount, remainingBalance: Math.max(0, grandTotal - paidAmount) };
+}
+
 /* ─── Main Order Page ────────────────────────────────────────────── */
 function OrderPage() {
   const navigate = useNavigate();
@@ -224,6 +267,21 @@ function OrderPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [deliveryConfirmTarget, setDeliveryConfirmTarget] = useState<any | null>(null);
 
+  /* ?view=form&action=new opens an empty Order Confirm — the target of the
+     mobile quick-action button. The one-shot param is stripped straight after
+     it is consumed so a refresh cannot blank a draft already in progress. */
+  const quickNewConsumed = useRef(false);
+  useEffect(() => {
+    if (searchParams?.action === "new" && searchParams?.view === "form" && !searchParams?.id) {
+      if (quickNewConsumed.current) return;
+      quickNewConsumed.current = true;
+      newInvoice();
+      setShowForm(true);
+      navigate({ to: "/order", search: { view: "form" } as any, replace: true });
+    } else if (searchParams?.action !== "new") {
+      quickNewConsumed.current = false;
+    }
+  }, [searchParams?.action, searchParams?.view, searchParams?.id, newInvoice, navigate]);
   useEffect(() => {
     if (searchParams?.id && searchParams?.view === "form") {
       loadInvoice(searchParams.id, false);
@@ -899,220 +957,349 @@ function OrderPage() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto -mx-3 sm:-mx-4">
-                <table
-                  className="w-full text-xs text-left border-collapse"
-                  style={{ minWidth: "1050px" }}
-                >
-                  <thead>
-                    <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2.5 px-3">PI No</th>
-                      <th className="py-2.5 px-3">Order ID</th>
-                      <th className="py-2.5 px-3">Date & Payment Due</th>
-                      <th className="py-2.5 px-3">Customer Name</th>
-                      <th className="py-2.5 px-3">Phone No.</th>
-                      <th className="py-2.5 px-3 text-right">Total Amount</th>
-                      <th className="py-2.5 px-3 text-right">Recivied Amount</th>
-                      <th className="py-2.5 px-3 text-right font-mono">Due Amount</th>
-                      <th className="py-2.5 px-3 text-center">Delivered</th>
-                      <th className="py-2.5 px-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-xs">
-                    {filteredSavedInvoices.map((item: any) => {
-                      const isConfirmed =
-                        item.status === "order_confirmed" || item.status === "work_order_generated";
-                      const isCancelled = item.status === "cancelled";
-                      const grandTotal = Number(item.totals?.grandTotal || 0);
-                      const matchedPaymentsSum = (payments || [])
-                        .filter((p: any) => {
-                          if (!p || !p.invoiceNo) return false;
-                          const pNo = String(p.invoiceNo).trim().toLowerCase();
-                          const iNo = String(item.no || "").trim().toLowerCase();
-                          const oNo = String(item.orderNo || "").trim().toLowerCase();
-                          const preNo = String(item.preProformaNo || "").trim().toLowerCase();
-                          const pId = String(item.id || "").trim().toLowerCase();
-                          return (
-                            pNo === iNo ||
-                            (oNo && pNo === oNo) ||
-                            (preNo && pNo === preNo) ||
-                            pNo === pId ||
-                            formatPiNo(pNo) === formatPiNo(iNo)
-                          );
-                        })
-                        .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-                      const paidAmount = Math.max(Number(item.paidAmount || 0), matchedPaymentsSum);
-                      const remainingBalance = Math.max(0, grandTotal - paidAmount);
-                      const dueInfo = getPaymentDueDateInfo(item, payments);
-                      const rawOrder =
-                        item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
-                      const orderId = formatOrderId(rawOrder);
+              <>
+                {/* ── Phone: one card per Order Confirm ── */}
+                <MobileList>
+                  {filteredSavedInvoices.map((item: any) => {
+                    const rowCancelled = item.status === "cancelled";
+                    const { grandTotal, paidAmount, remainingBalance } = settleAmounts(
+                      item,
+                      payments,
+                    );
+                    const dueInfo = getPaymentDueDateInfo(item, payments);
+                    const rawOrder =
+                      item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
+                    const orderId = formatOrderId(rawOrder);
+                    const isDelivered = Boolean(item.delivered);
 
-                      const isDelivered = Boolean(item.delivered);
-
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-muted/30 transition-colors cursor-pointer"
-                          onClick={() => {
-                            setDetailInvoice(item);
-                            setDetailOpen(true);
-                          }}
-                        >
-                          <td className="py-2.5 px-3 font-mono font-semibold text-primary">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={
-                                  isCancelled
-                                    ? "line-through text-rose-600 dark:text-rose-400 font-bold"
-                                    : "hover:underline font-bold"
-                                }
-                              >
-                                {formatPiNo(item.no)}
+                    return (
+                      <MobileRecordCard
+                        key={item.id}
+                        dimmed={rowCancelled}
+                        accent={
+                          rowCancelled
+                            ? "bg-rose-500"
+                            : remainingBalance > 0
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                        }
+                        onClick={() => {
+                          setDetailInvoice(item);
+                          setDetailOpen(true);
+                        }}
+                        code={
+                          <span className={rowCancelled ? "line-through text-rose-600" : undefined}>
+                            {formatPiNo(item.no)}
+                          </span>
+                        }
+                        badge={
+                          <>
+                            {rowCancelled && (
+                              <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-white">
+                                Cancelled
                               </span>
-                              {isCancelled && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
-                                  Cancelled
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
-                            {orderId !== "—" ? (
-                              <span className="px-1.5 py-0.5 rounded bg-muted/60 text-foreground border border-border/50">
-                                {orderId}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/60">—</span>
                             )}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-[11px] leading-tight">
-                            <div>{dmy(item.date)}</div>
-                            <div className="mt-1">
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ${dueInfo.badgeClass}`}
-                              >
-                                {dueInfo.label}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-3 font-medium text-foreground">
-                            {item.cust?.name || "—"}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-muted-foreground">
-                            {item.cust?.phone || "—"}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
-                            ₹ {nf(grandTotal)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                            ₹ {nf(paidAmount)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold">
                             <span
-                              className={
-                                remainingBalance > 0
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-emerald-600 dark:text-emerald-400"
-                              }
+                              className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${dueInfo.badgeClass}`}
                             >
-                              ₹ {nf(remainingBalance)}
+                              {dueInfo.label}
                             </span>
-                          </td>
-                          <td
-                            className="py-2.5 px-3 text-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          </>
+                        }
+                        subject={item.cust?.name || "—"}
+                        meta={[
+                          dmy(item.date),
+                          item.cust?.phone || null,
+                          orderId !== "—" ? orderId : null,
+                        ]}
+                        fields={[
+                          { label: "Total", value: `₹ ${nf(grandTotal)}` },
+                          {
+                            label: "Received",
+                            value: `₹ ${nf(paidAmount)}`,
+                            tone: "positive",
+                          },
+                          {
+                            label: "Due",
+                            value: `₹ ${nf(remainingBalance)}`,
+                            tone: remainingBalance > 0 ? "warning" : "positive",
+                          },
+                        ]}
+                        actions={
+                          <>
                             {isDelivered ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
-                                <CheckCircle2 className="h-3 w-3" /> Yes
+                              <span className="inline-flex h-9 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 text-[11px] font-bold text-emerald-600">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Delivered
                               </span>
-                            ) : !isCancelled ? (
-                              <button
-                                type="button"
+                            ) : !rowCancelled ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 gap-1.5 border-rose-500/40 bg-rose-500/10 text-[11px] font-bold text-rose-600"
                                 onClick={() => setDeliveryConfirmTarget(item)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/40 shadow-2xs transition-all cursor-pointer"
                               >
-                                <XCircle className="h-3 w-3" /> No
-                              </button>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-muted/60 text-muted-foreground border border-border/50">
-                                <XCircle className="h-3 w-3 text-muted-foreground" /> No
-                              </span>
-                            )}
-                          </td>
-                          <td
-                            className="py-2.5 px-3 text-right"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center justify-end gap-1">
-                              {!isCancelled && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
-                                  onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    setShowForm(true);
-                                    toast.success(`Loaded Order Confirm ${item.no} for editing`);
-                                  }}
-                                  title="Edit Order Confirm"
-                                >
-                                  <Edit3 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
+                                <XCircle className="h-3.5 w-3.5" /> Not delivered
+                              </Button>
+                            ) : null}
 
+                            <span className="flex-1" />
+
+                            {!rowCancelled && (
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                className="h-9 w-9 text-primary border-primary/30"
+                                title="Edit Order Confirm"
                                 onClick={() => {
                                   loadInvoice(item.id, false);
-                                  navigate({ to: "/invoice", search: { id: item.id } });
+                                  setShowForm(true);
+                                  toast.success(`Loaded Order Confirm ${item.no} for editing`);
                                 }}
-                                title="Print / Save PDF"
                               >
-                                <Printer className="h-3.5 w-3.5" />
+                                <Edit3 className="h-4 w-4" />
                               </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9 text-emerald-600 border-emerald-500/30"
+                              title="Print / Save PDF"
+                              onClick={() => {
+                                loadInvoice(item.id, false);
+                                navigate({ to: "/invoice", search: { id: item.id } });
+                              }}
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            {!rowCancelled && (
+                              <ConfirmDelete
+                                title={`Cancel Order Confirm ${item.no}?`}
+                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                confirmLabel="Cancel Invoice"
+                                onConfirm={() => {
+                                  updateInvoiceStatus(item.id, "cancelled");
+                                  toast.info(`Invoice ${item.no} set to Cancelled`);
+                                }}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 text-amber-600 border-amber-500/30"
+                                  title="Cancel Invoice"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </Button>
+                              </ConfirmDelete>
+                            )}
+                          </>
+                        }
+                      />
+                    );
+                  })}
+                </MobileList>
 
-                              {isCancelled ? (
-                                <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                                  Cancelled
+                {/* ── Tablet and up: the full table ── */}
+                <DesktopOnly className="overflow-x-auto -mx-3 sm:-mx-4">
+                  <table
+                    className="w-full text-xs text-left border-collapse"
+                    style={{ minWidth: "1050px" }}
+                  >
+                    <thead>
+                      <tr className="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="py-2.5 px-3">PI No</th>
+                        <th className="py-2.5 px-3">Order ID</th>
+                        <th className="py-2.5 px-3">Date & Payment Due</th>
+                        <th className="py-2.5 px-3">Customer Name</th>
+                        <th className="py-2.5 px-3">Phone No.</th>
+                        <th className="py-2.5 px-3 text-right">Total Amount</th>
+                        <th className="py-2.5 px-3 text-right">Recivied Amount</th>
+                        <th className="py-2.5 px-3 text-right font-mono">Due Amount</th>
+                        <th className="py-2.5 px-3 text-center">Delivered</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 text-xs">
+                      {filteredSavedInvoices.map((item: any) => {
+                        const isConfirmed =
+                          item.status === "order_confirmed" ||
+                          item.status === "work_order_generated";
+                        const isCancelled = item.status === "cancelled";
+                        const { grandTotal, paidAmount, remainingBalance } = settleAmounts(
+                          item,
+                          payments,
+                        );
+                        const dueInfo = getPaymentDueDateInfo(item, payments);
+                        const rawOrder =
+                          item.preProformaNo ||
+                          (item.orderNo !== item.no ? item.orderNo : undefined);
+                        const orderId = formatOrderId(rawOrder);
+
+                        const isDelivered = Boolean(item.delivered);
+
+                        return (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setDetailInvoice(item);
+                              setDetailOpen(true);
+                            }}
+                          >
+                            <td className="py-2.5 px-3 font-mono font-semibold text-primary">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={
+                                    isCancelled
+                                      ? "line-through text-rose-600 dark:text-rose-400 font-bold"
+                                      : "hover:underline font-bold"
+                                  }
+                                >
+                                  {formatPiNo(item.no)}
+                                </span>
+                                {isCancelled && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-500 text-white shadow-2xs">
+                                    Cancelled
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] font-semibold text-muted-foreground">
+                              {orderId !== "—" ? (
+                                <span className="px-1.5 py-0.5 rounded bg-muted/60 text-foreground border border-border/50">
+                                  {orderId}
                                 </span>
                               ) : (
-                                <ConfirmDelete
-                                  title={`Cancel Order Confirm ${item.no}?`}
-                                  description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
-                                  confirmLabel="Cancel Invoice"
-                                  onConfirm={() => {
-                                    updateInvoiceStatus(item.id, "cancelled");
-                                    toast.info(`Invoice ${item.no} set to Cancelled`);
-                                  }}
+                                <span className="text-muted-foreground/60">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] leading-tight">
+                              <div>{dmy(item.date)}</div>
+                              <div className="mt-1">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ${dueInfo.badgeClass}`}
                                 >
+                                  {dueInfo.label}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 font-medium text-foreground">
+                              {item.cust?.name || "—"}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                              {item.cust?.phone || "—"}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
+                              ₹ {nf(grandTotal)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                              ₹ {nf(paidAmount)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold">
+                              <span
+                                className={
+                                  remainingBalance > 0
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                }
+                              >
+                                ₹ {nf(remainingBalance)}
+                              </span>
+                            </td>
+                            <td
+                              className="py-2.5 px-3 text-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {isDelivered ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-2xs">
+                                  <CheckCircle2 className="h-3 w-3" /> Yes
+                                </span>
+                              ) : !isCancelled ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeliveryConfirmTarget(item)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/40 shadow-2xs transition-all cursor-pointer"
+                                >
+                                  <XCircle className="h-3 w-3" /> No
+                                </button>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-muted/60 text-muted-foreground border border-border/50">
+                                  <XCircle className="h-3 w-3 text-muted-foreground" /> No
+                                </span>
+                              )}
+                            </td>
+                            <td
+                              className="py-2.5 px-3 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center justify-end gap-1">
+                                {!isCancelled && (
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-                                    title="Cancel Invoice"
+                                    className="h-7 w-7 text-primary border-primary/30 hover:bg-primary/10"
+                                    onClick={() => {
+                                      loadInvoice(item.id, false);
+                                      setShowForm(true);
+                                      toast.success(`Loaded Order Confirm ${item.no} for editing`);
+                                    }}
+                                    title="Edit Order Confirm"
                                   >
-                                    <Ban className="h-3.5 w-3.5" />
+                                    <Edit3 className="h-3.5 w-3.5" />
                                   </Button>
-                                </ConfirmDelete>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                )}
+
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                  onClick={() => {
+                                    loadInvoice(item.id, false);
+                                    navigate({ to: "/invoice", search: { id: item.id } });
+                                  }}
+                                  title="Print / Save PDF"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </Button>
+
+                                {isCancelled ? (
+                                  <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                    Cancelled
+                                  </span>
+                                ) : (
+                                  <ConfirmDelete
+                                    title={`Cancel Order Confirm ${item.no}?`}
+                                    description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                    confirmLabel="Cancel Invoice"
+                                    onConfirm={() => {
+                                      updateInvoiceStatus(item.id, "cancelled");
+                                      toast.info(`Invoice ${item.no} set to Cancelled`);
+                                    }}
+                                  >
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-7 w-7 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                      title="Cancel Invoice"
+                                    >
+                                      <Ban className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </ConfirmDelete>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </DesktopOnly>
+              </>
             )}
           </Section>
         </div>
       ) : (
         /* ── ORDER CONFIRM CREATION / EDITING FORM SECTION ───────────── */
-        <div id="proforma-form" className="p-3 sm:p-4 w-full">
+        <div id="proforma-form" className="p-3 pb-24 sm:p-4 md:pb-4 w-full">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-4 w-full">
             {/* ════ LEFT COLUMN ════ */}
             <div className="space-y-4 min-w-0">
@@ -1216,6 +1403,9 @@ function OrderPage() {
                   <div>
                     <FieldLabel>Phone</FieldLabel>
                     <Input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       className="h-8 text-xs font-mono"
                       value={inv.cust?.phone || ""}
                       onChange={(e) =>
@@ -1316,7 +1506,8 @@ function OrderPage() {
 
               {/* 3. Order Booking Items & Details */}
               <Section title="Proforma Invoice Items & Details">
-                <div className="overflow-x-auto -mx-3 sm:-mx-4">
+                <SwipeHint />
+                <div className="scroll-x -mx-3 sm:-mx-4">
                   <table
                     className="w-full text-[11px] border-collapse"
                     style={{ minWidth: "1000px" }}
@@ -1533,7 +1724,7 @@ function OrderPage() {
 
             {/* ════ RIGHT COLUMN: Particular Panel ════ */}
             <div className="space-y-4">
-              <div className="bg-card border border-border rounded-lg overflow-hidden sticky top-14">
+              <div className="bg-card border border-border rounded-lg overflow-hidden xl:sticky xl:top-16">
                 <div className="px-3 py-2 border-b border-border bg-red-500/10">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">
@@ -1715,6 +1906,30 @@ function OrderPage() {
               </div>
             </div>
           </div>
+          {/* Phone: the running total and the commit action, always in reach */}
+          <MobileActionBar label="Grand total" value={`₹ ${nf(totals.grandTotal ?? 0)}`}>
+            {isConfirmingFromBooking ? (
+              <Button
+                className="h-10 gap-2 bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700"
+                onClick={handleConfirmOrder}
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm & Pay
+              </Button>
+            ) : (
+              <Button
+                className="h-10 gap-2 bg-emerald-600 px-4 text-xs font-bold text-white hover:bg-emerald-700"
+                onClick={() => {
+                  if (saveInvoice()) {
+                    toast.success(`Order Confirm ${inv.no || inv.orderNo} saved successfully`);
+                    setShowForm(false);
+                    navigate({ to: "/order", search: { view: undefined } as any });
+                  }
+                }}
+              >
+                <Save className="h-4 w-4" /> Save Order
+              </Button>
+            )}
+          </MobileActionBar>
         </div>
       )}
       {/* ── CONFIRM PAYMENT MODAL ───────────────────────── */}

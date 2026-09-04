@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MobileActionBar } from "@/components/app/MobileRecord";
 import { useGQ } from "@/lib/store";
 import { G, pingSheet } from "@/lib/gq";
 import { toast } from "sonner";
@@ -99,11 +100,11 @@ function SettingsPage() {
   };
 
   return (
-    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+    <div className="w-full space-y-5 px-3 pt-4 pb-24 sm:space-y-6 sm:px-6 sm:pt-6 md:pb-12 lg:px-8">
       {/* ---------- Top Header ---------- */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
             Application Settings
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -115,7 +116,7 @@ function SettingsPage() {
         <Button
           onClick={handleSubmit}
           size="sm"
-          className="shadow-sm bg-primary text-primary-foreground font-semibold"
+          className="hidden shadow-sm bg-primary text-primary-foreground font-semibold sm:inline-flex"
         >
           <Save className="h-4 w-4 mr-1.5" /> Save All Settings
         </Button>
@@ -123,38 +124,36 @@ function SettingsPage() {
 
       <form onSubmit={handleSubmit}>
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="h-auto text-xs flex flex-wrap gap-1 p-1.5 w-full sm:w-auto sm:flex-nowrap sm:h-10 bg-white border border-border rounded-xl shadow-xs">
+          <TabsList className="h-auto text-xs flex w-full gap-1 overflow-x-auto hide-scrollbar p-1.5 sm:w-auto sm:h-10 bg-white border border-border rounded-xl shadow-xs">
             <TabsTrigger
               value="company"
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+              className="shrink-0 px-3 sm:px-4 py-2 sm:py-1.5 text-xs rounded-lg"
             >
-              <Building className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Company
+              <Building className="h-3.5 w-3.5 mr-1.5" /> Company
             </TabsTrigger>
             <TabsTrigger
               value="presets"
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+              className="shrink-0 px-3 sm:px-4 py-2 sm:py-1.5 text-xs rounded-lg"
             >
-              <Calculator className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Calculation
+              <Calculator className="h-3.5 w-3.5 mr-1.5" /> Calculation
             </TabsTrigger>
             <TabsTrigger
               value="bank"
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+              className="shrink-0 px-3 sm:px-4 py-2 sm:py-1.5 text-xs rounded-lg"
             >
-              <Landmark className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" /> Bank & Terms
+              <Landmark className="h-3.5 w-3.5 mr-1.5" /> Bank & Terms
             </TabsTrigger>
             <TabsTrigger
               value="sync"
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg"
+              className="shrink-0 px-3 sm:px-4 py-2 sm:py-1.5 text-xs rounded-lg"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-emerald-500" />{" "}
-              Sheet Sync
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-emerald-500" /> Sheet Sync
             </TabsTrigger>
             <TabsTrigger
               value="reset"
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs rounded-lg text-rose-600 font-bold"
+              className="shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-1.5 text-xs rounded-lg text-rose-600 font-bold"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5 hidden sm:inline text-rose-600" /> Clear & Reset
-              Data
+              <Trash2 className="h-3.5 w-3.5 mr-1.5 text-rose-600" /> Clear & Reset Data
             </TabsTrigger>
           </TabsList>
 
@@ -731,7 +730,7 @@ function SettingsPage() {
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end pt-4">
+        <div className="hidden justify-end pt-4 sm:flex">
           <Button
             type="submit"
             size="sm"
@@ -740,6 +739,16 @@ function SettingsPage() {
             <Save className="h-4 w-4 mr-1.5" /> Save All Settings
           </Button>
         </div>
+
+        {/* Phone: one Save for the whole page, following the user down it */}
+        <MobileActionBar label="Settings" value={settings.coName || "Your company"}>
+          <Button
+            type="submit"
+            className="h-10 gap-2 px-4 font-bold bg-primary text-primary-foreground"
+          >
+            <Save className="h-4 w-4" /> Save all
+          </Button>
+        </MobileActionBar>
       </form>
     </div>
   );

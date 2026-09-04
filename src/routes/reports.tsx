@@ -110,10 +110,10 @@ function ReportsAnalyticsPage() {
   }, [revenueRecords, reportYear]);
 
   return (
-    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+    <div className="w-full space-y-5 px-3 pt-4 pb-2 sm:space-y-6 sm:px-6 sm:pt-6 sm:pb-12 lg:px-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
           Analytics & Performance
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -123,7 +123,7 @@ function ReportsAnalyticsPage() {
       </div>
 
       {/* KPI Summary Grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2.5 grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <KPICard
           label="Total Quotation Volume"
           value={String(revenueRecords.length)}
@@ -176,7 +176,7 @@ function ReportsAnalyticsPage() {
               {reportYear}
             </div>
           </div>
-          <div className="px-4 py-4 h-[280px]">
+          <div className="px-2 py-4 h-[220px] sm:px-4 sm:h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyTrendData}>
                 <defs>
@@ -223,7 +223,7 @@ function ReportsAnalyticsPage() {
               Distribution across glass thickness specs
             </p>
           </div>
-          <div className="px-4 py-4 h-[280px] flex items-center justify-center">
+          <div className="px-2 py-4 h-[240px] sm:px-4 sm:h-[280px] flex items-center justify-center">
             {thicknessData.length === 0 ? (
               <div className="text-xs text-muted-foreground">No quote items yet.</div>
             ) : (
@@ -274,7 +274,7 @@ function ReportsAnalyticsPage() {
             Comparison between quotes synced to Google Sheet vs local browser storage
           </p>
         </div>
-        <div className="px-4 py-4 h-[240px]">
+        <div className="px-2 py-4 h-[200px] sm:px-4 sm:h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={syncStatusData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />

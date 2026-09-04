@@ -38,6 +38,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useGQ } from "@/lib/store";
+import { DesktopOnly, MobileList, MobileRecordCard } from "@/components/app/MobileRecord";
 import {
   activeRecords,
   commercialRecords,
@@ -596,18 +597,20 @@ function Dashboard() {
   }, [recentOrderBookingsRows, recentOrderConfirmRows, orderTab]);
 
   return (
-    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-8 pt-6 pb-12 text-foreground">
+    <div className="w-full space-y-5 px-3 pt-4 pb-2 sm:space-y-6 sm:px-6 sm:pt-6 sm:pb-12 lg:px-8 text-foreground">
       {/* ── Page Header & Timeframe Filter ───────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard Overview</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+            Dashboard Overview
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {getGreeting()}, {userName}! Here is your business activity and performance breakdown.
           </p>
         </div>
 
         {/* Date Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 hide-scrollbar sm:mx-0 sm:flex-wrap sm:px-0">
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border shrink-0">
             {[
               { id: "today", label: "Today" },
@@ -643,7 +646,7 @@ function Dashboard() {
           </div>
 
           {timeframe === "custom" && (
-            <div className="flex items-center gap-1.5 bg-white dark:bg-muted p-1 rounded-xl border border-border text-xs">
+            <div className="flex shrink-0 items-center gap-1.5 bg-white dark:bg-muted p-1 rounded-xl border border-border text-xs">
               <span className="text-[11px] font-bold text-muted-foreground pl-1">From:</span>
               <input
                 type="date"
@@ -664,7 +667,7 @@ function Dashboard() {
       </div>
 
       {/* ── Metric Cards Grid (NO numbers 1..10) ────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
         {/* Card 1: Proforma Invoice Count */}
         <MetricCard
           label="Proforma Invoice Count"
@@ -1112,7 +1115,73 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <MobileList className="p-3">
+          {!combinedRecentOrders.length && (
+            <div className="rounded-lg border border-dashed border-border py-8 text-center text-xs text-muted-foreground">
+              No documents in this period.
+            </div>
+          )}
+          {combinedRecentOrders.map((row: any) => (
+            <MobileRecordCard
+              key={row.id}
+              accent={row.type === "booking" ? "bg-blue-500" : "bg-emerald-500"}
+              code={formatPiNo(row.no)}
+              badge={
+                <span
+                  className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    row.type === "booking"
+                      ? "bg-blue-50 text-blue-700 border border-blue-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  }`}
+                >
+                  {row.type === "booking" ? "Booking" : "Confirmed"}
+                </span>
+              }
+              subject={row.customer}
+              meta={[row.date, row.glassType]}
+              fields={
+                row.type === "booking"
+                  ? [
+                      {
+                        label: "Total Amount",
+                        value: cur(row.amount, settings.currency),
+                      },
+                      {
+                        label: "Follow Up",
+                        value: row.whatsappSent ? "Done" : "Pending",
+                        tone: row.whatsappSent ? "positive" : "danger",
+                        mono: false,
+                      },
+                    ]
+                  : [
+                      { label: "Total", value: cur(row.amount, settings.currency) },
+                      {
+                        label: "Received",
+                        value: cur(row.receivedAmount, settings.currency),
+                        tone: "positive",
+                      },
+                      {
+                        label: "Due",
+                        value: cur(row.dueAmount, settings.currency),
+                        tone: row.dueAmount > 0 ? "warning" : "positive",
+                      },
+                    ]
+              }
+              actions={
+                <Link
+                  to={row.type === "booking" ? "/booking" : "/order"}
+                  search={{ detailId: row.id } as any}
+                  className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-muted/40 text-xs font-semibold text-foreground"
+                >
+                  <span>View document</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              }
+            />
+          ))}
+        </MobileList>
+
+        <DesktopOnly className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
@@ -1266,7 +1335,7 @@ function Dashboard() {
               ))}
             </tbody>
           </table>
-        </div>
+        </DesktopOnly>
       </div>
 
       {/* ── Bottom Section: Customer Dues List & Total Due Banner ─────── */}
@@ -1283,7 +1352,42 @@ function Dashboard() {
             </h3>
           </div>
 
-          <div className="overflow-x-auto">
+          <MobileList className="p-3">
+            {!dueListRows.length && (
+              <div className="rounded-lg border border-dashed border-border py-8 text-center text-xs text-muted-foreground">
+                Nothing outstanding in this period.
+              </div>
+            )}
+            {dueListRows.map((row: any) => (
+              <MobileRecordCard
+                key={row.id}
+                accent={row.overdueDays > 0 ? "bg-red-500" : "bg-slate-300"}
+                subject={row.customer}
+                meta={[`Last invoice ${row.lastInvoiceDate}`]}
+                badge={
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                      row.overdueDays > 0
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {row.overdueLabel}
+                  </span>
+                }
+                fields={[
+                  {
+                    label: "Due Amount",
+                    value: cur(row.dueAmount, settings.currency),
+                    tone: "danger",
+                  },
+                  { label: "Invoices", value: row.noOfInvoices },
+                ]}
+              />
+            ))}
+          </MobileList>
+
+          <DesktopOnly className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[11px] bg-slate-50/40">
@@ -1327,7 +1431,7 @@ function Dashboard() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </DesktopOnly>
         </div>
 
         {/* Right: Total Due Banner */}
@@ -1388,13 +1492,15 @@ function MetricCard({
   iconColor: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border px-4 py-3.5 shadow-xs hover:border-slate-300 transition-colors flex flex-col justify-between">
+    <div className="bg-white rounded-xl border border-border px-3 py-3 sm:px-4 sm:py-3.5 shadow-xs hover:border-slate-300 transition-colors flex flex-col justify-between">
       <div>
         <div className="flex items-start justify-between gap-2 mb-2">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-1">
             {label}
           </p>
-          <div className={`h-8 w-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+          <div
+            className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}
+          >
             <Icon className={`h-4 w-4 ${iconColor}`} />
           </div>
         </div>
@@ -1402,7 +1508,9 @@ function MetricCard({
         {valueNode ? (
           valueNode
         ) : (
-          <div className="text-2xl font-bold text-foreground tracking-tight">{value}</div>
+          <div className="text-xl sm:text-2xl font-bold text-foreground tracking-tight break-words">
+            {value}
+          </div>
         )}
       </div>
 

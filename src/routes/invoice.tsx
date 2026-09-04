@@ -57,7 +57,7 @@ export function InvoiceViewPage() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-20">
+    <div className="space-y-4 px-3 pt-4 pb-2 sm:space-y-6 sm:px-6 sm:pt-6 sm:pb-20 lg:px-8">
       {missing && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400 print:hidden">
           That record no longer exists — it may have been deleted on another device. Showing the
@@ -100,7 +100,7 @@ export function InvoiceViewPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
           <Button
             variant="outline"
             size="sm"
