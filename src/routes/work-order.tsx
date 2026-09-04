@@ -782,9 +782,10 @@ function WorkOrderPage() {
                         "Qty",
                         "Act Totl",
                         "Hole",
-                        "Big\nHole",
                         "Cut Out",
+                        "Big\nHole",
                         "Big\nCutout",
+                        "CSK",
                         "Shape",
                         "Barcode",
                         "Remark",
@@ -800,9 +801,10 @@ function WorkOrderPage() {
                           "Qty",
                           "Act Totl",
                           "Hole",
-                          "Big\nHole",
                           "Cut Out",
+                          "Big\nHole",
                           "Big\nCutout",
+                          "CSK",
                           "Shape",
                           "Barcode",
                           "Remark",
@@ -816,9 +818,10 @@ function WorkOrderPage() {
                           "Qty",
                           "Act Totl",
                           "Hole",
-                          "Big\nHole",
                           "Cut Out",
+                          "Big\nHole",
                           "Big\nCutout",
+                          "CSK",
                           "Shape",
                           "Barcode",
                           "Remark",
@@ -891,13 +894,16 @@ function WorkOrderPage() {
                                   {piece.hole || ""}
                                 </td>
                                 <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                  {piece.bigHole || ""}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center">
                                   {piece.cutOut || ""}
                                 </td>
                                 <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.bigHole || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
                                   {piece.bigCutout || ""}
+                                </td>
+                                <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                  {piece.csk || ""}
                                 </td>
                                 <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
                                   {piece.shape}
@@ -926,7 +932,7 @@ function WorkOrderPage() {
                             <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
                               {nf(grpSqm, 3)}
                             </td>
-                            <td colSpan={7} className="border border-gray-400 px-2 py-1"></td>
+                            <td colSpan={8} className="border border-gray-400 px-2 py-1"></td>
                           </tr>
                         </tfoot>
                       </table>

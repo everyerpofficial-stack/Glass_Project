@@ -167,7 +167,7 @@ export function InvoiceViewPage() {
           <div className="overflow-x-auto w-full scrollbar-thin">
             <div
               ref={printRef}
-              className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0"
+              className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0"
               dangerouslySetInnerHTML={{ __html: printHTML || "" }}
             />
           </div>

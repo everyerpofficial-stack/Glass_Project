@@ -904,7 +904,7 @@ export function InvoiceDetailModal({
               <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-4 sm:p-6 shadow-md max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
                 <div
                   ref={printRef}
-                  className="doc-preview bg-white text-black min-w-[650px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
+                  className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
                   dangerouslySetInnerHTML={{ __html: proformaHTML || "" }}
                 />
               </div>
@@ -1015,9 +1015,10 @@ export function InvoiceDetailModal({
                               "Qty",
                               "Act Totl",
                               "Hole",
-                              "Big\nHole",
                               "Cut Out",
+                              "Big\nHole",
                               "Big\nCutout",
+                              "CSK",
                               "Shape",
                               "Barcode",
                               "Remark",
@@ -1033,9 +1034,10 @@ export function InvoiceDetailModal({
                                 "Qty",
                                 "Act Totl",
                                 "Hole",
-                                "Big\nHole",
                                 "Cut Out",
+                                "Big\nHole",
                                 "Big\nCutout",
+                                "CSK",
                                 "Shape",
                                 "Barcode",
                                 "Remark",
@@ -1049,9 +1051,10 @@ export function InvoiceDetailModal({
                                 "Qty",
                                 "Act Totl",
                                 "Hole",
-                                "Big\nHole",
                                 "Cut Out",
+                                "Big\nHole",
                                 "Big\nCutout",
+                                "CSK",
                                 "Shape",
                                 "Barcode",
                                 "Remark",
@@ -1127,13 +1130,16 @@ export function InvoiceDetailModal({
                                         {piece.hole || ""}
                                       </td>
                                       <td className="border border-gray-300 px-1.5 py-1 text-center">
-                                        {piece.bigHole || ""}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
                                         {piece.cutOut || ""}
                                       </td>
                                       <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                        {piece.bigHole || ""}
+                                      </td>
+                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
                                         {piece.bigCutout || ""}
+                                      </td>
+                                      <td className="border border-gray-300 px-1.5 py-1 text-center">
+                                        {piece.csk || ""}
                                       </td>
                                       <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
                                         {piece.shape}
@@ -1162,7 +1168,7 @@ export function InvoiceDetailModal({
                                   <td className="border border-gray-400 px-1.5 py-1 text-right font-mono">
                                     {nf(grpSqm, 3)}
                                   </td>
-                                  <td colSpan={7} className="border border-gray-400 px-2 py-1"></td>
+                                  <td colSpan={8} className="border border-gray-400 px-2 py-1"></td>
                                 </tr>
                               </tfoot>
                             </table>
