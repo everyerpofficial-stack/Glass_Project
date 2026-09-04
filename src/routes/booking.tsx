@@ -51,6 +51,8 @@ import {
   formatOrderId,
   formatPiNo,
   workOrderBelongsTo,
+  isSupersededBooking,
+  supersededBookingNos,
 } from "@/lib/gq";
 import {
   ConfirmPaymentModal,
@@ -518,16 +520,18 @@ function BookingPage() {
     });
   };
 
-  const preProformaInvoices = useMemo(
-    () =>
-      invoices.filter(
-        (x: any) =>
-          (!x.docType || x.docType === "pre_proforma") &&
-          x.docType !== "proforma_converted" &&
-          x.status !== "order_confirmed",
-      ),
-    [invoices],
-  );
+  const preProformaInvoices = useMemo(() => {
+    const superseded = supersededBookingNos(invoices);
+    return invoices.filter(
+      (x: any) =>
+        (!x.docType || x.docType === "pre_proforma") &&
+        x.docType !== "proforma_converted" &&
+        x.status !== "order_confirmed" &&
+        x.status !== "work_order_generated" &&
+        x.status !== "confirmed" &&
+        !isSupersededBooking(x, superseded),
+    );
+  }, [invoices]);
 
   const pendingWhatsAppCount = useMemo(
     () => preProformaInvoices.filter((x) => !x.whatsappSent).length,
@@ -1145,22 +1149,21 @@ function BookingPage() {
                                       : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                                   }`}
                                   onClick={() => {
-                                    if (isConfirmed) {
-                                      navigate({
-                                        to: "/order",
-                                        search: {
-                                          id: item.id,
-                                        } as any,
-                                      });
-                                    } else {
-                                      setTargetConfirmInvoice(item);
-                                      setConfirmModalOpen(true);
-                                    }
+                                    loadInvoice(item.id, false);
+                                    navigate({
+                                      to: "/order",
+                                      search: {
+                                        view: "form",
+                                        id: item.id,
+                                        action: "confirm",
+                                        from: "booking",
+                                      } as any,
+                                    });
                                   }}
                                   title={
                                     isConfirmed
                                       ? "Proforma Invoice Confirmed - Click to open Order Confirm"
-                                      : "Confirm Payment for Proforma Invoice & Move to Order Confirm"
+                                      : "Confirm Proforma Invoice & Open Order Confirm"
                                   }
                                 >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -2519,25 +2522,10 @@ function BookingPage() {
                     {totals.amountInWords}
                   </div>
 
-                  <div className="pt-4 mt-4 border-t border-border space-y-2">
+                  <div className="pt-4 mt-4 border-t border-border">
                     <Button
                       size="lg"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md cursor-pointer text-xs"
-                      onClick={() => {
-                        const ok = saveInvoice();
-                        if (ok && inv.id) {
-                          setTargetConfirmInvoice(inv);
-                          setConfirmModalOpen(true);
-                        }
-                      }}
-                    >
-                      <CheckCircle2 className="h-4 w-4" /> Confirm Payment & Move to Order Confirm
-                    </Button>
-
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="w-full font-bold gap-2 text-xs"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
                       onClick={() => {
                         const ok = saveInvoice();
                         if (ok && inv.id) {

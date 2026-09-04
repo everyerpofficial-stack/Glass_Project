@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +24,6 @@ import {
 } from "@/lib/gq";
 import { useGQ } from "@/lib/store";
 import { printElement } from "@/lib/print";
-import {
-  ConfirmPaymentModal,
-  type ConfirmPaymentDetails,
-} from "@/components/app/ConfirmPaymentModal";
 import {
   FileText,
   User,
@@ -192,7 +187,6 @@ export function InvoiceDetailModal({
   onEdit,
   initialTab = "overview",
 }: InvoiceDetailModalProps) {
-  const navigate = useNavigate();
   const {
     workOrders,
     settings,
@@ -201,10 +195,7 @@ export function InvoiceDetailModal({
     updateInvoiceStatus,
     savePayment,
     patchInvoice,
-    confirmPreProforma,
-    confirmOrder,
   } = useGQ();
-  const [confirmPaymentOpen, setConfirmPaymentOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(
     initialTab,
   );
@@ -220,36 +211,6 @@ export function InvoiceDetailModal({
      by class name, since `.wo-print-area` also exists on the /work-order route
      sitting behind this modal. */
   const printRef = useRef<HTMLDivElement>(null);
-
-  const handleConfirmPaymentAndMove = (paymentDetails: ConfirmPaymentDetails) => {
-    if (!invoice) return;
-
-    let activeInv = invoice;
-    if (activeInv.docType === "pre_proforma" || !activeInv.docType) {
-      const converted = confirmPreProforma(activeInv.id);
-      if (converted) {
-        activeInv = converted;
-      }
-    }
-
-    confirmOrder(activeInv.id, paymentDetails);
-
-    const existingWO = workOrders.find((w: any) => workOrderBelongsTo(w, activeInv));
-    if (!existingWO) {
-      const wo = generateWorkOrder(activeInv.id);
-      if (wo) {
-        saveWorkOrder(wo);
-        updateInvoiceStatus(activeInv.id, "work_order_generated");
-      }
-    }
-
-    setConfirmPaymentOpen(false);
-    onOpenChange(false);
-    toast.success(
-      `✨ Payment confirmed for ${activeInv.no || activeInv.orderNo}! Moved to Order Confirm.`,
-    );
-    navigate({ to: "/order", search: { view: undefined } as any });
-  };
 
   /* Reset tab when modal opens */
   const invoiceId = invoice?.id;
@@ -446,19 +407,6 @@ export function InvoiceDetailModal({
 
           {/* Right: Action buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            {!isDocCancelled &&
-              (isPre ||
-                (invoice.status !== "order_confirmed" &&
-                  invoice.status !== "work_order_generated")) && (
-                <Button
-                  size="sm"
-                  className="h-7 text-[11px] font-bold gap-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
-                  onClick={() => setConfirmPaymentOpen(true)}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Confirm Payment
-                </Button>
-              )}
             <Button
               size="sm"
               className="h-7 text-[11px] gap-1 px-2.5 bg-slate-700 hover:bg-slate-800 text-white font-bold"
@@ -1295,13 +1243,6 @@ export function InvoiceDetailModal({
           )}
         </div>
       </DialogContent>
-
-      <ConfirmPaymentModal
-        open={confirmPaymentOpen}
-        invoice={invoice}
-        onClose={() => setConfirmPaymentOpen(false)}
-        onConfirm={handleConfirmPaymentAndMove}
-      />
     </Dialog>
   );
 }

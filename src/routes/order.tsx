@@ -56,6 +56,8 @@ import {
   dedupeCustomers,
   formatOrderId,
   formatPiNo,
+  isSupersededBooking,
+  supersededBookingNos,
 } from "@/lib/gq";
 import { toast } from "sonner";
 import { InvoiceDetailModal } from "@/components/app/InvoiceDetailModal";
@@ -327,10 +329,18 @@ function OrderPage() {
   );
 
   /* Get Order Bookings available for loading into Proforma Invoice */
-  const availableBookings = useMemo(
-    () => invoices.filter((x: any) => !x.docType || x.docType === "pre_proforma"),
-    [invoices],
-  );
+  const availableBookings = useMemo(() => {
+    const superseded = supersededBookingNos(invoices);
+    return invoices.filter(
+      (x: any) =>
+        (!x.docType || x.docType === "pre_proforma") &&
+        x.docType !== "proforma_converted" &&
+        x.status !== "order_confirmed" &&
+        x.status !== "work_order_generated" &&
+        x.status !== "confirmed" &&
+        !isSupersededBooking(x, superseded),
+    );
+  }, [invoices]);
 
   /* ── field helpers ── */
   const updateInvField = (path: string, val: any) => {
