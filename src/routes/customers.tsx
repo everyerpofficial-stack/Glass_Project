@@ -724,18 +724,18 @@ function CustomersPage() {
       </div>
 
       {/* ── Summary Metric Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {/* Card 1: TOTAL CUSTOMERS */}
-        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Users className="h-5 w-5" />
+        <div className="bg-white rounded-xl border border-border p-2.5 sm:p-4 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="min-w-0">
+              <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Total Customers
               </div>
-              <div className="text-xl font-bold tracking-tight text-foreground">
+              <div className="text-base sm:text-xl font-bold tracking-tight text-foreground">
                 {totalCustomers}
               </div>
             </div>
@@ -743,16 +743,16 @@ function CustomersPage() {
         </div>
 
         {/* Card 2: TOTAL AMOUNT */}
-        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <FileText className="h-5 w-5" />
+        <div className="bg-white rounded-xl border border-border p-2.5 sm:p-4 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="min-w-0">
+              <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Total Amount
               </div>
-              <div className="text-xl font-bold tracking-tight text-foreground font-mono">
+              <div className="text-sm sm:text-xl font-bold tracking-tight text-foreground font-mono truncate">
                 ₹ {nf(customerTotals.grandTotalSum)}
               </div>
             </div>
@@ -760,16 +760,16 @@ function CustomersPage() {
         </div>
 
         {/* Card 3: TOTAL RECEIVED AMOUNT */}
-        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
+        <div className="bg-white rounded-xl border border-border p-2.5 sm:p-4 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Received Amount
+            <div className="min-w-0">
+              <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Received
               </div>
-              <div className="text-xl font-bold tracking-tight text-emerald-600 font-mono">
+              <div className="text-sm sm:text-xl font-bold tracking-tight text-emerald-600 font-mono truncate">
                 ₹ {nf(customerTotals.receivedSum)}
               </div>
             </div>
@@ -777,16 +777,16 @@ function CustomersPage() {
         </div>
 
         {/* Card 4: TOTAL DUE AMOUNT */}
-        <div className="bg-white rounded-xl border border-border p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <AlertCircle className="h-5 w-5" />
+        <div className="bg-white rounded-xl border border-border p-2.5 sm:p-4 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Due Amount
+            <div className="min-w-0">
+              <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total Due
               </div>
-              <div className="text-xl font-bold tracking-tight text-amber-600 font-mono">
+              <div className="text-sm sm:text-xl font-bold tracking-tight text-amber-600 font-mono truncate">
                 ₹ {nf(customerTotals.dueSum)}
               </div>
             </div>
@@ -1295,31 +1295,31 @@ function CustomersPage() {
                   </div>
 
                   {/* Financial Summary */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
-                      <div className="text-[10px] font-bold uppercase text-blue-600">
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 sm:p-3 text-center">
+                      <div className="text-[8px] sm:text-[10px] font-bold uppercase text-blue-600">
                         Total Billed
                       </div>
-                      <div className="text-base font-bold font-mono text-blue-700 mt-0.5">
-                        ₹ {nf(totalInvoicedForViewCust)}
+                      <div className="text-xs sm:text-base font-bold font-mono text-blue-700 mt-0.5 truncate">
+                        ₹{nf(totalInvoicedForViewCust)}
                       </div>
                     </div>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-center">
-                      <div className="text-[10px] font-bold uppercase text-emerald-600">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 sm:p-3 text-center">
+                      <div className="text-[8px] sm:text-[10px] font-bold uppercase text-emerald-600">
                         Total Paid
                       </div>
-                      <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">
-                        ₹ {nf(totalPaidForViewCust)}
+                      <div className="text-xs sm:text-base font-bold font-mono text-emerald-700 mt-0.5 truncate">
+                        ₹{nf(totalPaidForViewCust)}
                       </div>
                     </div>
                     <div
-                      className={`border rounded-lg p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"}`}
+                      className={`border rounded-lg p-2 sm:p-3 text-center ${dueBalanceForViewCust > 0 ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-700"}`}
                     >
-                      <div className="text-[10px] font-bold uppercase tracking-wider">
+                      <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider">
                         Due Balance
                       </div>
-                      <div className="text-base font-bold font-mono mt-0.5">
-                        ₹ {nf(Math.max(0, dueBalanceForViewCust))}
+                      <div className="text-xs sm:text-base font-bold font-mono mt-0.5 truncate">
+                        ₹{nf(Math.max(0, dueBalanceForViewCust))}
                       </div>
                     </div>
                   </div>
@@ -1526,7 +1526,7 @@ function CustomersPage() {
                         <CreditCard className="h-4 w-4 text-emerald-600" /> Record Payment Received
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                         <div>
                           <Label className="text-[10px]">Payment Date</Label>
                           <Input

@@ -138,10 +138,20 @@ function mergeSheetCollection(prev: any[], fromSheet: any[], deletedIds?: Record
       const sheetPaid = Number(sheetRow.paidAmount || 0);
       const maxPaid = Math.max(prevPaid, sheetPaid);
 
-      if (row.sync === "local" || row.sync === "pending" || stamp(row) > stamp(sheetRow) || prevPaid > sheetPaid) {
+      if (
+        row.sync === "local" ||
+        row.sync === "pending" ||
+        stamp(row) > stamp(sheetRow) ||
+        prevPaid > sheetPaid
+      ) {
         const grandTotal = Number(row.totals?.grandTotal || sheetRow.totals?.grandTotal || 0);
         const rem = Math.max(0, grandTotal - maxPaid);
-        const pStatus = rem <= 0 && maxPaid > 0 ? "Paid" : maxPaid > 0 ? "Partially Paid" : (row.paymentStatus || sheetRow.paymentStatus);
+        const pStatus =
+          rem <= 0 && maxPaid > 0
+            ? "Paid"
+            : maxPaid > 0
+              ? "Partially Paid"
+              : row.paymentStatus || sheetRow.paymentStatus;
 
         byId.set(key, {
           ...sheetRow,
@@ -154,7 +164,12 @@ function mergeSheetCollection(prev: any[], fromSheet: any[], deletedIds?: Record
       } else if (maxPaid > sheetPaid) {
         const grandTotal = Number(sheetRow.totals?.grandTotal || 0);
         const rem = Math.max(0, grandTotal - maxPaid);
-        const pStatus = rem <= 0 && maxPaid > 0 ? "Paid" : maxPaid > 0 ? "Partially Paid" : sheetRow.paymentStatus;
+        const pStatus =
+          rem <= 0 && maxPaid > 0
+            ? "Paid"
+            : maxPaid > 0
+              ? "Partially Paid"
+              : sheetRow.paymentStatus;
         byId.set(key, {
           ...sheetRow,
           paidAmount: maxPaid,

@@ -667,7 +667,7 @@ function Dashboard() {
       </div>
 
       {/* ── Metric Cards Grid (NO numbers 1..10) ────────────────────────── */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
         {/* Card 1: Proforma Invoice Count */}
         <MetricCard
           label="Proforma Invoice Count"
@@ -693,7 +693,7 @@ function Dashboard() {
           label="PI Follow Up"
           sub="Done vs Pending"
           valueNode={
-            <div className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-1.5 mt-0.5">
+            <div className="text-lg sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-1 sm:gap-1.5 mt-0.5">
               <span className="text-emerald-600">{obFollowUpDone}</span>
               <span className="text-muted-foreground/60 text-lg font-normal">/</span>
               <span className="text-amber-500">{obFollowUpPending}</span>
@@ -1492,23 +1492,23 @@ function MetricCard({
   iconColor: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border px-3 py-3 sm:px-4 sm:py-3.5 shadow-xs hover:border-slate-300 transition-colors flex flex-col justify-between">
+    <div className="bg-white rounded-xl border border-border px-2.5 py-2 sm:px-4 sm:py-3.5 shadow-xs hover:border-slate-300 transition-colors flex flex-col justify-between">
       <div>
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-1">
+        <div className="flex items-start justify-between gap-1 sm:gap-2 mb-1 sm:mb-2">
+          <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-tight pr-0.5">
             {label}
           </p>
           <div
-            className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}
+            className={`h-6 w-6 sm:h-8 sm:w-8 rounded-md sm:rounded-lg ${iconBg} flex items-center justify-center shrink-0`}
           >
-            <Icon className={`h-4 w-4 ${iconColor}`} />
+            <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${iconColor}`} />
           </div>
         </div>
 
         {valueNode ? (
           valueNode
         ) : (
-          <div className="text-xl sm:text-2xl font-bold text-foreground tracking-tight break-words">
+          <div className="text-base sm:text-2xl font-bold text-foreground tracking-tight break-words">
             {value}
           </div>
         )}
@@ -1517,7 +1517,11 @@ function MetricCard({
       {subNode ? (
         subNode
       ) : sub ? (
-        <p className={`text-[11px] mt-1.5 ${subColor || "text-muted-foreground"}`}>{sub}</p>
+        <p
+          className={`text-[10px] sm:text-[11px] mt-1 sm:mt-1.5 ${subColor || "text-muted-foreground"}`}
+        >
+          {sub}
+        </p>
       ) : null}
     </div>
   );

@@ -802,11 +802,23 @@ body:has(.app-action-bar) .app-fab {
     overscroll-behavior-x: contain;
   }
 
-  /* The printable document keeps its A4 proportions; the phone pans it. */
+  /* The printable document keeps its A4 proportions; scale it to fit mobile. */
   .doc-preview {
     padding: 6px 4px !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Scale the PDF wrapper to fit within the mobile viewport width.
+     760px content needs to fit ~calc(100vw - 2rem) available space. */
+  .pdf-scale-wrapper {
+    --pdf-inner-w: 760px;
+    --pdf-avail-w: calc(100vw - 2.5rem);
+    transform: scale(calc(var(--pdf-avail-w) / var(--pdf-inner-w)));
+    transform-origin: top left;
+    width: var(--pdf-inner-w);
+    /* Collapse the wrapper height so parent doesn't get excess blank space */
+    height: 0;
+    padding-bottom: calc(100% * var(--pdf-avail-w) / var(--pdf-inner-w));
+    overflow: visible;
   }
 
   /* Radix menus, selects and popovers should never exceed the viewport. */

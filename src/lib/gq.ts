@@ -652,10 +652,18 @@ export function getPaymentDueDateInfo(inv: any, payments?: any[]) {
       .filter((p: any) => {
         if (!p || !p.invoiceNo) return false;
         const pNo = String(p.invoiceNo).trim().toLowerCase();
-        const iNo = String(inv.no || "").trim().toLowerCase();
-        const oNo = String(inv.orderNo || "").trim().toLowerCase();
-        const preNo = String(inv.preProformaNo || "").trim().toLowerCase();
-        const pId = String(inv.id || "").trim().toLowerCase();
+        const iNo = String(inv.no || "")
+          .trim()
+          .toLowerCase();
+        const oNo = String(inv.orderNo || "")
+          .trim()
+          .toLowerCase();
+        const preNo = String(inv.preProformaNo || "")
+          .trim()
+          .toLowerCase();
+        const pId = String(inv.id || "")
+          .trim()
+          .toLowerCase();
         return (
           pNo === iNo ||
           (oNo && pNo === oNo) ||

@@ -283,10 +283,18 @@ export function InvoiceDetailModal({
   /* Matched payments for this invoice */
   const invoicePayments = useMemo(() => {
     if (!invoice || !payments) return [];
-    const iNo = String(invoice.no || "").trim().toLowerCase();
-    const oNo = String(invoice.orderNo || "").trim().toLowerCase();
-    const preNo = String(invoice.preProformaNo || "").trim().toLowerCase();
-    const pId = String(invoice.id || "").trim().toLowerCase();
+    const iNo = String(invoice.no || "")
+      .trim()
+      .toLowerCase();
+    const oNo = String(invoice.orderNo || "")
+      .trim()
+      .toLowerCase();
+    const preNo = String(invoice.preProformaNo || "")
+      .trim()
+      .toLowerCase();
+    const pId = String(invoice.id || "")
+      .trim()
+      .toLowerCase();
 
     return (payments || []).filter((p: any) => {
       if (!p || !p.invoiceNo) return false;
@@ -810,7 +818,9 @@ export function InvoiceDetailModal({
                                   title="Delete payment record"
                                   onClick={() => {
                                     if (
-                                      confirm("Are you sure you want to delete this payment record?")
+                                      confirm(
+                                        "Are you sure you want to delete this payment record?",
+                                      )
                                     ) {
                                       deletePayment(p.id);
                                       toast.success("Payment record deleted");
@@ -1045,12 +1055,14 @@ export function InvoiceDetailModal({
                 </Button>
               </div>
 
-              <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-4 sm:p-6 shadow-md max-w-4xl mx-auto overflow-x-auto print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
-                <div
-                  ref={printRef}
-                  className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
-                  dangerouslySetInnerHTML={{ __html: proformaHTML || "" }}
-                />
+              <div className="bg-card text-card-foreground border border-border/80 rounded-xl p-2 sm:p-6 shadow-md max-w-4xl mx-auto overflow-hidden print:p-0 print:border-none print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0">
+                <div className="pdf-scale-wrapper print:!transform-none print:!origin-top-left">
+                  <div
+                    ref={printRef}
+                    className="doc-preview bg-white text-black min-w-[760px] sm:min-w-0 print:p-0 print:m-0 print:min-w-full"
+                    dangerouslySetInnerHTML={{ __html: proformaHTML || "" }}
+                  />
+                </div>
               </div>
             </div>
           )}
