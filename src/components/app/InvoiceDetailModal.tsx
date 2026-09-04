@@ -614,9 +614,7 @@ export function InvoiceDetailModal({
                 <div className="flex items-center justify-between bg-card border border-border rounded-xl p-3 shadow-xs">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-foreground">
-                      Payment Status
-                    </span>
+                    <span className="text-xs font-bold text-foreground">Payment Status</span>
                     <span className="text-[11px] text-muted-foreground hidden sm:inline">
                       (Paid: ₹ {nf(paidAmount)} | Balance: ₹ {nf(pendingAmount)})
                     </span>
