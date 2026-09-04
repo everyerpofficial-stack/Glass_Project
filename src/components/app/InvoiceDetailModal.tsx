@@ -191,6 +191,7 @@ export function InvoiceDetailModal({
     invoices,
     workOrders,
     settings,
+    payments,
     generateWorkOrder,
     saveWorkOrder,
     updateInvoiceStatus,
@@ -280,7 +281,24 @@ export function InvoiceDetailModal({
   if (!open || !invoice) return null;
 
   const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
-  const paidAmount = Number(invoice.paidAmount || 0);
+  const matchedPaymentsSum = (payments || [])
+    .filter((p: any) => {
+      if (!p || !p.invoiceNo) return false;
+      const pNo = String(p.invoiceNo).trim().toLowerCase();
+      const iNo = String(invoice.no || "").trim().toLowerCase();
+      const oNo = String(invoice.orderNo || "").trim().toLowerCase();
+      const preNo = String(invoice.preProformaNo || "").trim().toLowerCase();
+      const pId = String(invoice.id || "").trim().toLowerCase();
+      return (
+        pNo === iNo ||
+        (oNo && pNo === oNo) ||
+        (preNo && pNo === preNo) ||
+        pNo === pId ||
+        formatPiNo(pNo) === formatPiNo(iNo)
+      );
+    })
+    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  const paidAmount = Math.max(Number(invoice.paidAmount || 0), matchedPaymentsSum);
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
@@ -289,7 +307,7 @@ export function InvoiceDetailModal({
     invoice.status === "order_confirmed" ||
     invoice.status === "work_order_generated";
   const docTypeLabel = isPre ? "Proforma Invoice" : "Order Confirm";
-  const dueInfo = getPaymentDueDateInfo(invoice);
+  const dueInfo = getPaymentDueDateInfo(invoice, payments);
   const isDocCancelled = isCancelled(invoice);
 
   const handleRecordPaymentSubmit = () => {

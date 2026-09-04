@@ -118,21 +118,55 @@ function loadTombstones(): Tombstones {
 function mergeSheetCollection(prev: any[], fromSheet: any[], deletedIds?: Record<string, number>) {
   const isDeleted = (id: string) => Boolean(deletedIds && deletedIds[id] !== undefined);
   const byId = new Map<string, any>();
+  const stamp = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || "") || 0;
+
   (fromSheet || []).forEach((row: any) => {
     if (!row || row.id == null || row.id === "") return;
     const key = String(row.id);
     if (isDeleted(key)) return;
     byId.set(key, { ...row, sync: "synced" });
   });
+
   (prev || []).forEach((row: any) => {
     if (!row || row.id == null || row.id === "") return;
     const key = String(row.id);
     if (isDeleted(key)) return;
-    if (!byId.has(key) && (row.sync === "local" || row.sync === "pending")) {
+
+    const sheetRow = byId.get(key);
+    if (sheetRow) {
+      const prevPaid = Number(row.paidAmount || 0);
+      const sheetPaid = Number(sheetRow.paidAmount || 0);
+      const maxPaid = Math.max(prevPaid, sheetPaid);
+
+      if (row.sync === "local" || row.sync === "pending" || stamp(row) > stamp(sheetRow) || prevPaid > sheetPaid) {
+        const grandTotal = Number(row.totals?.grandTotal || sheetRow.totals?.grandTotal || 0);
+        const rem = Math.max(0, grandTotal - maxPaid);
+        const pStatus = rem <= 0 && maxPaid > 0 ? "Paid" : maxPaid > 0 ? "Partially Paid" : (row.paymentStatus || sheetRow.paymentStatus);
+
+        byId.set(key, {
+          ...sheetRow,
+          ...row,
+          paidAmount: maxPaid,
+          remainingBalance: rem,
+          paymentStatus: pStatus,
+          sync: row.sync === "local" || row.sync === "pending" ? row.sync : "synced",
+        });
+      } else if (maxPaid > sheetPaid) {
+        const grandTotal = Number(sheetRow.totals?.grandTotal || 0);
+        const rem = Math.max(0, grandTotal - maxPaid);
+        const pStatus = rem <= 0 && maxPaid > 0 ? "Paid" : maxPaid > 0 ? "Partially Paid" : sheetRow.paymentStatus;
+        byId.set(key, {
+          ...sheetRow,
+          paidAmount: maxPaid,
+          remainingBalance: rem,
+          paymentStatus: pStatus,
+        });
+      }
+    } else if (row.sync === "local" || row.sync === "pending") {
       byId.set(key, row);
     }
   });
-  const stamp = (row: any) => Date.parse(row?.updatedAt || row?.createdAt || "") || 0;
+
   return Array.from(byId.values()).sort((a, b) => stamp(b) - stamp(a));
 }
 

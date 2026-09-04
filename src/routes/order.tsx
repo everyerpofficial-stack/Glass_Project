@@ -185,6 +185,7 @@ function OrderPage() {
     invoices,
     customers,
     workOrders,
+    payments,
     saveInvoice,
     saveCustomer,
     newInvoice,
@@ -605,16 +606,7 @@ function OrderPage() {
                   {isConfirmingFromBooking ? "Back to Proforma List" : "Back to Saved List"}
                 </Button>
 
-                {isConfirmingFromBooking ? (
-                  <Button
-                    size="sm"
-                    className="h-8 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md cursor-pointer"
-                    onClick={handleConfirmOrder}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Confirm & Proceed to Payment
-                  </Button>
-                ) : (
+                {!isConfirmingFromBooking && (
                   <Button
                     size="sm"
                     className="h-8 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md cursor-pointer"
@@ -931,10 +923,27 @@ function OrderPage() {
                       const isConfirmed =
                         item.status === "order_confirmed" || item.status === "work_order_generated";
                       const isCancelled = item.status === "cancelled";
-                      const dueInfo = getPaymentDueDateInfo(item);
                       const grandTotal = Number(item.totals?.grandTotal || 0);
-                      const paidAmount = Number(item.paidAmount || 0);
+                      const matchedPaymentsSum = (payments || [])
+                        .filter((p: any) => {
+                          if (!p || !p.invoiceNo) return false;
+                          const pNo = String(p.invoiceNo).trim().toLowerCase();
+                          const iNo = String(item.no || "").trim().toLowerCase();
+                          const oNo = String(item.orderNo || "").trim().toLowerCase();
+                          const preNo = String(item.preProformaNo || "").trim().toLowerCase();
+                          const pId = String(item.id || "").trim().toLowerCase();
+                          return (
+                            pNo === iNo ||
+                            (oNo && pNo === oNo) ||
+                            (preNo && pNo === preNo) ||
+                            pNo === pId ||
+                            formatPiNo(pNo) === formatPiNo(iNo)
+                          );
+                        })
+                        .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+                      const paidAmount = Math.max(Number(item.paidAmount || 0), matchedPaymentsSum);
                       const remainingBalance = Math.max(0, grandTotal - paidAmount);
+                      const dueInfo = getPaymentDueDateInfo(item, payments);
                       const rawOrder =
                         item.preProformaNo || (item.orderNo !== item.no ? item.orderNo : undefined);
                       const orderId = formatOrderId(rawOrder);
@@ -1315,23 +1324,23 @@ function OrderPage() {
                     <thead>
                       <tr className="border-b border-border bg-muted/20">
                         {[
-                          "Sr.",
-                          "PI No",
-                          "Date",
-                          "Product",
-                          "Thick",
-                          "Qty",
-                          "Area",
-                          "Amount",
-                          "Glass Name",
-                          "Weight",
-                          "Act Area",
+                          { name: "Sr.", align: "text-center" },
+                          { name: "PI No", align: "text-left" },
+                          { name: "Date", align: "text-left" },
+                          { name: "Product", align: "text-left" },
+                          { name: "Thick", align: "text-center" },
+                          { name: "Qty", align: "text-center" },
+                          { name: "Area", align: "text-right" },
+                          { name: "Amount", align: "text-right" },
+                          { name: "Glass Name", align: "text-left" },
+                          { name: "Weight", align: "text-right" },
+                          { name: "Act Area", align: "text-right" },
                         ].map((h, i) => (
                           <th
                             key={i}
-                            className="py-2 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap text-left"
+                            className={`py-2 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap ${h.align}`}
                           >
-                            {h}
+                            {h.name}
                           </th>
                         ))}
                       </tr>
@@ -1388,7 +1397,7 @@ function OrderPage() {
                             <td className="py-2 px-2.5 text-xs font-mono text-center whitespace-nowrap min-w-[45px]">
                               {line?.ok ? line.qty : item.qty || "—"}
                             </td>
-                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[70px]">
                               {line?.ok
                                 ? settings.rateUnit === "sqft"
                                   ? line.totalSqft
@@ -1401,10 +1410,10 @@ function OrderPage() {
                             <td className="py-2 px-2.5 text-xs text-foreground whitespace-nowrap font-medium min-w-[120px]">
                               {glassName}
                             </td>
-                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[70px]">
                               {lineWeight}
                             </td>
-                            <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[70px]">
                               {line?.ok
                                 ? settings.rateUnit === "sqft"
                                   ? line.totalSqft
@@ -1530,14 +1539,9 @@ function OrderPage() {
                     <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">
                       Particular
                     </span>
-                    <div className="flex gap-1">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Rate
-                      </span>
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-4">
-                        Amount
-                      </span>
-                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground text-right">
+                      Amount
+                    </span>
                   </div>
                 </div>
                 <div className="px-3 py-2 space-y-0">

@@ -631,7 +631,7 @@ export function dmy(iso: string) {
   return p[2] + "-" + p[1] + "-" + p[0];
 }
 
-export function getPaymentDueDateInfo(inv: any) {
+export function getPaymentDueDateInfo(inv: any, payments?: any[]) {
   if (!inv) return { dueDate: "", daysLeft: 0, status: "pending", label: "", badgeClass: "" };
   const invDateStr = inv.date || today();
   let dueDateStr = inv.dueDate;
@@ -646,7 +646,28 @@ export function getPaymentDueDateInfo(inv: any) {
   }
 
   const grandTotal = Number(inv.totals?.grandTotal || 0);
-  const paidAmount = Number(inv.paidAmount || 0);
+  let paidAmount = Number(inv.paidAmount || 0);
+  if (payments && Array.isArray(payments) && payments.length > 0) {
+    const matchedPaid = payments
+      .filter((p: any) => {
+        if (!p || !p.invoiceNo) return false;
+        const pNo = String(p.invoiceNo).trim().toLowerCase();
+        const iNo = String(inv.no || "").trim().toLowerCase();
+        const oNo = String(inv.orderNo || "").trim().toLowerCase();
+        const preNo = String(inv.preProformaNo || "").trim().toLowerCase();
+        const pId = String(inv.id || "").trim().toLowerCase();
+        return (
+          pNo === iNo ||
+          (oNo && pNo === oNo) ||
+          (preNo && pNo === preNo) ||
+          pNo === pId ||
+          formatPiNo(pNo) === formatPiNo(iNo)
+        );
+      })
+      .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    paidAmount = Math.max(paidAmount, matchedPaid);
+  }
+
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaid = pendingAmount <= 0 && grandTotal > 0;
 
