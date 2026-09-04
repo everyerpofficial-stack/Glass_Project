@@ -560,40 +560,40 @@ export function InvoiceDetailModal({
               )}
 
               {/* Financial KPI Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {/* Total Amount */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
-                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-3.5 shadow-sm">
+                  <div className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     Total Amount
                   </div>
-                  <div className="text-xl font-bold text-slate-900 dark:text-white font-mono mt-1">
+                  <div className="text-base sm:text-xl font-bold text-slate-900 dark:text-white font-mono mt-0.5 sm:mt-1">
                     ₹ {nf(grandTotal)}
                   </div>
-                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     Grand bill total
                   </div>
                 </div>
 
                 {/* Paid Amount */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
-                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-3.5 shadow-sm">
+                  <div className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
                     ✓ Paid Amount
                   </div>
-                  <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                  <div className="text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 sm:mt-1">
                     ₹ {nf(paidAmount)}
                   </div>
-                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     Received so far
                   </div>
                 </div>
 
                 {/* Pending Balance */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
-                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                    {pendingAmount > 0 ? "⚠ Pending Balance" : "✓ No Balance Due"}
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-3.5 shadow-sm">
+                  <div className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                    {pendingAmount > 0 ? "⚠ Pending" : "✓ No Due"}
                   </div>
                   <div
-                    className={`text-xl font-bold font-mono mt-1 ${
+                    className={`text-base sm:text-xl font-bold font-mono mt-0.5 sm:mt-1 ${
                       pendingAmount > 0
                         ? "text-red-600 dark:text-red-400"
                         : "text-emerald-600 dark:text-emerald-400"
@@ -601,20 +601,20 @@ export function InvoiceDetailModal({
                   >
                     ₹ {nf(pendingAmount)}
                   </div>
-                  <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     {pendingAmount > 0 ? "Remaining to pay" : "Fully cleared"}
                   </div>
                 </div>
 
                 {/* Payment Due Date */}
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 shadow-sm">
-                  <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-                    Payment Due Date
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-3.5 shadow-sm">
+                  <div className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                    Due Date
                   </div>
-                  <div className="text-base font-bold text-slate-900 dark:text-white font-mono mt-1">
+                  <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-mono mt-0.5 sm:mt-1">
                     {dmy(dueInfo.dueDate)}
                   </div>
-                  <div className="text-[10px] font-semibold mt-0.5 text-blue-600 dark:text-blue-400">
+                  <div className="text-[9px] sm:text-[10px] font-semibold mt-0.5 text-blue-600 dark:text-blue-400">
                     {dueInfo.label}
                   </div>
                 </div>
@@ -757,19 +757,19 @@ export function InvoiceDetailModal({
               )}
 
               {/* Payment History Section */}
-              <div className="bg-card border border-border rounded-xl p-4 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between border-b border-border pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <History className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+              <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border pb-2.5 gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <History className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-foreground">
                       Payment History
                     </span>
-                    <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      {invoicePayments.length} {invoicePayments.length === 1 ? "record" : "records"}
+                    <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/30 shrink-0">
+                      {invoicePayments.length}
                     </span>
                   </div>
-                  <div className="text-xs font-mono font-bold text-foreground">
-                    Total Paid:{" "}
+                  <div className="text-[11px] sm:text-xs font-mono font-bold text-foreground whitespace-nowrap">
+                    Paid:{" "}
                     <span className="text-emerald-600 dark:text-emerald-400">
                       ₹ {nf(paidAmount)}
                     </span>
@@ -777,65 +777,126 @@ export function InvoiceDetailModal({
                 </div>
 
                 {invoicePayments.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          <th className="py-2 px-3">Date</th>
-                          <th className="py-2 px-3">Payment Mode</th>
-                          <th className="py-2 px-3">Ref / Txn No</th>
-                          <th className="py-2 px-3">Notes / Remarks</th>
-                          <th className="py-2 px-3 text-right">Amount Received</th>
-                          {!isDocCancelled && <th className="py-2 px-3 text-center">Action</th>}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40 font-mono">
-                        {invoicePayments.map((p: any, idx: number) => (
-                          <tr key={p.id || idx} className="hover:bg-muted/20 transition-colors">
-                            <td className="py-2 px-3 text-foreground font-medium whitespace-nowrap">
-                              {dmy(p.date || p.createdAt)}
-                            </td>
-                            <td className="py-2 px-3 font-sans whitespace-nowrap">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                {p.mode || p.paymentType || "Cash"}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap">
-                              {p.refNo || "—"}
-                            </td>
-                            <td className="py-2 px-3 text-muted-foreground font-sans truncate max-w-[200px]">
-                              {p.notes || "—"}
-                            </td>
-                            <td className="py-2 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                              ₹ {nf(Number(p.amount || 0))}
-                            </td>
-                            {!isDocCancelled && (
-                              <td className="py-2 px-3 text-center whitespace-nowrap">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
-                                  title="Delete payment record"
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        "Are you sure you want to delete this payment record?",
-                                      )
-                                    ) {
-                                      deletePayment(p.id);
-                                      toast.success("Payment record deleted");
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            )}
+                  <>
+                    {/* ── Desktop table (hidden on mobile) ── */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <th className="py-2 px-3">Date</th>
+                            <th className="py-2 px-3">Payment Mode</th>
+                            <th className="py-2 px-3">Ref / Txn No</th>
+                            <th className="py-2 px-3">Notes / Remarks</th>
+                            <th className="py-2 px-3 text-right">Amount Received</th>
+                            {!isDocCancelled && <th className="py-2 px-3 text-center">Action</th>}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-border/40 font-mono">
+                          {invoicePayments.map((p: any, idx: number) => (
+                            <tr key={p.id || idx} className="hover:bg-muted/20 transition-colors">
+                              <td className="py-2 px-3 text-foreground font-medium whitespace-nowrap">
+                                {dmy(p.date || p.createdAt)}
+                              </td>
+                              <td className="py-2 px-3 font-sans whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                  {p.mode || p.paymentType || "Cash"}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2.5 text-muted-foreground whitespace-nowrap">
+                                {p.refNo || "—"}
+                              </td>
+                              <td className="py-2 px-3 text-muted-foreground font-sans truncate max-w-[200px]">
+                                {p.notes || "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                ₹ {nf(Number(p.amount || 0))}
+                              </td>
+                              {!isDocCancelled && (
+                                <td className="py-2 px-3 text-center whitespace-nowrap">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                    title="Delete payment record"
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          "Are you sure you want to delete this payment record?",
+                                        )
+                                      ) {
+                                        deletePayment(p.id);
+                                        toast.success("Payment record deleted");
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* ── Mobile card list (hidden on desktop) ── */}
+                    <div className="sm:hidden space-y-2">
+                      {invoicePayments.map((p: any, idx: number) => (
+                        <div
+                          key={p.id || idx}
+                          className="bg-muted/20 border border-border/60 rounded-lg p-2.5 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-mono font-medium text-foreground">
+                              {dmy(p.date || p.createdAt)}
+                            </span>
+                            <span className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              ₹ {nf(Number(p.amount || 0))}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                              {p.mode || p.paymentType || "Cash"}
+                            </span>
+                            {!isDocCancelled && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
+                                title="Delete payment record"
+                                onClick={() => {
+                                  if (
+                                    confirm("Are you sure you want to delete this payment record?")
+                                  ) {
+                                    deletePayment(p.id);
+                                    toast.success("Payment record deleted");
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                          {(p.refNo || p.notes) && (
+                            <div className="text-[11px] text-muted-foreground space-y-0.5 pt-0.5 border-t border-border/40">
+                              {p.refNo && (
+                                <div className="font-mono">
+                                  <span className="font-semibold text-foreground">Ref:</span>{" "}
+                                  {p.refNo}
+                                </div>
+                              )}
+                              {p.notes && (
+                                <div className="truncate">
+                                  <span className="font-semibold text-foreground">Note:</span>{" "}
+                                  {p.notes}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-4 text-xs text-muted-foreground font-medium bg-muted/20 rounded-lg border border-dashed border-border/60">
                     No payment transactions recorded for this document yet.
@@ -1095,9 +1156,9 @@ export function InvoiceDetailModal({
                 >
                   {/* WO Header */}
                   <div className="border-b-2 border-black pb-3 mb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="text-[11px] space-y-0.5">
-                        <div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
+                      <div className="text-[11px] space-y-0.5 min-w-0">
+                        <div className="truncate">
                           <span className="font-bold">Customer :</span>{" "}
                           {activeWO.customer || invoice.cust?.name}
                         </div>
@@ -1108,13 +1169,13 @@ export function InvoiceDetailModal({
                           <span className="font-bold">PI Date :</span>{" "}
                           {dmy(activeWO.piDate || invoice.date)}
                         </div>
-                        <div>
+                        <div className="break-words">
                           <span className="font-bold">Dispatch To :</span>{" "}
                           {activeWO.dispatchTo || invoice.cust?.addr || "—"}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xl font-black tracking-wide text-black">
+                      <div className="text-left sm:text-right shrink-0">
+                        <div className="text-lg sm:text-xl font-black tracking-wide text-black">
                           WORK ORDER
                         </div>
                         <div className="text-[11px] mt-1 space-y-0.5">
@@ -1326,9 +1387,9 @@ export function InvoiceDetailModal({
                     )}
 
                     {/* Overall Work Order Grand Summary Footer */}
-                    <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex justify-between">
+                    <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex flex-col sm:flex-row sm:justify-between gap-0.5">
                       <div>Grand Total: {activeWO.totalPieces} Pcs</div>
-                      <div>
+                      <div className="text-[10px] sm:text-[11px]">
                         {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)}{" "}
                         SQFT &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
                       </div>
@@ -1342,7 +1403,7 @@ export function InvoiceDetailModal({
           {/* ─── TAB 4: BARCODE STICKER LABELS ─── */}
           {activeTab === "stickers" && (
             <div className="animate-in fade-in-50 space-y-4">
-              <div className="flex items-center justify-between px-2 print:hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-2 print:hidden">
                 <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
                   <Tag className="h-4 w-4 text-yellow-500" />
                   {stickerLabels.length} Barcode Sticker Label(s)
@@ -1368,7 +1429,8 @@ export function InvoiceDetailModal({
                     onClick={handlePrintStickers}
                     className="h-8 text-xs font-bold gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-black"
                   >
-                    <Printer className="h-3.5 w-3.5" /> Print Sticker Labels
+                    <Printer className="h-3.5 w-3.5" /> Print
+                    <span className="hidden sm:inline">Sticker Labels</span>
                   </Button>
                 </div>
               </div>
@@ -1380,7 +1442,7 @@ export function InvoiceDetailModal({
               ) : (
                 <div
                   ref={printRef}
-                  className="sticker-print-area grid gap-3 max-w-5xl mx-auto print:gap-1"
+                  className="sticker-print-area sticker-grid grid gap-3 max-w-5xl mx-auto print:gap-1"
                   style={{
                     gridTemplateColumns: `repeat(${labelsPerRow}, 1fr)`,
                   }}

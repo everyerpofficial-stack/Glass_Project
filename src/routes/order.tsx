@@ -767,43 +767,49 @@ function OrderPage() {
 
         {/* ── KPI METRICS CARDS (Shown only on management/list view) ─────────────────── */}
         {!showForm && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {/* Card 1: Total Order */}
-            <div className="bg-background border border-border/80 rounded-lg p-3 shadow-xs">
-              <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+            <div className="bg-background border border-border/80 rounded-lg p-2 sm:p-3 shadow-xs">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Total Order
               </div>
-              <div className="text-xl font-bold text-foreground mt-0.5">
+              <div className="text-base sm:text-xl font-bold text-foreground mt-0.5">
                 {proformaInvoices.length}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Proforma records</div>
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                Proforma records
+              </div>
             </div>
 
             {/* Card 2: Order Confirmed */}
-            <div className="bg-background border border-blue-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-blue-500">
-              <div className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
-                <CheckCircle2 className="h-3 w-3" /> Order Confirmed
+            <div className="bg-background border border-blue-500/30 rounded-lg p-2 sm:p-3 shadow-xs border-l-[3px] sm:border-l-4 border-l-blue-500">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-1 tracking-wider">
+                <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Order Confirmed
               </div>
-              <div className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+              <div className="text-base sm:text-xl font-bold text-blue-600 dark:text-blue-400 mt-0.5">
                 {confirmedCount}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">In workflow</div>
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                In workflow
+              </div>
             </div>
 
             {/* Card 3: Cancelled */}
-            <div className="bg-background border border-rose-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-rose-500">
-              <div className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400 flex items-center gap-1 tracking-wider">
-                <XCircle className="h-3 w-3" /> Cancelled
+            <div className="bg-background border border-rose-500/30 rounded-lg p-2 sm:p-3 shadow-xs border-l-[3px] sm:border-l-4 border-l-rose-500">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400 flex items-center gap-1 tracking-wider">
+                <XCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Cancelled
               </div>
-              <div className="text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+              <div className="text-base sm:text-xl font-bold text-rose-600 dark:text-rose-400 mt-0.5">
                 {cancelledCount}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">Cancelled orders</div>
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                Cancelled orders
+              </div>
             </div>
 
             {/* Card 4: Delivery Status */}
             <div
-              className={`bg-background border rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500 cursor-pointer transition-all ${
+              className={`bg-background border rounded-lg p-2 sm:p-3 shadow-xs border-l-[3px] sm:border-l-4 border-l-emerald-500 cursor-pointer transition-all ${
                 deliveryFilter !== "all"
                   ? "ring-2 ring-emerald-500/50 bg-emerald-500/5"
                   : "hover:border-emerald-500/50"
@@ -819,22 +825,22 @@ function OrderPage() {
               }}
               title="Click to toggle Delivery filter (All -> Delivered -> Not Delivered)"
             >
-              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center justify-between tracking-wider">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center justify-between tracking-wider">
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Delivery Status
+                  <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> Delivery Status
                 </span>
                 {deliveryFilter !== "all" && (
-                  <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
+                  <span className="text-[8px] sm:text-[9px] bg-emerald-600 text-white px-1 sm:px-1.5 py-0.5 rounded font-mono">
                     Filtered
                   </span>
                 )}
               </div>
-              <div className="text-xl font-bold mt-0.5 font-mono flex items-center gap-1">
+              <div className="text-base sm:text-xl font-bold mt-0.5 font-mono flex items-center gap-1">
                 <span className="text-emerald-600 dark:text-emerald-400">{deliveredCount}</span>
                 <span className="text-muted-foreground/60 font-normal">/</span>
                 <span className="text-rose-600 dark:text-rose-400">{proformaInvoices.length}</span>
               </div>
-              <div className="text-[10px] mt-0.5 flex items-center gap-1 font-semibold">
+              <div className="text-[9px] sm:text-[10px] mt-0.5 flex items-center gap-1 font-semibold">
                 <span className="text-emerald-600 dark:text-emerald-400">Yes</span>
                 <span className="text-muted-foreground/60">/</span>
                 <span className="text-rose-600 dark:text-rose-400">No</span>
@@ -843,7 +849,7 @@ function OrderPage() {
 
             {/* Card 5: Total Due Amount */}
             <div
-              className={`bg-background border rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500 cursor-pointer transition-all ${
+              className={`bg-background border rounded-lg p-2 sm:p-3 shadow-xs border-l-[3px] sm:border-l-4 border-l-amber-500 cursor-pointer transition-all ${
                 dueFilter !== "all"
                   ? "ring-2 ring-amber-500/50 bg-amber-500/5"
                   : "hover:border-amber-500/50"
@@ -855,18 +861,18 @@ function OrderPage() {
               }}
               title="Click to toggle Due filter (All -> Has Due -> Fully Paid)"
             >
-              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center justify-between tracking-wider">
+              <div className="text-[9px] sm:text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center justify-between tracking-wider">
                 <span>Total Due Amount</span>
                 {dueFilter !== "all" && (
-                  <span className="text-[9px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-mono">
+                  <span className="text-[8px] sm:text-[9px] bg-amber-600 text-white px-1 sm:px-1.5 py-0.5 rounded font-mono">
                     Filtered
                   </span>
                 )}
               </div>
-              <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
+              <div className="text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
                 ₹ {nf(totalDueAmount)}
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
                 Active outstanding dues
               </div>
             </div>
@@ -1026,17 +1032,17 @@ function OrderPage() {
                         actions={
                           <>
                             {isDelivered ? (
-                              <span className="inline-flex h-9 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 text-[11px] font-bold text-emerald-600">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Delivered
+                              <span className="inline-flex h-7 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 text-[10px] font-bold text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" /> Delivered
                               </span>
                             ) : !rowCancelled ? (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-9 gap-1.5 border-rose-500/40 bg-rose-500/10 text-[11px] font-bold text-rose-600"
+                                className="h-7 gap-1 border-rose-500/40 bg-rose-500/10 text-[10px] font-bold text-rose-600 px-2"
                                 onClick={() => setDeliveryConfirmTarget(item)}
                               >
-                                <XCircle className="h-3.5 w-3.5" /> Not delivered
+                                <XCircle className="h-3 w-3" /> Not delivered
                               </Button>
                             ) : null}
 
@@ -1873,7 +1879,7 @@ function OrderPage() {
                     </span>
                   </div>
 
-                  <div className="pt-3 mt-2 border-t border-border">
+                  <div className="pt-3 mt-2 border-t border-border hidden sm:block">
                     {isConfirmingFromBooking ? (
                       <Button
                         size="lg"
