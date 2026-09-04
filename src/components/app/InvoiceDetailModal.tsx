@@ -315,6 +315,10 @@ export function InvoiceDetailModal({
       toast.error("Cannot record payment on a cancelled document");
       return;
     }
+    if (isPaidFull) {
+      toast.error("This document is already fully paid. No balance due.");
+      return;
+    }
     const amt = Number(payAmount);
     if (isNaN(amt) || amt <= 0) {
       toast.error("Enter a valid payment amount");
@@ -600,26 +604,33 @@ export function InvoiceDetailModal({
                       (Paid: ₹ {nf(paidAmount)} | Balance: ₹ {nf(pendingAmount)})
                     </span>
                   </div>
-                  <Button
-                    size="sm"
-                    className={`h-7 text-xs gap-1 px-3 font-bold transition-colors ${
-                      showRecordPayment
-                        ? "bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 dark:text-rose-300 dark:border-rose-800"
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    }`}
-                    onClick={() => setShowRecordPayment((v) => !v)}
-                  >
-                    {showRecordPayment ? (
-                      <X className="h-3.5 w-3.5" />
-                    ) : (
-                      <Plus className="h-3.5 w-3.5" />
-                    )}
-                    {showRecordPayment ? "Close" : "Record Payment"}
-                  </Button>
+                  {isPaidFull ? (
+                    <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{" "}
+                      Fully Paid (No Due)
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className={`h-7 text-xs gap-1 px-3 font-bold transition-colors ${
+                        showRecordPayment
+                          ? "bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 dark:text-rose-300 dark:border-rose-800"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
+                      onClick={() => setShowRecordPayment((v) => !v)}
+                    >
+                      {showRecordPayment ? (
+                        <X className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                      {showRecordPayment ? "Close" : "Record Payment"}
+                    </Button>
+                  )}
                 </div>
               )}
 
-              {showRecordPayment && !isDocCancelled && (
+              {showRecordPayment && !isDocCancelled && !isPaidFull && (
                 <div className="bg-white dark:bg-slate-800 border-2 border-emerald-500/40 rounded-xl p-4 space-y-3 shadow-md animate-in fade-in-50 text-xs">
                   <div className="font-bold text-foreground flex items-center gap-1.5 text-xs pb-2 border-b border-border/50">
                     <CreditCard className="h-4 w-4 text-emerald-600" /> Payment Details for #
