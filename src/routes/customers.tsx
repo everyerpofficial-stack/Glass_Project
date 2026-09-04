@@ -932,15 +932,7 @@ function CustomersPage() {
                           className="flex items-center justify-end gap-1.5"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[11px] font-bold px-2 gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 shadow-2xs cursor-pointer"
-                            onClick={(e) => handlePayClick(c, customerQuotes, e)}
-                            title={`Pay / Record Payment for ${c.name}`}
-                          >
-                            <IndianRupee className="h-3 w-3" /> Pay
-                          </Button>
+
                           <Button
                             variant="ghost"
                             size="icon"

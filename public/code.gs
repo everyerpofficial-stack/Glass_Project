@@ -113,7 +113,7 @@ var WORKORDER_HEADERS = [
   "totalSqm",
   "totalSqft",
   "weightKg",
-  "createdAt",m
+  "createdAt",
   "fullJSON",
 ];
 
@@ -532,8 +532,11 @@ function handleClearAll_() {
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
       sheet.deleteRows(2, lastRow - 1);
-      invalidateRowIndex_(sheet);
     }
+    /* Unconditional: a tab that getLastRow reports as header-only can still
+       carry an index built earlier in this same execution, and a stale entry
+       would point a following save at a row that no longer exists. */
+    invalidateRowIndex_(sheet);
   }
   return { success: true, action: "clearAll", message: "All database sheets wiped clean" };
 }

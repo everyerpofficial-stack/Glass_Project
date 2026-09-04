@@ -1119,8 +1119,69 @@ export function postInvoice(sheetUrl: string, rec: any): Promise<any> {
   return sheetPost(sheetUrl, { action: "saveInvoice", invoice: rec });
 }
 
-export function clearAllSheetData(sheetUrl: string): Promise<any> {
-  return sheetPost(sheetUrl, { action: "clearAll" });
+/* ---------- Database wipe ----------
+   Two things make this different from an ordinary write. It is four
+   `deleteRows` calls behind the script lock plus a cold start, so the 15s
+   single-record budget expires while the script is still working and the client
+   reports a failure for a wipe that actually happened — it gets the bulk budget
+   instead. And an Apps Script deployment older than the `clearAll` handler
+   answers "Unknown POST action", which used to mean the sheet kept every record
+   until somebody redeployed; the same generation gap `fetchSheetSnapshot`
+   already covers for `getAll` is covered here by deleting the rows through the
+   actions that deployment does know. */
+export function clearAllSheetData(
+  sheetUrl: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<any> {
+  return sheetPost(sheetUrl, { action: "clearAll" }, SHEET_BULK_TIMEOUT_MS).catch((err: Error) => {
+    if (!/Unknown POST action/i.test(err?.message || "")) throw err;
+    return clearSheetRowByRow(sheetUrl, onProgress);
+  });
+}
+
+/* Sequential by design: every deleteRow shifts the rows below it, and Apps
+   Script serialises executions per account anyway, so issuing these in parallel
+   would only race two deletes over the same moving row numbers. */
+async function clearSheetRowByRow(
+  sheetUrl: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<any> {
+  const snap = await fetchSheetSnapshot(sheetUrl);
+
+  type Job = { id: string; remove: (url: string, id: string) => Promise<boolean> };
+  const jobs: Job[] = [];
+  const collect = (tab: SheetTabResult<any>, remove: Job["remove"]) => {
+    /* A tab that failed to read cannot be cleared, and reporting success on a
+       partial wipe would leave rows behind that the caller believes are gone. */
+    if (!tab.ok) throw tab.error;
+    tab.data.forEach((row: any) => {
+      if (row && row.id != null && row.id !== "") jobs.push({ id: String(row.id), remove });
+    });
+  };
+  collect(snap.invoices, deleteInvoiceFromSheet);
+  collect(snap.customers, deleteCustomerFromSheet);
+  collect(snap.workOrders, deleteWorkOrderFromSheet);
+  collect(snap.payments, deletePaymentFromSheet);
+
+  let failed = 0;
+  let done = 0;
+  for (const job of jobs) {
+    try {
+      await job.remove(sheetUrl, job.id);
+    } catch {
+      failed += 1;
+    }
+    done += 1;
+    onProgress?.(done, jobs.length);
+  }
+
+  if (failed) {
+    throw new Error(
+      `${jobs.length - failed} of ${jobs.length} rows were removed, ${failed} could not be deleted. ` +
+        "Re-deploy code.gs (Deploy ▸ Manage deployments ▸ Edit ▸ New version) so the wipe runs in one pass.",
+    );
+  }
+  return { success: true, action: "clearAll", cleared: jobs.length, legacy: true };
 }
 
 /* A delete the sheet answers with "not found" has already happened — that is a

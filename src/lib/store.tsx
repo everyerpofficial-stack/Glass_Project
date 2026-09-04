@@ -235,6 +235,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
      runs inside setState updaters, which must see the latest value rather than
      the one captured when the callback was created. */
   const tombstones = useRef<Tombstones>({});
+  /* Bumped by every wipe. A sheet read that was already in flight when the wipe
+     started describes the database as it was *before* it, so applying its rows
+     afterwards puts every cleared record straight back onto the device — the
+     clear looks like it worked and then silently undoes itself. */
+  const clearGeneration = useRef(0);
 
   const rememberDeletion = useCallback((collection: string, id: string) => {
     const next = { ...tombstones.current };
@@ -399,8 +404,13 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       if (syncInFlight.current) return;
       syncInFlight.current = true;
       setSheetSyncing(true);
+      const generation = clearGeneration.current;
       try {
         const snap = await fetchSheetSnapshot(settings.sheetUrl);
+
+        /* A wipe ran while this read was in the air. Its rows are the ones that
+           were just deleted, so applying them would re-import the lot. */
+        if (generation !== clearGeneration.current) return;
 
         const applied: string[] = [];
         const failed: Error[] = [];
@@ -1171,7 +1181,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
             chgArea: line.chargeAreaSqm ?? line.totalSqm,
             shape: item.shape || "BLOCK",
             barcode: barcodeNum,
-            remark: item.remark || "F" + String(globalSr).padStart(3, "0"),
+            remark: item.remark || "",
             pieceOf: `${p + 1} of ${qty}`,
           });
         }
@@ -1322,13 +1332,25 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       const doLocal = options.clearLocal !== false;
       const doSheet = options.clearSheet !== false;
 
+      /* Fence off every read already in flight — its snapshot predates the wipe
+         — and start the poll throttle here so the interval cannot fire the
+         instant the sheet call returns. */
+      clearGeneration.current += 1;
+      lastSyncAttempt.current = Date.now();
+
       setSheetSyncing(true);
       let sheetSuccess = false;
       let sheetErr = "";
+      const toastId = "clear-all-data";
 
       if (doSheet && settings.sheetUrl) {
         try {
-          await clearAllSheetData(settings.sheetUrl);
+          await clearAllSheetData(settings.sheetUrl, (done, total) =>
+            toast.loading(
+              `This Apps Script deployment cannot wipe the sheet in one pass — removing rows one by one… ${done}/${total}`,
+              { id: toastId },
+            ),
+          );
           sheetSuccess = true;
         } catch (err: any) {
           sheetErr = err?.message || String(err);
@@ -1340,15 +1362,25 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         setCustomers([]);
         setWorkOrders([]);
         setPayments([]);
-        tombstones.current = {};
         invoicesRef.current = [];
 
         LS.set("invoices", []);
         LS.set("customers", []);
         LS.set("workOrders", []);
         LS.set("payments", []);
-        LS.set("tombstones", {});
-        LS.remove("gq_draft_v1");
+        /* The draft lives under `gq.draft` (see the hydrate and the autosave).
+           The `gq_draft_v1` key this used to remove has not existed since the
+           storage keys were unified, so the draft survived every "clear". */
+        LS.remove("draft");
+
+        /* Tombstones may only be dropped once the sheet is actually empty:
+           there is then nothing left for them to hold back. Clearing them after
+           a *failed* wipe would hand every previously deleted row the sheet
+           still carries back to the next merge. */
+        if (sheetSuccess || !settings.sheetUrl) {
+          tombstones.current = {};
+          LS.set("deleted", {});
+        }
 
         const freshInv = blankInvoice(settings);
         setInvState(freshInv);
@@ -1356,23 +1388,41 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
       setSheetSyncing(false);
 
+      /* The sheet is the source of truth for every row it returns, so clearing
+         the device while the sheet still holds the records only hides them
+         until the next poll. Say so, rather than reporting a clean wipe the
+         user watches undo itself thirty seconds later. */
       if (doLocal && doSheet) {
         if (sheetSuccess) {
           toast.success(
             "Total Clear Complete! Both local website data and Google Sheet database have been wiped clean.",
+            { id: toastId },
           );
         } else if (settings.sheetUrl) {
-          toast.error(`Local website data cleared, but Google Sheet clear failed: ${sheetErr}`);
+          toast.error(
+            `Local website data cleared, but the Google Sheet clear failed: ${sheetErr} — the sheet still holds those records, so the next sync will pull them straight back.`,
+            { id: toastId, duration: 16000 },
+          );
         } else {
-          toast.success("Local website data cleared clean!");
+          toast.success("Local website data cleared clean!", { id: toastId });
         }
       } else if (doLocal) {
-        toast.success("Local website data cleared clean!");
+        if (settings.sheetUrl) {
+          toast.success(
+            "Local website data cleared. The connected Google Sheet was left untouched, so its records re-appear on the next sync — use Total Clear to wipe the database as well.",
+            { id: toastId, duration: 14000 },
+          );
+        } else {
+          toast.success("Local website data cleared clean!", { id: toastId });
+        }
       } else if (doSheet) {
         if (sheetSuccess) {
-          toast.success("Google Sheet database wiped clean!");
+          toast.success("Google Sheet database wiped clean!", { id: toastId });
         } else {
-          toast.error(`Failed to clear Google Sheet: ${sheetErr}`);
+          toast.error(`Failed to clear Google Sheet: ${sheetErr}`, {
+            id: toastId,
+            duration: 14000,
+          });
         }
       }
     },

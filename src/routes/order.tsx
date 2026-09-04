@@ -212,6 +212,10 @@ function OrderPage() {
   const [custDropOpen, setCustDropOpen] = useState(false);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [savedSearch, setSavedSearch] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState<"all" | "delivered" | "not_delivered">(
+    "all",
+  );
+  const [dueFilter, setDueFilter] = useState<"all" | "has_due" | "no_due">("all");
   const [showForm, setShowForm] = useState(searchParams?.view === "form");
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [targetConfirmInvoice, setTargetConfirmInvoice] = useState<any>(null);
@@ -313,19 +317,46 @@ function OrderPage() {
   const filteredSavedInvoices = useMemo(
     () =>
       proformaInvoices.filter((item: any) => {
+        // 1. Delivery Status Filter
+        const isDelivered = Boolean(item.delivered || item.deliveryStatus === "Delivered");
+        if (deliveryFilter === "delivered" && !isDelivered) return false;
+        if (deliveryFilter === "not_delivered" && isDelivered) return false;
+
+        // 2. Due Status Filter
+        const isCancelled = item.status === "cancelled";
+        const grandTotal = Number(item.totals?.grandTotal || 0);
+        const paidAmount = Number(item.paidAmount || 0);
+        const remainingBalance = Math.max(0, grandTotal - paidAmount);
+        const hasDue = remainingBalance > 0 && !isCancelled;
+
+        if (dueFilter === "has_due" && !hasDue) return false;
+        if (dueFilter === "no_due" && hasDue) return false;
+
+        // 3. Safe Text Search Query
         const query = savedSearch.toLowerCase().trim();
         if (!query) return true;
+
+        const piNoStr = formatPiNo(item.no).toLowerCase();
+        const rawNoStr = String(item.no || "").toLowerCase();
+        const preNoStr = String(item.preProformaNo || "").toLowerCase();
+        const orderNoStr = String(item.orderNo || "").toLowerCase();
+        const formattedOrderStr = formatOrderId(item.preProformaNo || item.orderNo).toLowerCase();
+        const custNameStr = String(item.cust?.name || "").toLowerCase();
+        const custPhoneStr = String(item.cust?.phone || "").toLowerCase();
+        const custGstinStr = String(item.cust?.gstin || "").toLowerCase();
+
         return (
-          item.no?.toLowerCase().includes(query) ||
-          item.preProformaNo?.toLowerCase().includes(query) ||
-          item.orderNo?.toLowerCase().includes(query) ||
-          item.cust?.name?.toLowerCase().includes(query) ||
-          item.cust?.phone?.toLowerCase().includes(query) ||
-          item.cust?.gstin?.toLowerCase().includes(query) ||
-          formatOrderId(item.preProformaNo).toLowerCase().includes(query)
+          piNoStr.includes(query) ||
+          rawNoStr.includes(query) ||
+          preNoStr.includes(query) ||
+          orderNoStr.includes(query) ||
+          formattedOrderStr.includes(query) ||
+          custNameStr.includes(query) ||
+          custPhoneStr.includes(query) ||
+          custGstinStr.includes(query)
         );
       }),
-    [proformaInvoices, savedSearch],
+    [proformaInvoices, savedSearch, deliveryFilter, dueFilter],
   );
 
   /* Get Order Bookings available for loading into Proforma Invoice */
@@ -721,9 +752,32 @@ function OrderPage() {
             </div>
 
             {/* Card 4: Delivery Status */}
-            <div className="bg-background border border-emerald-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500">
-              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-1 tracking-wider">
-                <CheckCircle2 className="h-3 w-3" /> Delivery Status
+            <div
+              className={`bg-background border rounded-lg p-3 shadow-xs border-l-4 border-l-emerald-500 cursor-pointer transition-all ${
+                deliveryFilter !== "all"
+                  ? "ring-2 ring-emerald-500/50 bg-emerald-500/5"
+                  : "hover:border-emerald-500/50"
+              }`}
+              onClick={() => {
+                setDeliveryFilter((prev) =>
+                  prev === "delivered"
+                    ? "not_delivered"
+                    : prev === "not_delivered"
+                      ? "all"
+                      : "delivered",
+                );
+              }}
+              title="Click to toggle Delivery filter (All -> Delivered -> Not Delivered)"
+            >
+              <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center justify-between tracking-wider">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Delivery Status
+                </span>
+                {deliveryFilter !== "all" && (
+                  <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
+                    Filtered
+                  </span>
+                )}
               </div>
               <div className="text-xl font-bold mt-0.5 font-mono flex items-center gap-1">
                 <span className="text-emerald-600 dark:text-emerald-400">{deliveredCount}</span>
@@ -738,9 +792,26 @@ function OrderPage() {
             </div>
 
             {/* Card 5: Total Due Amount */}
-            <div className="bg-background border border-amber-500/30 rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500">
-              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 tracking-wider">
-                Total Due Amount
+            <div
+              className={`bg-background border rounded-lg p-3 shadow-xs border-l-4 border-l-amber-500 cursor-pointer transition-all ${
+                dueFilter !== "all"
+                  ? "ring-2 ring-amber-500/50 bg-amber-500/5"
+                  : "hover:border-amber-500/50"
+              }`}
+              onClick={() => {
+                setDueFilter((prev) =>
+                  prev === "has_due" ? "no_due" : prev === "no_due" ? "all" : "has_due",
+                );
+              }}
+              title="Click to toggle Due filter (All -> Has Due -> Fully Paid)"
+            >
+              <div className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center justify-between tracking-wider">
+                <span>Total Due Amount</span>
+                {dueFilter !== "all" && (
+                  <span className="text-[9px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-mono">
+                    Filtered
+                  </span>
+                )}
               </div>
               <div className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
                 ₹ {nf(totalDueAmount)}
@@ -760,18 +831,59 @@ function OrderPage() {
             title="All Order Confirms"
             headerRight={
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Search Box */}
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-2 text-muted-foreground" />
                   <Input
-                    className="h-7 text-xs pl-8 w-44 sm:w-60 bg-background"
+                    className="h-7 text-xs pl-8 w-36 sm:w-52 bg-background"
                     placeholder="Search order confirm..."
                     value={savedSearch}
                     onChange={(e) => setSavedSearch(e.target.value)}
                   />
                 </div>
+
+                {/* Delivery Filter Dropdown */}
+                <Select value={deliveryFilter} onValueChange={(val: any) => setDeliveryFilter(val)}>
+                  <SelectTrigger className="h-7 text-xs w-36 bg-background cursor-pointer">
+                    <SelectValue placeholder="Delivery Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Delivery: All</SelectItem>
+                    <SelectItem value="delivered">✓ Delivered (Yes)</SelectItem>
+                    <SelectItem value="not_delivered">❌ Not Delivered (No)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Due Status Filter Dropdown */}
+                <Select value={dueFilter} onValueChange={(val: any) => setDueFilter(val)}>
+                  <SelectTrigger className="h-7 text-xs w-36 bg-background cursor-pointer">
+                    <SelectValue placeholder="Due Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Payment Due: All</SelectItem>
+                    <SelectItem value="has_due">⚠️ Due Pending</SelectItem>
+                    <SelectItem value="no_due">✓ Fully Paid (No Due)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(deliveryFilter !== "all" || dueFilter !== "all" || savedSearch) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 font-semibold cursor-pointer"
+                    onClick={() => {
+                      setDeliveryFilter("all");
+                      setDueFilter("all");
+                      setSavedSearch("");
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+
                 <span className="text-xs text-muted-foreground font-medium">
                   <span className="font-bold text-foreground">{filteredSavedInvoices.length}</span>{" "}
-                  total records
+                  records
                 </span>
               </div>
             }
@@ -1213,7 +1325,6 @@ function OrderPage() {
                           "Amount",
                           "Glass Name",
                           "Weight",
-                          "Job Type",
                           "Act Area",
                         ].map((h, i) => (
                           <th
@@ -1292,9 +1403,6 @@ function OrderPage() {
                             </td>
                             <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
                               {lineWeight}
-                            </td>
-                            <td className="py-2 px-2.5 text-xs text-muted-foreground whitespace-nowrap min-w-[100px]">
-                              {inv.jobType || "WITH MATERIAL"}
                             </td>
                             <td className="py-2 px-2.5 text-xs font-mono whitespace-nowrap min-w-[70px]">
                               {line?.ok

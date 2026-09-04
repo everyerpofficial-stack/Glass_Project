@@ -786,8 +786,6 @@ function WorkOrderPage() {
                         "Big\nHole",
                         "Big\nCutout",
                         "CSK",
-                        "Shape",
-                        "Barcode",
                         "Remark",
                       ]
                     : isFreqOn
@@ -805,8 +803,6 @@ function WorkOrderPage() {
                           "Big\nHole",
                           "Big\nCutout",
                           "CSK",
-                          "Shape",
-                          "Barcode",
                           "Remark",
                         ]
                       : [
@@ -822,8 +818,6 @@ function WorkOrderPage() {
                           "Big\nHole",
                           "Big\nCutout",
                           "CSK",
-                          "Shape",
-                          "Barcode",
                           "Remark",
                         ];
 
@@ -841,7 +835,7 @@ function WorkOrderPage() {
 
                       <table
                         className="w-full text-[10px] border-collapse"
-                        style={{ minWidth: isMM ? "750px" : "900px" }}
+                        style={{ minWidth: isMM ? "650px" : "750px" }}
                       >
                         <thead>
                           <tr className="bg-gray-50 border-b border-black">
@@ -858,6 +852,8 @@ function WorkOrderPage() {
                         <tbody>
                           {grp.pieces.map((piece: any, idx: number) => {
                             const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
+                            const displayRemark =
+                              piece.remark && !/^[FH]\d{3}$/.test(piece.remark) ? piece.remark : "";
                             return (
                               <tr key={idx} className="border-b border-gray-300 hover:bg-gray-50">
                                 <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
@@ -905,14 +901,8 @@ function WorkOrderPage() {
                                 <td className="border border-gray-300 px-1.5 py-1 text-center">
                                   {piece.csk || ""}
                                 </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                  {piece.shape}
-                                </td>
-                                <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
-                                  {piece.barcode}
-                                </td>
                                 <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
-                                  {piece.remark}
+                                  {displayRemark}
                                 </td>
                               </tr>
                             );

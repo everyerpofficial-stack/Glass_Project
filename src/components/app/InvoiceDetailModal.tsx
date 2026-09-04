@@ -181,13 +181,14 @@ interface InvoiceDetailModalProps {
 }
 
 export function InvoiceDetailModal({
-  invoice,
+  invoice: rawInvoice,
   open,
   onOpenChange,
   onEdit,
   initialTab = "overview",
 }: InvoiceDetailModalProps) {
   const {
+    invoices,
     workOrders,
     settings,
     generateWorkOrder,
@@ -196,6 +197,12 @@ export function InvoiceDetailModal({
     savePayment,
     patchInvoice,
   } = useGQ();
+
+  /* Find live invoice from store (falls back to rawInvoice if not found) */
+  const invoice = useMemo(() => {
+    if (!rawInvoice?.id) return rawInvoice;
+    return invoices.find((x: any) => String(x.id) === String(rawInvoice.id)) || rawInvoice;
+  }, [invoices, rawInvoice]);
   const [activeTab, setActiveTab] = useState<"overview" | "proforma" | "cutsheet" | "stickers">(
     initialTab,
   );
@@ -277,6 +284,10 @@ export function InvoiceDetailModal({
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
+  const isConfirmed =
+    invoice.docType === "proforma" ||
+    invoice.status === "order_confirmed" ||
+    invoice.status === "work_order_generated";
   const docTypeLabel = isPre ? "Proforma Invoice" : "Order Confirm";
   const dueInfo = getPaymentDueDateInfo(invoice);
   const isDocCancelled = isCancelled(invoice);
@@ -448,38 +459,42 @@ export function InvoiceDetailModal({
             }`}
           >
             <Printer className="h-3.5 w-3.5" />
-            Proforma PDF
+            {isConfirmed ? "Confirm PDF" : "Proforma PDF"}
           </button>
 
-          <button
-            onClick={() => {
-              ensureWorkOrder();
-              setActiveTab("cutsheet");
-            }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "cutsheet"
-                ? "bg-amber-600 text-white shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            <Factory className="h-3.5 w-3.5" />
-            Work Order Cut Sheet
-          </button>
+          {isConfirmed && (
+            <>
+              <button
+                onClick={() => {
+                  ensureWorkOrder();
+                  setActiveTab("cutsheet");
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "cutsheet"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <Factory className="h-3.5 w-3.5" />
+                Work Order Cut Sheet
+              </button>
 
-          <button
-            onClick={() => {
-              ensureWorkOrder();
-              setActiveTab("stickers");
-            }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "stickers"
-                ? "bg-yellow-500 text-slate-950 font-bold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            <Tag className="h-3.5 w-3.5" />
-            Barcode Stickers
-          </button>
+              <button
+                onClick={() => {
+                  ensureWorkOrder();
+                  setActiveTab("stickers");
+                }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "stickers"
+                    ? "bg-yellow-500 text-slate-950 font-bold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Barcode Stickers
+              </button>
+            </>
+          )}
         </div>
 
         {/* ════ MAIN MODAL BODY AREA (SCROLLABLE EDGE-TO-EDGE) ════ */}
@@ -581,7 +596,7 @@ export function InvoiceDetailModal({
                     ) : (
                       <Plus className="h-3.5 w-3.5" />
                     )}
-                    {showRecordPayment ? "Close" : "+ Record Payment"}
+                    {showRecordPayment ? "Close" : "Record Payment"}
                   </Button>
                 </div>
               )}
@@ -800,33 +815,25 @@ export function InvoiceDetailModal({
                   <table className="w-full text-xs text-left">
                     <thead className="bg-muted/20 text-[10px] font-bold uppercase text-muted-foreground border-b border-border">
                       <tr>
-                        <th className="p-2.5">#</th>
-                        <th className="p-2.5">Product / Glass Description</th>
-                        <th className="p-2.5 text-center">Thickness</th>
-                        <th className="p-2.5 text-center">Qty</th>
-                        <th className="p-2.5 text-right">Area</th>
-                        <th className="p-2.5 text-right">Rate</th>
-                        <th className="p-2.5 text-right">Amount</th>
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">Product / Glass Description</th>
+                        <th className="py-2.5 px-3 text-center">Thickness</th>
+                        <th className="py-2.5 px-3 text-center">Qty</th>
+                        <th className="py-2.5 px-3 text-center">Area</th>
+                        <th className="py-2.5 px-3 text-right">Rate</th>
+                        <th className="py-2.5 px-3 text-right">Amount</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/40 font-mono text-xs">
-                      {(invoice.items && invoice.items.length > 0
-                        ? invoice.items
-                        : totals?.lines && totals.lines.length > 0
-                          ? totals.lines
-                          : invoice.layers || []
-                      ).map((item: any, idx: number) => {
-                        const computedLine = totals?.lines?.[idx] || null;
-                        const layerIdx = item.layerIdx !== undefined ? item.layerIdx : idx;
-                        const layerObj = invoice.layers?.[layerIdx] || null;
-                        const productName =
-                          computedLine?.productName ||
-                          computedLine?.desc ||
+                    <tbody className="divide-y divide-border/40">
+                      {(invoice.items || invoice.layers || []).map((item: any, idx: number) => {
+                        const computedLine = totals?.lines?.[idx];
+                        const layerObj = invoice.layers?.[idx] || null;
+                        const prodName =
                           layerObj?.productName ||
                           layerObj?.glassName ||
                           item.productName ||
+                          item.glassName ||
                           invoice.productName ||
-                          item.desc ||
                           "Glass Item";
                         const thickness =
                           computedLine?.thickness ||
@@ -857,22 +864,27 @@ export function InvoiceDetailModal({
                             (item.amount !== "" && item.amount != null ? item.amount : null) ??
                             (rateVal > 0
                               ? rateVal *
-                                (Number(computedLine?.sqft || item.sqft || item.sqm || 0) ||
-                                  Number(qty))
+                                (Number(computedLine?.sqft || item.sqft || item.sqm || 0) || 1)
                               : 0),
                         );
 
                         return (
-                          <tr key={item.id || idx} className="hover:bg-muted/10">
-                            <td className="p-2.5 text-muted-foreground">{idx + 1}</td>
-                            <td className="p-2.5 font-sans font-medium text-foreground">
-                              {productName}
+                          <tr key={idx} className="hover:bg-muted/10">
+                            <td className="py-2.5 px-3 text-muted-foreground font-mono text-[11px]">
+                              {idx + 1}
                             </td>
-                            <td className="p-2.5 text-center font-sans">{thickness} mm</td>
-                            <td className="p-2.5 text-center font-bold">{qty}</td>
-                            <td className="p-2.5 text-right">{areaVal}</td>
-                            <td className="p-2.5 text-right font-bold">₹ {nf(rateVal)}</td>
-                            <td className="p-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            <td className="py-2.5 px-3 font-semibold text-foreground">
+                              {prodName}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-mono">{thickness} mm</td>
+                            <td className="py-2.5 px-3 text-center font-bold font-mono">{qty}</td>
+                            <td className="py-2.5 px-3 text-center font-mono text-muted-foreground">
+                              {areaVal !== "—" ? nf(Number(areaVal), 3) : "—"}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-medium">
+                              ₹ {nf(rateVal)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground">
                               ₹ {nf(amountVal)}
                             </td>
                           </tr>
@@ -885,12 +897,12 @@ export function InvoiceDetailModal({
             </div>
           )}
 
-          {/* ─── TAB 2: PROFORMA INVOICE (PRINTABLE DOCUMENT) ─── */}
+          {/* ─── TAB 2: PROFORMA / CONFIRM INVOICE (PRINTABLE DOCUMENT) ─── */}
           {activeTab === "proforma" && (
             <div className="animate-in fade-in-50 space-y-4">
               <div className="flex items-center justify-between px-2 print:hidden">
                 <span className="text-xs text-muted-foreground font-semibold">
-                  A4 Printable Proforma Invoice PDF Preview
+                  A4 Printable {isConfirmed ? "Order Confirm" : "Proforma Invoice"} PDF Preview
                 </span>
                 <Button
                   size="sm"
@@ -1019,8 +1031,6 @@ export function InvoiceDetailModal({
                               "Big\nHole",
                               "Big\nCutout",
                               "CSK",
-                              "Shape",
-                              "Barcode",
                               "Remark",
                             ]
                           : isFreqOn
@@ -1038,8 +1048,6 @@ export function InvoiceDetailModal({
                                 "Big\nHole",
                                 "Big\nCutout",
                                 "CSK",
-                                "Shape",
-                                "Barcode",
                                 "Remark",
                               ]
                             : [
@@ -1055,8 +1063,6 @@ export function InvoiceDetailModal({
                                 "Big\nHole",
                                 "Big\nCutout",
                                 "CSK",
-                                "Shape",
-                                "Barcode",
                                 "Remark",
                               ];
 
@@ -1074,7 +1080,7 @@ export function InvoiceDetailModal({
 
                             <table
                               className="w-full text-[10px] border-collapse"
-                              style={{ minWidth: isMM ? "750px" : "850px" }}
+                              style={{ minWidth: isMM ? "650px" : "750px" }}
                             >
                               <thead>
                                 <tr className="bg-gray-50 border-b border-black">
@@ -1091,6 +1097,10 @@ export function InvoiceDetailModal({
                               <tbody>
                                 {grp.pieces.map((piece: any, idx: number) => {
                                   const freqLabel = Number(piece.freq) === 16 ? "1/16" : "1/8";
+                                  const displayRemark =
+                                    piece.remark && !/^[FH]\d{3}$/.test(piece.remark)
+                                      ? piece.remark
+                                      : "";
                                   return (
                                     <tr
                                       key={idx}
@@ -1141,14 +1151,8 @@ export function InvoiceDetailModal({
                                       <td className="border border-gray-300 px-1.5 py-1 text-center">
                                         {piece.csk || ""}
                                       </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-bold">
-                                        {piece.shape}
-                                      </td>
-                                      <td className="border border-gray-300 px-1.5 py-1 text-center font-mono text-[9px]">
-                                        {piece.barcode}
-                                      </td>
                                       <td className="border border-gray-300 px-1.5 py-1 text-center text-[9px]">
-                                        {piece.remark}
+                                        {displayRemark}
                                       </td>
                                     </tr>
                                   );
