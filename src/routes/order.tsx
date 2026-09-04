@@ -945,16 +945,14 @@ function OrderPage() {
                 <p>
                   {savedSearch ? "No matching Order Confirms found." : "No Order Confirms found."}
                 </p>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold"
-                  onClick={() => {
-                    newInvoice();
-                    setShowForm(true);
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" /> New Invoice
-                </Button>
+                <Link to="/booking">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 bg-primary text-primary-foreground font-semibold cursor-pointer"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Go to Proforma Invoice
+                  </Button>
+                </Link>
               </div>
             ) : (
               <>
@@ -1515,21 +1513,21 @@ function OrderPage() {
                     <thead>
                       <tr className="border-b border-border bg-muted/20">
                         {[
-                          { name: "Sr.", align: "text-center" },
-                          { name: "PI No", align: "text-left" },
-                          { name: "Date", align: "text-left" },
-                          { name: "Product", align: "text-left" },
-                          { name: "Thick", align: "text-center" },
-                          { name: "Qty", align: "text-center" },
-                          { name: "Area", align: "text-right" },
-                          { name: "Amount", align: "text-right" },
-                          { name: "Glass Name", align: "text-left" },
-                          { name: "Weight", align: "text-right" },
-                          { name: "Act Area", align: "text-right" },
+                          { name: "Sr.", align: "text-center", minW: "min-w-[40px]" },
+                          { name: "PI No", align: "text-left", minW: "min-w-[90px]" },
+                          { name: "Date", align: "text-left", minW: "min-w-[90px]" },
+                          { name: "Product", align: "text-left", minW: "min-w-[140px]" },
+                          { name: "Thick", align: "text-center", minW: "min-w-[50px]" },
+                          { name: "Qty", align: "text-center", minW: "min-w-[45px]" },
+                          { name: "Area", align: "text-right", minW: "min-w-[70px]" },
+                          { name: "Amount", align: "text-right", minW: "min-w-[80px]" },
+                          { name: "Glass Name", align: "text-left", minW: "min-w-[120px]" },
+                          { name: "Weight", align: "text-right", minW: "min-w-[70px]" },
+                          { name: "Actual Area", align: "text-right", minW: "min-w-[80px]" },
                         ].map((h, i) => (
                           <th
                             key={i}
-                            className={`py-2 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap ${h.align}`}
+                            className={`py-2 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap ${h.align} ${h.minW}`}
                           >
                             {h.name}
                           </th>
@@ -1570,7 +1568,7 @@ function OrderPage() {
 
                         return (
                           <tr key={item.id || idx} className="hover:bg-muted/10">
-                            <td className="py-2 px-2.5 text-center text-muted-foreground font-mono whitespace-nowrap">
+                            <td className="py-2 px-2.5 text-center text-muted-foreground font-mono whitespace-nowrap min-w-[40px]">
                               {idx + 1}
                             </td>
                             <td className="py-2 px-2.5 text-xs font-mono text-muted-foreground whitespace-nowrap font-medium min-w-[90px]">
@@ -1604,7 +1602,7 @@ function OrderPage() {
                             <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[70px]">
                               {lineWeight}
                             </td>
-                            <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[70px]">
+                            <td className="py-2 px-2.5 text-xs font-mono text-right whitespace-nowrap min-w-[80px]">
                               {line?.ok
                                 ? settings.rateUnit === "sqft"
                                   ? line.totalSqft
@@ -1702,7 +1700,7 @@ function OrderPage() {
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>Act. Area SQM</FieldLabel>
+                  <FieldLabel>Actual Area SQM</FieldLabel>
                   <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
                     {totals.sqm ?? "0.000"}
                   </div>
@@ -1714,7 +1712,7 @@ function OrderPage() {
                   </div>
                 </div>
                 <div>
-                  <FieldLabel>Act. Area SQF</FieldLabel>
+                  <FieldLabel>Actual Area SQF</FieldLabel>
                   <div className="h-8 flex items-center px-2 rounded-md border border-border bg-muted/30 text-xs font-mono text-foreground">
                     {totals.sqft ?? "0.000"}
                   </div>

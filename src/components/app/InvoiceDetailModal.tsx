@@ -280,11 +280,7 @@ export function InvoiceDetailModal({
     }));
   }, [activeWO, invoice]);
 
-  /* Early return AFTER all hooks */
-  if (!open || !invoice) return null;
-
-  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
-
+  /* Matched payments for this invoice */
   const invoicePayments = useMemo(() => {
     if (!invoice || !payments) return [];
     const iNo = String(invoice.no || "").trim().toLowerCase();
@@ -309,6 +305,10 @@ export function InvoiceDetailModal({
     return invoicePayments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
   }, [invoicePayments]);
 
+  /* Early return AFTER all hooks */
+  if (!open || !invoice) return null;
+
+  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
   const paidAmount = Math.max(Number(invoice.paidAmount || 0), matchedPaymentsSum);
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;

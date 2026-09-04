@@ -203,13 +203,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         search: { view: "form", action: "new" },
       };
     }
-    if (pathname === "/order") {
-      return {
-        label: "New Order Confirm",
-        to: "/order" as const,
-        search: { view: "form", action: "new" },
-      };
-    }
     if (pathname === "/customers") {
       return { label: "Add Customer", to: "/customers" as const, search: { action: "new" } };
     }
