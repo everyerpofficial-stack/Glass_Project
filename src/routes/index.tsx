@@ -18,6 +18,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import {
@@ -170,7 +171,6 @@ function Dashboard() {
 
   const totalBookingsCount = piRecords.length;
   const obInvoicesAmount = useMemo(() => sumGrandTotal(piRecords), [piRecords]);
-  const onCreatedAmount = obInvoicesAmount;
 
   /* The store and /booking both write `whatsappSent`; this card read
      `followedUp`, a field nothing in the app has ever written. It therefore
@@ -259,6 +259,22 @@ function Dashboard() {
         0,
       ),
     [ocRecords],
+  );
+
+  const totalInsuranceAmount = useMemo(
+    () =>
+      ocRecords.reduce((acc, inv) => {
+        let ins = Number(inv.totals?.insurance);
+        if (isNaN(ins) || !ins) {
+          try {
+            ins = Number(computeTotals(settings, inv)?.insurance) || 0;
+          } catch {
+            ins = 0;
+          }
+        }
+        return acc + (ins || 0);
+      }, 0),
+    [ocRecords, settings],
   );
 
   /* A generated work order means production started, not that anything left the
@@ -717,17 +733,7 @@ function Dashboard() {
           iconColor="text-purple-600"
         />
 
-        {/* Card 7: On Created Amount */}
-        <MetricCard
-          label="On Created Amount"
-          value={cur(onCreatedAmount, settings.currency)}
-          sub="Drafts & initial quotes"
-          icon={Tag}
-          iconBg="bg-pink-50"
-          iconColor="text-pink-600"
-        />
-
-        {/* Card 8: Amount Received */}
+        {/* Card 7: Amount Received */}
         <MetricCard
           label="Amount Received"
           value={cur(amountReceived, settings.currency)}
@@ -746,7 +752,7 @@ function Dashboard() {
           iconColor="text-emerald-600"
         />
 
-        {/* Card 9: Due From Customer */}
+        {/* Card 8: Due From Customer */}
         <MetricCard
           label="Due From Customer"
           value={cur(dueFromCustomer, settings.currency)}
@@ -755,6 +761,17 @@ function Dashboard() {
           icon={ShoppingBag}
           iconBg="bg-amber-50"
           iconColor="text-amber-600"
+        />
+
+        {/* Card 9: Total Insurance */}
+        <MetricCard
+          label="Total Insurance"
+          value={cur(totalInsuranceAmount, settings.currency)}
+          sub="Confirmed order insurance"
+          subColor="text-indigo-600"
+          icon={ShieldCheck}
+          iconBg="bg-indigo-50"
+          iconColor="text-indigo-600"
         />
 
         {/* Card 10: Order Cancelled */}
