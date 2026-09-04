@@ -1145,21 +1145,22 @@ function BookingPage() {
                                       : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                                   }`}
                                   onClick={() => {
-                                    loadInvoice(item.id, false);
-                                    navigate({
-                                      to: "/order",
-                                      search: {
-                                        view: "form",
-                                        id: item.id,
-                                        action: "confirm",
-                                        from: "booking",
-                                      } as any,
-                                    });
+                                    if (isConfirmed) {
+                                      navigate({
+                                        to: "/order",
+                                        search: {
+                                          id: item.id,
+                                        } as any,
+                                      });
+                                    } else {
+                                      setTargetConfirmInvoice(item);
+                                      setConfirmModalOpen(true);
+                                    }
                                   }}
                                   title={
                                     isConfirmed
                                       ? "Proforma Invoice Confirmed - Click to open Order Confirm"
-                                      : "Confirm Proforma Invoice & Open Order Confirm"
+                                      : "Confirm Payment for Proforma Invoice & Move to Order Confirm"
                                   }
                                 >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
@@ -2518,10 +2519,25 @@ function BookingPage() {
                     {totals.amountInWords}
                   </div>
 
-                  <div className="pt-4 mt-4 border-t border-border">
+                  <div className="pt-4 mt-4 border-t border-border space-y-2">
                     <Button
                       size="lg"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md cursor-pointer text-xs"
+                      onClick={() => {
+                        const ok = saveInvoice();
+                        if (ok && inv.id) {
+                          setTargetConfirmInvoice(inv);
+                          setConfirmModalOpen(true);
+                        }
+                      }}
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Confirm Payment & Move to Order Confirm
+                    </Button>
+
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full font-bold gap-2 text-xs"
                       onClick={() => {
                         const ok = saveInvoice();
                         if (ok && inv.id) {
