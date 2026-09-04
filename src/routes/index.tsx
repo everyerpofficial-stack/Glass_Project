@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Truck,
   XCircle,
+  X,
   Tag,
   Calendar as CalendarIcon,
   CreditCard,
@@ -109,7 +110,12 @@ function withinRange(rec: any, range: { from: number; to: number } | null): bool
   return t >= range.from && t < range.to;
 }
 
-const isPreProforma = (x: any) => !x?.docType || x.docType === "pre_proforma";
+const isPreProforma = (x: any) =>
+  (!x?.docType || x.docType === "pre_proforma") &&
+  x.docType !== "proforma_converted" &&
+  x.status !== "order_confirmed" &&
+  x.status !== "work_order_generated" &&
+  x.status !== "confirmed";
 
 const DAY_LABEL: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short" };
 
@@ -458,6 +464,7 @@ function Dashboard() {
           receivedAmount: paid,
           dueAmount: q.status === "cancelled" ? 0 : Math.max(0, grandTotal - paid),
           followUp: q.whatsappSent ? "Done" : "Pending",
+          whatsappSent: Boolean(q.whatsappSent),
           status:
             q.status === "draft"
               ? "New"
@@ -539,6 +546,7 @@ function Dashboard() {
       receivedAmount: Number(b.receivedAmount || 0),
       dueAmount: Number(b.dueAmount || 0),
       status: String(b.status),
+      whatsappSent: Boolean(b.whatsappSent),
       link: "/booking",
     }));
 
@@ -1102,15 +1110,26 @@ function Dashboard() {
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Glass Spec</th>
                 <th className="py-3 px-4 text-right">Total Amount</th>
-                <th className="py-3 px-4 text-right">Received Amount</th>
-                <th className="py-3 px-4 text-right font-mono">Due Amount</th>
+                {orderTab === "booking" ? (
+                  <th className="py-3 px-4 text-center">Follow Up</th>
+                ) : (
+                  <>
+                    <th className="py-3 px-4 text-right">Received Amount</th>
+                    <th className="py-3 px-4 text-right font-mono">
+                      {orderTab === "all" ? "Due / Status" : "Due Amount"}
+                    </th>
+                  </>
+                )}
                 <th className="py-3 px-4 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {!combinedRecentOrders.length && (
                 <tr>
-                  <td colSpan={9} className="py-10 px-4 text-center text-muted-foreground">
+                  <td
+                    colSpan={orderTab === "booking" ? 8 : 9}
+                    className="py-10 px-4 text-center text-muted-foreground"
+                  >
                     No documents in this period.
                   </td>
                 </tr>
@@ -1135,20 +1154,86 @@ function Dashboard() {
                   <td className="py-3 px-4 text-right font-semibold text-foreground font-mono">
                     {cur(row.amount, settings.currency)}
                   </td>
-                  <td className="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                    {cur(row.receivedAmount, settings.currency)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold font-mono">
-                    <span
-                      className={
-                        row.dueAmount > 0
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-emerald-600 dark:text-emerald-400"
-                      }
-                    >
-                      {cur(row.dueAmount, settings.currency)}
-                    </span>
-                  </td>
+                  {orderTab === "booking" ? (
+                    <td className="py-3 px-4 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-2xs ${
+                          row.whatsappSent
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
+                            : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40"
+                        }`}
+                      >
+                        {row.whatsappSent ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Yes</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                            <span>No</span>
+                          </>
+                        )}
+                      </span>
+                    </td>
+                  ) : orderTab === "confirm" ? (
+                    <>
+                      <td className="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                        {cur(row.receivedAmount, settings.currency)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold font-mono">
+                        <span
+                          className={
+                            row.dueAmount > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }
+                        >
+                          {cur(row.dueAmount, settings.currency)}
+                        </span>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 px-4 text-right font-semibold font-mono">
+                        {row.type === "booking" ? (
+                          <span className="text-muted-foreground font-normal">—</span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {cur(row.receivedAmount, settings.currency)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold font-mono">
+                        {row.type === "booking" ? (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              row.whatsappSent
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
+                                : "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/40"
+                            }`}
+                          >
+                            {row.whatsappSent ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            ) : (
+                              <X className="h-3 w-3 text-red-600" />
+                            )}
+                            <span>Follow Up: {row.whatsappSent ? "Yes" : "No"}</span>
+                          </span>
+                        ) : (
+                          <span
+                            className={
+                              row.dueAmount > 0
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }
+                          >
+                            {cur(row.dueAmount, settings.currency)}
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   <td className="py-3 px-4 text-center">
                     <Link
                       to={row.type === "booking" ? "/booking" : "/order"}
