@@ -46,7 +46,7 @@ export const BASE_SETTINGS: any = {
   bankBranch: "New Sanganer Road Jaipur",
   terms: DEFAULT_TERMS.join("\n"),
   footer: "",
-  extraAreaFormula: "+25.4mm",
+  extraAreaFormula: "+25mm",
   sheetUrl:
     "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
@@ -832,7 +832,7 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
       tcsPercent: 0,
       // Extra area
       extraAreaFormula:
-        S.extraAreaFormula && S.extraAreaFormula !== "none" ? S.extraAreaFormula : "+25.4mm",
+        S.extraAreaFormula && S.extraAreaFormula !== "none" ? S.extraAreaFormula : "+25mm",
       extraAreaCustomMM: S.extraAreaCustomMM || 0,
       // GST
       gstType: S.gstType,
@@ -895,6 +895,25 @@ const LEGACY_CHARGE_SEEDS: Record<string, number> = {
   katraPolishRate: 150,
   screenPrintRate: 800,
 };
+
+/* Key that records the one-time move of stored documents off "+25.4mm".
+   Until the Area Formula dropdown gained "+ 25 MM", it offered only "None",
+   "+ 25.4 MM" and "Custom", and `blankInvoice` hard-coded "+25.4mm" into
+   every new document — so no one ever *chose* 25.4 over 25, it was the only
+   millimetre option on the menu. The reference sheet this suite reproduces
+   adds a flat 25 mm (84" x 36" bills 2159 x 939, not 2159 x 940), so stored
+   documents move onto it once. It runs once and only once: after this flag is
+   set, "+ 25.4 MM" is a real choice again and is left exactly as selected. */
+export const AREA_FORMULA_MIGRATION_KEY = "areaFormulaFlat25";
+
+/* Move one `ch` off the old hard-coded default. An explicit "none", "+50mm"
+   or "custom" was a deliberate choice even then, so those are left alone. */
+export function migrateAreaFormula<T>(ch: T): T {
+  if (ch && typeof ch === "object" && (ch as any).extraAreaFormula === "+25.4mm") {
+    (ch as any).extraAreaFormula = "+25mm";
+  }
+  return ch;
+}
 
 /* Remove the un-editable charges from a saved invoice's `ch`. Mutates and
    returns the object it is given; safe on undefined. */

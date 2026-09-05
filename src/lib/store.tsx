@@ -35,6 +35,8 @@ import {
   hasEnteredRateForInvoice,
   setStorageFailureHandler,
   stripNonInvoiceCharges,
+  migrateAreaFormula,
+  AREA_FORMULA_MIGRATION_KEY,
   pushAllInChunks,
   uid,
   workOrderBelongsTo,
@@ -377,6 +379,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     setPayments(initialPayments);
     LS.set("payments", initialPayments);
 
+    /* One-time move of stored documents off the old hard-coded "+25.4mm"
+       area formula. Guarded by a flag so a later, deliberate pick of
+       "+ 25.4 MM" survives every subsequent load. */
+    const needsAreaFormulaMigration = !LS.get(AREA_FORMULA_MIGRATION_KEY, false);
+
     const savedInvoices = LS.get<any[] | null>("invoices", null);
     /* Auto-migrate: ensure every invoice has status and docType fields */
     const rawInvoices =
@@ -384,7 +391,8 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321")
         : [];
     const migratedInvoices = rawInvoices.map((inv: any) => {
-      const ch = inv.ch ? stripNonInvoiceCharges({ ...inv.ch }) : undefined;
+      let ch = inv.ch ? stripNonInvoiceCharges({ ...inv.ch }) : undefined;
+      if (ch && needsAreaFormulaMigration) ch = migrateAreaFormula(ch);
       const updatedInv = {
         ...inv,
         ch,
@@ -462,7 +470,11 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
-    if (initialInv && initialInv.ch) stripNonInvoiceCharges(initialInv.ch);
+    if (initialInv && initialInv.ch) {
+      stripNonInvoiceCharges(initialInv.ch);
+      if (needsAreaFormulaMigration) migrateAreaFormula(initialInv.ch);
+    }
+    if (needsAreaFormulaMigration) LS.set(AREA_FORMULA_MIGRATION_KEY, true);
     setInvState(initialInv);
     if (!draft) LS.set("draft", samplePreProforma);
 

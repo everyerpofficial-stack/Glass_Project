@@ -1765,7 +1765,7 @@ function BookingPage() {
                         Area Formula:
                       </span>
                       <Select
-                        value={inv.ch?.extraAreaFormula || "+25.4mm"}
+                        value={inv.ch?.extraAreaFormula || "+25mm"}
                         onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}
                       >
                         <SelectTrigger className="h-6 min-w-0 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-full sm:w-[95px]">
@@ -1827,7 +1827,7 @@ function BookingPage() {
                 }
               >
                 {(() => {
-                  const extraAreaFormula = inv.ch?.extraAreaFormula || "+25.4mm";
+                  const extraAreaFormula = inv.ch?.extraAreaFormula || "+25mm";
                   const extraAreaLabel =
                     extraAreaFormula === "+25.4mm"
                       ? "+25.4 MM"
