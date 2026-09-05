@@ -816,11 +816,11 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
       bigHoleRate: S.bigHoleRate || 150,
       jamboChargePercent: S.jamboChargePercent || 0,
       nonEconomicPercent: S.nonEconomicPercent || 0,
-      farmaCuttingPercent: S.farmaCuttingPercent || 10,
-      shapeCuttingPercent: S.shapeCuttingPercent || 10,
-      katraPolishRate: S.katraPolishRate || 150,
+      farmaCuttingPercent: S.farmaCuttingPercent || 0,
+      shapeCuttingPercent: S.shapeCuttingPercent || 0,
+      katraPolishRate: S.katraPolishRate || 0,
       designRate: S.designRate || 0,
-      screenPrintRate: S.screenPrintRate || 800,
+      screenPrintRate: S.screenPrintRate || 0,
       bewalingChargeRate: S.bewalingChargeRate || 0,
       taperChargeRate: S.taperChargeRate || 0,
       roundCornerRate: S.roundCornerRate || 0,
@@ -869,7 +869,13 @@ export function engineOpts(S: any, INV: any) {
      `INV.glass.thickness` off one of those was a blank screen with no way back
      short of clearing site data. Treat both as optional. */
   const inv = INV || {};
-  const ch = inv.ch || {};
+  const ch = Object.assign({}, inv.ch || {});
+  /* Sanitize accidental historical defaults if not configured in settings */
+  if (ch.farmaCuttingPercent === 10 && !S?.farmaCuttingPercent) ch.farmaCuttingPercent = 0;
+  if (ch.shapeCuttingPercent === 10 && !S?.shapeCuttingPercent) ch.shapeCuttingPercent = 0;
+  if (ch.katraPolishRate === 150 && !S?.katraPolishRate) ch.katraPolishRate = 0;
+  if (ch.screenPrintRate === 800 && !S?.screenPrintRate) ch.screenPrintRate = 0;
+
   const o: any = Object.assign({}, S, ch);
   o.thicknessMM = inv.glass?.thickness;
   /* Only override when the record actually carries the flag — forcing `false`
@@ -1444,7 +1450,7 @@ export function formatOrderId(idOrNo: string | undefined | null): string {
 /* Format legacy numbers like OB-1007 or OB-1009 into clean PI No format (e.g. 2026-007, 2026-009, 2026-011) */
 export function formatPiNo(idOrNo: string | undefined | null, defaultYear?: string): string {
   if (!idOrNo) return "—";
-  const str = String(idOrNo).trim();
+  const str = String(idOrNo).replace(/^#\s*/, "").trim();
   if (!str || str === "—" || str === "N/A" || str === "0") return "—";
   if (/^\d{4}-\d+$/.test(str)) return str;
   const digits = str.replace(/\D/g, "");
@@ -1453,6 +1459,56 @@ export function formatPiNo(idOrNo: string | undefined | null, defaultYear?: stri
   const num = parseInt(digits, 10);
   const seq = num > 1000 ? num - 1000 : num;
   return `${y}-${String(seq).padStart(3, "0")}`;
+}
+
+/* Robust matcher linking a payment record to its parent invoice / order / booking */
+export function matchesInvoicePayment(inv: any, pay: any): boolean {
+  if (!inv || !pay) return false;
+
+  // 1. Direct invoice ID match
+  if (
+    pay.invoiceId &&
+    inv.id &&
+    String(pay.invoiceId).trim().toLowerCase() === String(inv.id).trim().toLowerCase()
+  ) {
+    return true;
+  }
+
+  // 2. Exact or normalized matching against invoice identifier fields
+  const pNo = String(pay.invoiceNo || "")
+    .replace(/^#\s*/, "")
+    .trim()
+    .toLowerCase();
+  if (!pNo || pNo === "—" || pNo === "n/a" || pNo === "0") return false;
+
+  const invIdentifiers = [
+    String(inv.id || "")
+      .trim()
+      .toLowerCase(),
+    String(inv.no || "")
+      .replace(/^#\s*/, "")
+      .trim()
+      .toLowerCase(),
+    String(inv.orderNo || "")
+      .replace(/^#\s*/, "")
+      .trim()
+      .toLowerCase(),
+    String(inv.preProformaNo || "")
+      .replace(/^#\s*/, "")
+      .trim()
+      .toLowerCase(),
+  ].filter(Boolean);
+
+  if (invIdentifiers.includes(pNo)) return true;
+
+  const formattedPNo = formatPiNo(pNo);
+  if (formattedPNo && formattedPNo !== "—") {
+    for (const id of invIdentifiers) {
+      if (formatPiNo(id) === formattedPNo) return true;
+    }
+  }
+
+  return false;
 }
 
 /* ---------- print / PDF (markup matching exact PDF proforma format) ---------- */

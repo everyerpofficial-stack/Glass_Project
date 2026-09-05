@@ -66,6 +66,7 @@ import {
   formatOrderId,
   formatPiNo,
   isCancelled,
+  matchesInvoicePayment,
   nf,
   today,
 } from "@/lib/gq";
@@ -91,24 +92,110 @@ function getInitials(name: string) {
   return name.substring(0, 2).toUpperCase();
 }
 
+function cleanPhone(p: any): string {
+  return String(p || "").replace(/\D/g, "");
+}
+
+function isCustomerMatch(custObj: any, c: any): boolean {
+  if (!custObj || !c) return false;
+  const cName = String(c.name || "")
+    .trim()
+    .toLowerCase();
+  const invName = String(custObj.name || custObj.custName || "")
+    .trim()
+    .toLowerCase();
+  if (cName && invName && cName === invName) return true;
+  if (c.id && custObj.id && String(c.id) === String(custObj.id)) return true;
+  const cp = cleanPhone(c.phone);
+  const ip = cleanPhone(custObj.phone);
+  if (cp && ip && cp.length >= 10 && ip.length >= 10 && cp === ip) return true;
+  return false;
+}
+
+function settleAmounts(item: any, payments: any[]) {
+  const grandTotal = Number(item.totals?.grandTotal || 0);
+  const matchedPayments = (payments || []).filter((p: any) => matchesInvoicePayment(item, p));
+  const matchedPaymentsSum = matchedPayments.reduce(
+    (sum: number, p: any) => sum + (Number(p.amount) || 0),
+    0,
+  );
+  const paidAmount = matchedPayments.length > 0 ? matchedPaymentsSum : Number(item.paidAmount || 0);
+  return { grandTotal, paidAmount, remainingBalance: Math.max(0, grandTotal - paidAmount) };
+}
+
+function isPaymentForCancelledInv(p: any, invs: any[]) {
+  const invNo = String(p.invoiceNo || "")
+    .trim()
+    .toLowerCase();
+  if (!invNo && !p.invoiceId) return false;
+  const targetInv = invs.find(
+    (x: any) =>
+      (p.invoiceId && String(x.id) === String(p.invoiceId)) ||
+      (invNo &&
+        (String(x.no || "").toLowerCase() === invNo ||
+          String(x.orderNo || "").toLowerCase() === invNo ||
+          String(x.preProformaNo || "").toLowerCase() === invNo)),
+  );
+  return Boolean(targetInv && isCancelled(targetInv));
+}
+
+function isPaymentMatch(p: any, c: any, custInvoices: any[]): boolean {
+  if (!p || !c) return false;
+  const cName = String(c.name || "")
+    .trim()
+    .toLowerCase();
+  const pName = String(p.custName || "")
+    .trim()
+    .toLowerCase();
+  if (cName && pName && cName === pName) return true;
+  if (c.id && p.custId && String(c.id) === String(p.custId)) return true;
+  if (p.invoiceNo || p.invoiceId) {
+    const pNo = String(p.invoiceNo || "")
+      .trim()
+      .toLowerCase();
+    const pId = String(p.invoiceId || "")
+      .trim()
+      .toLowerCase();
+    return custInvoices.some((inv) => {
+      const iId = String(inv.id || "")
+        .trim()
+        .toLowerCase();
+      const iNo = String(inv.no || "")
+        .trim()
+        .toLowerCase();
+      const oNo = String(inv.orderNo || "")
+        .trim()
+        .toLowerCase();
+      const preNo = String(inv.preProformaNo || "")
+        .trim()
+        .toLowerCase();
+      return (
+        (pId && iId === pId) ||
+        (pNo &&
+          (pNo === iNo || pNo === oNo || pNo === preNo || formatPiNo(pNo) === formatPiNo(iNo)))
+      );
+    });
+  }
+  return false;
+}
+
 /* Everything the customer list shows about one customer. Extracted from the
    table row so the phone card computes it exactly the same way. */
 function customerSummary(c: any, invoices: any[], payments: any[]) {
-  const customerQuotes = invoices.filter(
-    (inv) =>
-      String(inv.cust?.name || "").toLowerCase() === String(c.name || "").toLowerCase() &&
-      !isCancelled(inv),
+  const customerQuotes = commercialRecords(invoices).filter(
+    (inv) => isCustomerMatch(inv.cust, c) && !isCancelled(inv),
   );
-  const custPays = payments.filter(
-    (p) => String(p.custName || "").toLowerCase() === String(c.name || "").toLowerCase(),
+  const custPays = (payments || []).filter(
+    (p) => isPaymentMatch(p, c, customerQuotes) && !isPaymentForCancelledInv(p, invoices),
+  );
+
+  const totalAmount = customerQuotes.reduce(
+    (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
+    0,
   );
   const totalPaidFromPayments = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const totalPaidFromInvoices = customerQuotes.reduce(
-    (sum, inv) => sum + (Number(inv.paidAmount) || 0),
-    0,
-  );
-  const totalAmount = customerQuotes.reduce(
-    (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
+    (sum, inv) => sum + settleAmounts(inv, custPays).paidAmount,
     0,
   );
   const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
@@ -128,22 +215,6 @@ const AVATAR_COLORS = [
   "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
   "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
 ];
-
-function isPaymentForCancelledInv(p: any, invs: any[]) {
-  const invNo = String(p.invoiceNo || "")
-    .trim()
-    .toLowerCase();
-  if (!invNo && !p.invoiceId) return false;
-  const targetInv = invs.find(
-    (x: any) =>
-      (p.invoiceId && String(x.id) === String(p.invoiceId)) ||
-      (invNo &&
-        (String(x.no || "").toLowerCase() === invNo ||
-          String(x.orderNo || "").toLowerCase() === invNo ||
-          String(x.preProformaNo || "").toLowerCase() === invNo)),
-  );
-  return Boolean(targetInv && isCancelled(targetInv));
-}
 
 function CustomersPage() {
   const navigate = useNavigate();
@@ -196,7 +267,7 @@ function CustomersPage() {
   const handleConfirmPaymentDetails = (details: ConfirmPaymentDetails) => {
     if (!payModalInvoice) return;
     const grandTotal = Number(payModalInvoice.totals?.grandTotal) || 0;
-    const currentPaid = Number(payModalInvoice.paidAmount) || 0;
+    const currentPaid = settleAmounts(payModalInvoice, payments).paidAmount;
     const pendingAmount = Math.max(0, grandTotal - currentPaid);
 
     if (details.paidAmount > pendingAmount) {
@@ -355,24 +426,17 @@ function CustomersPage() {
     .toLowerCase();
 
   const customerInvoices = useMemo(() => {
-    if (!viewCustNameLower) return [];
-    return invoices.filter(
-      (inv) =>
-        String(inv.cust?.name || "")
-          .trim()
-          .toLowerCase() === viewCustNameLower,
-    );
-  }, [invoices, viewCustNameLower]);
+    if (!viewCust) return [];
+    return commercialRecords(invoices).filter((inv) => isCustomerMatch(inv.cust, viewCust));
+  }, [invoices, viewCust]);
 
   const customerPayments = useMemo(() => {
-    if (!viewCustNameLower) return [];
+    if (!viewCust) return [];
     return payments.filter(
       (p) =>
-        String(p.custName || "")
-          .trim()
-          .toLowerCase() === viewCustNameLower,
+        isPaymentMatch(p, viewCust, customerInvoices) && !isPaymentForCancelledInv(p, invoices),
     );
-  }, [payments, viewCustNameLower]);
+  }, [payments, viewCust, customerInvoices, invoices]);
 
   const totalInvoicedForViewCust = useMemo(() => {
     return customerInvoices
@@ -387,10 +451,10 @@ function CustomersPage() {
 
     const totalFromInvoices = customerInvoices
       .filter((item) => !isCancelled(item))
-      .reduce((acc, item) => acc + (Number(item.paidAmount) || 0), 0);
+      .reduce((acc, item) => acc + settleAmounts(item, payments).paidAmount, 0);
 
     return Math.max(totalFromPayments, totalFromInvoices);
-  }, [customerPayments, customerInvoices, invoices]);
+  }, [customerPayments, customerInvoices, invoices, payments]);
 
   const dueBalanceForViewCust = Math.max(0, totalInvoicedForViewCust - totalPaidForViewCust);
 
@@ -404,15 +468,11 @@ function CustomersPage() {
 
     const targetInvNo = payFormData.invoiceNo || customerInvoices[0]?.no || "";
     const targetInv = targetInvNo
-      ? invoices.find(
-          (x) =>
-            String(x.no || "").toLowerCase() === String(targetInvNo).toLowerCase() ||
-            String(x.orderNo || "").toLowerCase() === String(targetInvNo).toLowerCase(),
-        )
+      ? invoices.find((x) => matchesInvoicePayment(x, { invoiceNo: targetInvNo }))
       : null;
 
     const invPending = targetInv
-      ? Math.max(0, Number(targetInv.totals?.grandTotal || 0) - Number(targetInv.paidAmount || 0))
+      ? settleAmounts(targetInv, payments).remainingBalance
       : dueBalanceForViewCust;
 
     const maxAllowed = targetInv ? invPending : dueBalanceForViewCust;
@@ -431,6 +491,7 @@ function CustomersPage() {
       custName: viewCust.name,
       custId: viewCust.id,
       invoiceNo: targetInvNo,
+      invoiceId: targetInv?.id,
       date: payFormData.date,
       amount: enteredAmt,
       mode: payFormData.mode,
@@ -438,26 +499,19 @@ function CustomersPage() {
       notes: payFormData.notes,
     });
 
-    if (targetInvNo) {
-      const targetInv = invoices.find(
-        (x) =>
-          String(x.no || "").toLowerCase() === String(targetInvNo).toLowerCase() ||
-          String(x.orderNo || "").toLowerCase() === String(targetInvNo).toLowerCase(),
-      );
-      if (targetInv && !isCancelled(targetInv)) {
-        const curPaid = Number(targetInv.paidAmount || 0);
-        const newPaid = curPaid + Number(payFormData.amount);
-        const gTotal = Number(targetInv.totals?.grandTotal || 0);
-        const newRemaining = Math.max(0, gTotal - newPaid);
-        const newPaymentStatus = newRemaining <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
-        patchInvoice(targetInv.id, {
-          paidAmount: newPaid,
-          remainingBalance: newRemaining,
-          paymentStatus: newPaymentStatus,
-          paymentRef: payFormData.refNo || targetInv.paymentRef,
-          paymentNotes: payFormData.notes || targetInv.paymentNotes,
-        });
-      }
+    if (targetInv && !isCancelled(targetInv)) {
+      const curPaid = settleAmounts(targetInv, payments).paidAmount;
+      const newPaid = curPaid + Number(payFormData.amount);
+      const gTotal = Number(targetInv.totals?.grandTotal || 0);
+      const newRemaining = Math.max(0, gTotal - newPaid);
+      const newPaymentStatus = newRemaining <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+      patchInvoice(targetInv.id, {
+        paidAmount: newPaid,
+        remainingBalance: newRemaining,
+        paymentStatus: newPaymentStatus,
+        paymentRef: payFormData.refNo || targetInv.paymentRef,
+        paymentNotes: payFormData.notes || targetInv.paymentNotes,
+      });
     }
 
     setPayFormData({
@@ -513,34 +567,7 @@ function CustomersPage() {
     let dueSum = 0;
 
     allCustomers.forEach((c) => {
-      const nameLower = String(c.name || "")
-        .trim()
-        .toLowerCase();
-      const customerQuotes = invoices.filter(
-        (inv) =>
-          String(inv.cust?.name || "")
-            .trim()
-            .toLowerCase() === nameLower && !isCancelled(inv),
-      );
-      const custPays = payments.filter(
-        (p) =>
-          String(p.custName || "")
-            .trim()
-            .toLowerCase() === nameLower && !isPaymentForCancelledInv(p, invoices),
-      );
-
-      const totalPaidFromPayments = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      const totalPaidFromInvoices = customerQuotes.reduce(
-        (sum, inv) => sum + (Number(inv.paidAmount) || 0),
-        0,
-      );
-      const totalAmount = customerQuotes.reduce(
-        (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
-        0,
-      );
-      const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
-      const dueAmount = Math.max(0, totalAmount - receivedAmount);
-
+      const { totalAmount, receivedAmount, dueAmount } = customerSummary(c, invoices, payments);
       grandTotalSum += totalAmount;
       receivedSum += receivedAmount;
       dueSum += dueAmount;
@@ -560,11 +587,7 @@ function CustomersPage() {
       const nameStr = String(c.name || "").trim();
       const q = search.toLowerCase().trim();
 
-      const cInvoices = invoices.filter(
-        (inv) =>
-          String(inv.cust?.name || "").toLowerCase() === nameStr.toLowerCase() ||
-          (c.id && String(inv.cust?.id || "") === String(c.id)),
-      );
+      const cInvoices = commercialRecords(invoices).filter((inv) => isCustomerMatch(inv.cust, c));
       const matchInvoiceNo = cInvoices.some(
         (inv) =>
           String(inv.no || "")

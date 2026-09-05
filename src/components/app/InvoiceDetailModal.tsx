@@ -21,6 +21,7 @@ import {
   formatPiNo,
   isCancelled,
   uid,
+  matchesInvoicePayment,
 } from "@/lib/gq";
 import { useGQ } from "@/lib/store";
 import { printElement } from "@/lib/print";
@@ -307,17 +308,7 @@ export function InvoiceDetailModal({
       .trim()
       .toLowerCase();
 
-    return (payments || []).filter((p: any) => {
-      if (!p || !p.invoiceNo) return false;
-      const pNo = String(p.invoiceNo).trim().toLowerCase();
-      return (
-        pNo === iNo ||
-        (oNo && pNo === oNo) ||
-        (preNo && pNo === preNo) ||
-        pNo === pId ||
-        formatPiNo(pNo) === formatPiNo(iNo)
-      );
-    });
+    return (payments || []).filter((p: any) => matchesInvoicePayment(invoice, p));
   }, [invoice, payments]);
 
   const matchedPaymentsSum = useMemo(() => {
@@ -327,8 +318,9 @@ export function InvoiceDetailModal({
   /* Early return AFTER all hooks */
   if (!open || !invoice) return null;
 
-  const grandTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
-  const paidAmount = Math.max(Number(invoice.paidAmount || 0), matchedPaymentsSum);
+  const grandTotal = Number(totals?.grandTotal ?? invoice.totals?.grandTotal ?? 0);
+  const paidAmount =
+    invoicePayments.length > 0 ? matchedPaymentsSum : Number(invoice.paidAmount || 0);
   const pendingAmount = Math.max(0, grandTotal - paidAmount);
   const isPaidFull = pendingAmount <= 0 && grandTotal > 0;
   const isPre = invoice.docType === "pre_proforma";
@@ -361,6 +353,7 @@ export function InvoiceDetailModal({
 
     savePayment({
       id: uid("pay"),
+      invoiceId: invoice.id,
       custName: invoice.cust?.name || "Customer",
       custId: invoice.cust?.id || "",
       invoiceNo: invoice.no || "",
@@ -372,7 +365,8 @@ export function InvoiceDetailModal({
       createdAt: new Date().toISOString(),
     });
 
-    const currentPaid = Number(invoice.paidAmount || 0);
+    const currentPaid =
+      invoicePayments.length > 0 ? matchedPaymentsSum : Number(invoice.paidAmount || 0);
     const updatedPaid = currentPaid + amt;
     const gTotal = Number(invoice.totals?.grandTotal || totals?.grandTotal || 0);
     const newRemaining = Math.max(0, gTotal - updatedPaid);
@@ -391,6 +385,28 @@ export function InvoiceDetailModal({
     setPayAmount("");
     setPayRefNo("");
     setPayNotes("");
+  };
+
+  const handleDeletePayment = (paymentId: string) => {
+    if (!confirm("Are you sure you want to delete this payment record?")) return;
+
+    deletePayment(paymentId);
+
+    const remainingPayments = invoicePayments.filter((p: any) => p.id !== paymentId);
+    const newPaid = remainingPayments.reduce(
+      (sum: number, p: any) => sum + (Number(p.amount) || 0),
+      0,
+    );
+    const gTotal = grandTotal;
+    const newRemaining = Math.max(0, gTotal - newPaid);
+    const newStatus =
+      newRemaining <= 0 && gTotal > 0 ? "Paid" : newPaid > 0 ? "Partially Paid" : "Unpaid";
+
+    patchInvoice(invoice.id, {
+      paidAmount: newPaid,
+      remainingBalance: newRemaining,
+      paymentStatus: newStatus,
+    });
   };
 
   /* Ensure work order exists (called lazily when switching to cut sheet / stickers tab) */
@@ -873,16 +889,7 @@ export function InvoiceDetailModal({
                                     size="icon"
                                     className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
                                     title="Delete payment record"
-                                    onClick={() => {
-                                      if (
-                                        confirm(
-                                          "Are you sure you want to delete this payment record?",
-                                        )
-                                      ) {
-                                        deletePayment(p.id);
-                                        toast.success("Payment record deleted");
-                                      }
-                                    }}
+                                    onClick={() => handleDeletePayment(p.id)}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
@@ -919,14 +926,7 @@ export function InvoiceDetailModal({
                                 size="icon"
                                 className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 cursor-pointer"
                                 title="Delete payment record"
-                                onClick={() => {
-                                  if (
-                                    confirm("Are you sure you want to delete this payment record?")
-                                  ) {
-                                    deletePayment(p.id);
-                                    toast.success("Payment record deleted");
-                                  }
-                                }}
+                                onClick={() => handleDeletePayment(p.id)}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>

@@ -56,11 +56,11 @@
     // Extended charges (per-unit rates from Party Invoice)
     jamboChargePercent: 0, // Jambo Charges %
     nonEconomicPercent: 0, // Non Economic %
-    farmaCuttingPercent: 10, // Farma Cutting %
-    shapeCuttingPercent: 10, // Shape Cutting %
-    katraPolishRate: 150, // Katra Polish — per SqM
+    farmaCuttingPercent: 0, // Farma Cutting %
+    shapeCuttingPercent: 0, // Shape Cutting %
+    katraPolishRate: 0, // Katra Polish — per SqM
     designRate: 0, // Design — per SqM
-    screenPrintRate: 800, // Screen Print — per SqM
+    screenPrintRate: 0, // Screen Print — per SqM
     bewalingChargeRate: 0, // Bewaling Charge — per RMT
     taperChargeRate: 0, // Taper Charge — per RMT
     roundCornerRate: 0, // Round Corner — per NOS

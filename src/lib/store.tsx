@@ -37,6 +37,8 @@ import {
   pushAllInChunks,
   uid,
   workOrderBelongsTo,
+  formatPiNo,
+  matchesInvoicePayment,
 } from "./gq";
 import type { SheetTabResult } from "./gq";
 
@@ -136,43 +138,40 @@ function mergeSheetCollection(prev: any[], fromSheet: any[], deletedIds?: Record
     if (sheetRow) {
       const prevPaid = Number(row.paidAmount || 0);
       const sheetPaid = Number(sheetRow.paidAmount || 0);
-      const maxPaid = Math.max(prevPaid, sheetPaid);
 
-      if (
-        row.sync === "local" ||
-        row.sync === "pending" ||
-        stamp(row) > stamp(sheetRow) ||
-        prevPaid > sheetPaid
-      ) {
+      if (row.sync === "local" || row.sync === "pending" || stamp(row) > stamp(sheetRow)) {
+        const localPaid = prevPaid;
         const grandTotal = Number(row.totals?.grandTotal || sheetRow.totals?.grandTotal || 0);
-        const rem = Math.max(0, grandTotal - maxPaid);
+        const rem = Math.max(0, grandTotal - localPaid);
         const pStatus =
-          rem <= 0 && maxPaid > 0
+          rem <= 0 && localPaid > 0
             ? "Paid"
-            : maxPaid > 0
+            : localPaid > 0
               ? "Partially Paid"
-              : row.paymentStatus || sheetRow.paymentStatus;
+              : row.paymentStatus || (grandTotal > 0 ? "Unpaid" : "Paid");
 
         byId.set(key, {
           ...sheetRow,
           ...row,
-          paidAmount: maxPaid,
+          paidAmount: localPaid,
           remainingBalance: rem,
           paymentStatus: pStatus,
           sync: row.sync === "local" || row.sync === "pending" ? row.sync : "synced",
         });
-      } else if (maxPaid > sheetPaid) {
-        const grandTotal = Number(sheetRow.totals?.grandTotal || 0);
-        const rem = Math.max(0, grandTotal - maxPaid);
+      } else {
+        const remotePaid = sheetPaid;
+        const grandTotal = Number(sheetRow.totals?.grandTotal || row.totals?.grandTotal || 0);
+        const rem = Math.max(0, grandTotal - remotePaid);
         const pStatus =
-          rem <= 0 && maxPaid > 0
+          rem <= 0 && remotePaid > 0
             ? "Paid"
-            : maxPaid > 0
+            : remotePaid > 0
               ? "Partially Paid"
-              : sheetRow.paymentStatus;
+              : sheetRow.paymentStatus || (grandTotal > 0 ? "Unpaid" : "Paid");
         byId.set(key, {
+          ...row,
           ...sheetRow,
-          paidAmount: maxPaid,
+          paidAmount: remotePaid,
           remainingBalance: rem,
           paymentStatus: pStatus,
         });
@@ -370,17 +369,61 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       { ...SAMPLE_INVOICE_07321, docType: "pre_proforma" },
       computeTotals(s, SAMPLE_INVOICE_07321),
     );
+    /* Load payments first so invoice paidAmount reconciles with payment records */
+    const savedPayments = LS.get<any[] | null>("payments", null);
+    const initialPayments =
+      savedPayments !== null ? savedPayments.filter((p: any) => p.id !== "pay-1001") : [];
+    setPayments(initialPayments);
+    LS.set("payments", initialPayments);
+
     const savedInvoices = LS.get<any[] | null>("invoices", null);
     /* Auto-migrate: ensure every invoice has status and docType fields */
     const rawInvoices =
       savedInvoices !== null
         ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321")
         : [];
-    const migratedInvoices = rawInvoices.map((inv: any) => ({
-      ...inv,
-      docType: inv.docType || "pre_proforma",
-      status: inv.status || "draft",
-    }));
+    const migratedInvoices = rawInvoices.map((inv: any) => {
+      const ch = inv.ch ? { ...inv.ch } : undefined;
+      if (ch) {
+        if (ch.farmaCuttingPercent === 10 && !s.farmaCuttingPercent) ch.farmaCuttingPercent = 0;
+        if (ch.shapeCuttingPercent === 10 && !s.shapeCuttingPercent) ch.shapeCuttingPercent = 0;
+        if (ch.katraPolishRate === 150 && !s.katraPolishRate) ch.katraPolishRate = 0;
+        if (ch.screenPrintRate === 800 && !s.screenPrintRate) ch.screenPrintRate = 0;
+      }
+      const updatedInv = {
+        ...inv,
+        ch,
+        docType: inv.docType || "pre_proforma",
+        status: inv.status || "draft",
+      };
+      const recalculatedTotals = computeTotals(s, updatedInv);
+      const newTotal = Number(recalculatedTotals?.grandTotal ?? inv.totals?.grandTotal ?? 0);
+
+      // Reconcile paidAmount with matching payments if payments exist
+      const matchingPays = (initialPayments || []).filter((p: any) =>
+        matchesInvoicePayment(updatedInv, p),
+      );
+      const paid =
+        matchingPays.length > 0
+          ? matchingPays.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
+          : Number(inv.paidAmount || 0);
+
+      const remainingBalance = Math.max(0, newTotal - paid);
+      const paymentStatus =
+        remainingBalance <= 0 && (paid > 0 || (newTotal > 0 && inv.paymentStatus === "Paid"))
+          ? "Paid"
+          : paid > 0
+            ? "Partially Paid"
+            : inv.paymentStatus || "Unpaid";
+
+      return {
+        ...updatedInv,
+        paidAmount: paid,
+        totals: recalculatedTotals || inv.totals,
+        remainingBalance,
+        paymentStatus,
+      };
+    });
     setInvoices(migratedInvoices);
     LS.set("invoices", migratedInvoices);
 
@@ -422,15 +465,18 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     const savedWorkOrders = LS.get<any[] | null>("workOrders", null);
     setWorkOrders(savedWorkOrders || []);
 
-    /* Load payments */
-    const savedPayments = LS.get<any[] | null>("payments", null);
-    const initialPayments =
-      savedPayments !== null ? savedPayments.filter((p: any) => p.id !== "pay-1001") : [];
-    setPayments(initialPayments);
-    LS.set("payments", initialPayments);
-
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
+    if (initialInv && initialInv.ch) {
+      if (initialInv.ch.farmaCuttingPercent === 10 && !s.farmaCuttingPercent)
+        initialInv.ch.farmaCuttingPercent = 0;
+      if (initialInv.ch.shapeCuttingPercent === 10 && !s.shapeCuttingPercent)
+        initialInv.ch.shapeCuttingPercent = 0;
+      if (initialInv.ch.katraPolishRate === 150 && !s.katraPolishRate)
+        initialInv.ch.katraPolishRate = 0;
+      if (initialInv.ch.screenPrintRate === 800 && !s.screenPrintRate)
+        initialInv.ch.screenPrintRate = 0;
+    }
     setInvState(initialInv);
     if (!draft) LS.set("draft", samplePreProforma);
 
@@ -1134,6 +1180,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       if (paymentDetails && paidAmount > 0) {
         savePayment({
           id: uid("pay"),
+          invoiceId: target.id,
           custName: updated?.cust?.name || target.cust?.name || "Customer",
           /* The document number, not the record id. The one payment on the live
              sheet carries an id here because this read the null variable. */
@@ -1306,17 +1353,39 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
   const deletePayment = useCallback(
     (id: string) => {
       rememberDeletion("payments", id);
-      setPayments((prev) => {
-        const next = prev.filter((x) => x.id !== id);
-        LS.set("payments", next);
-        return next;
-      });
+      const targetPay = payments.find((x) => x.id === id);
+
+      const nextPayments = payments.filter((x) => x.id !== id);
+      setPayments(nextPayments);
+      LS.set("payments", nextPayments);
+
+      if (targetPay) {
+        const targetInv = invoicesRef.current.find((x: any) => matchesInvoicePayment(x, targetPay));
+
+        if (targetInv) {
+          const remainingForInv = nextPayments.filter((x) => matchesInvoicePayment(targetInv, x));
+          const newPaid = remainingForInv.reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+          const gTotal = Number(
+            targetInv.totals?.grandTotal || computeTotals(settings, targetInv).grandTotal || 0,
+          );
+          const newRemaining = Math.max(0, gTotal - newPaid);
+          const newStatus =
+            newRemaining <= 0 && gTotal > 0 ? "Paid" : newPaid > 0 ? "Partially Paid" : "Unpaid";
+
+          patchInvoice(targetInv.id, {
+            paidAmount: newPaid,
+            remainingBalance: newRemaining,
+            paymentStatus: newStatus,
+          });
+        }
+      }
+
       toast.success("Payment deleted");
       if (settings.sheetUrl) {
         syncDeletion("payments", id, deletePaymentFromSheet);
       }
     },
-    [settings.sheetUrl, rememberDeletion, syncDeletion],
+    [payments, patchInvoice, settings, rememberDeletion, syncDeletion],
   );
 
   const pushAllToSheet = useCallback(async () => {

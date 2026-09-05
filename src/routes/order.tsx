@@ -56,6 +56,7 @@ import {
   dedupeCustomers,
   formatOrderId,
   formatPiNo,
+  matchesInvoicePayment,
   isSupersededBooking,
   supersededBookingNos,
 } from "@/lib/gq";
@@ -178,38 +179,17 @@ function Section({
   );
 }
 
-/* What a row owes. A payment is matched to a document by any of the numbers
-   that document has been known by, and the recorded `paidAmount` wins when it
-   is the larger of the two. Shared by the phone card and the desktop row so the
-   two can never show different money for the same record. */
+/* What a row owes. Uses matchesInvoicePayment to find matched payments.
+   If payment records exist, their sum is authoritative. If none exist, falls
+   back to item.paidAmount. */
 function settleAmounts(item: any, payments: any[]) {
   const grandTotal = Number(item.totals?.grandTotal || 0);
-  const matchedPaymentsSum = (payments || [])
-    .filter((p: any) => {
-      if (!p || !p.invoiceNo) return false;
-      const pNo = String(p.invoiceNo).trim().toLowerCase();
-      const iNo = String(item.no || "")
-        .trim()
-        .toLowerCase();
-      const oNo = String(item.orderNo || "")
-        .trim()
-        .toLowerCase();
-      const preNo = String(item.preProformaNo || "")
-        .trim()
-        .toLowerCase();
-      const pId = String(item.id || "")
-        .trim()
-        .toLowerCase();
-      return (
-        pNo === iNo ||
-        (oNo && pNo === oNo) ||
-        (preNo && pNo === preNo) ||
-        pNo === pId ||
-        formatPiNo(pNo) === formatPiNo(iNo)
-      );
-    })
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-  const paidAmount = Math.max(Number(item.paidAmount || 0), matchedPaymentsSum);
+  const matchedPayments = (payments || []).filter((p: any) => matchesInvoicePayment(item, p));
+  const matchedPaymentsSum = matchedPayments.reduce(
+    (sum: number, p: any) => sum + (Number(p.amount) || 0),
+    0,
+  );
+  const paidAmount = matchedPayments.length > 0 ? matchedPaymentsSum : Number(item.paidAmount || 0);
   return { grandTotal, paidAmount, remainingBalance: Math.max(0, grandTotal - paidAmount) };
 }
 
@@ -369,12 +349,10 @@ function OrderPage() {
     () =>
       proformaInvoices.reduce((acc, item: any) => {
         if (item.status === "cancelled") return acc;
-        const grandTotal = Number(item.totals?.grandTotal || 0);
-        const paidAmount = Number(item.paidAmount || 0);
-        const due = Math.max(0, grandTotal - paidAmount);
-        return acc + due;
+        const { remainingBalance } = settleAmounts(item, payments);
+        return acc + remainingBalance;
       }, 0),
-    [proformaInvoices],
+    [proformaInvoices, payments],
   );
 
   const filteredSavedInvoices = useMemo(
@@ -387,9 +365,7 @@ function OrderPage() {
 
         // 2. Due Status Filter
         const isCancelled = item.status === "cancelled";
-        const grandTotal = Number(item.totals?.grandTotal || 0);
-        const paidAmount = Number(item.paidAmount || 0);
-        const remainingBalance = Math.max(0, grandTotal - paidAmount);
+        const { remainingBalance } = settleAmounts(item, payments);
         const hasDue = remainingBalance > 0 && !isCancelled;
 
         if (dueFilter === "has_due" && !hasDue) return false;
@@ -419,7 +395,7 @@ function OrderPage() {
           custGstinStr.includes(query)
         );
       }),
-    [proformaInvoices, savedSearch, deliveryFilter, dueFilter],
+    [proformaInvoices, savedSearch, deliveryFilter, dueFilter, payments],
   );
 
   /* Get Order Bookings available for loading into Proforma Invoice */
