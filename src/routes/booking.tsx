@@ -2761,13 +2761,13 @@ function BookingPage() {
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                     <span className="text-muted-foreground">Glass amount</span>
                     <span className="font-mono font-medium text-foreground">
-                      ₹ {nf(totals.glassTotal ?? 0)}
+                      ₹ {nf(totals.glassAmount ?? 0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                     <span className="text-muted-foreground">Basic amount</span>
                     <span className="font-mono font-medium text-foreground">
-                      ₹ {nf(totals.basicTotal ?? totals.subTotal ?? 0)}
+                      ₹ {nf(totals.basicAmount ?? 0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
@@ -2778,29 +2778,25 @@ function BookingPage() {
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-medium">
                     <span className="text-muted-foreground">Total</span>
-                    <span className="font-mono text-foreground">
-                      ₹ {nf(totals.taxableTotal ?? 0)}
-                    </span>
+                    <span className="font-mono text-foreground">₹ {nf(totals.subTotal ?? 0)}</span>
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                     <span className="text-muted-foreground">
                       Insurance {inv.insurancePct ?? 2}%
                     </span>
-                    <span className="font-mono text-foreground">
-                      ₹ {nf(totals.insuranceAmt ?? 0)}
-                    </span>
+                    <span className="font-mono text-foreground">₹ {nf(totals.insurance ?? 0)}</span>
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-semibold">
                     <span className="text-foreground">Assessable value</span>
                     <span className="font-mono text-foreground">
-                      ₹ {nf(totals.assessableVal ?? 0)}
+                      ₹ {nf(totals.assessableValue ?? 0)}
                     </span>
                   </div>
 
                   {inv.gstType === "igst" ? (
                     <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                       <span className="text-muted-foreground">I-GST {inv.taxPct ?? 18}%</span>
-                      <span className="font-mono text-foreground">₹ {nf(totals.taxAmt ?? 0)}</span>
+                      <span className="font-mono text-foreground">₹ {nf(totals.igst ?? 0)}</span>
                     </div>
                   ) : (
                     <>
@@ -2808,17 +2804,13 @@ function BookingPage() {
                         <span className="text-muted-foreground">
                           C-GST {(inv.taxPct ?? 18) / 2}%
                         </span>
-                        <span className="font-mono text-foreground">
-                          ₹ {nf(totals.cgstAmt ?? 0)}
-                        </span>
+                        <span className="font-mono text-foreground">₹ {nf(totals.cgst ?? 0)}</span>
                       </div>
                       <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                         <span className="text-muted-foreground">
                           S-GST {(inv.taxPct ?? 18) / 2}%
                         </span>
-                        <span className="font-mono text-foreground">
-                          ₹ {nf(totals.sgstAmt ?? 0)}
-                        </span>
+                        <span className="font-mono text-foreground">₹ {nf(totals.sgst ?? 0)}</span>
                       </div>
                     </>
                   )}
