@@ -781,7 +781,21 @@ summary {
   }
 }
 
-/* The clone printElement() puts on paper carries the canvas class with it. */
+/* ── The cut sheet on paper ──────────────────────────────────────────────── */
+/* None of the screen widths may follow the sheet onto the page. The clone
+   printElement() sends to the printer carries the canvas class and its inline
+   pixel width with it, and the table inside it carries the 920px min-width
+   that keeps the seventeen columns legible while a phone pans across them.
+
+   A table wider than the page makes the browser shrink the whole document to
+   fit, which is what printed the sheet as a stamp in the corner of an A4 page
+   from a phone: Safari ignores `@page { size: A4 landscape }`, so a handset
+   prints portrait — ~194mm of usable width against a 920px table — while a
+   desktop gets the landscape page the rule asks for and never sees it.
+
+   On paper the sheet is therefore fluid and its type is set in points: the
+   table fills whichever page the print dialog is set to, portrait or
+   landscape, at the same size on every device. */
 @media print {
   .wo-sheet-frame {
     overflow: visible !important;
@@ -791,6 +805,22 @@ summary {
     width: auto !important;
     max-width: 100% !important;
     zoom: 1 !important;
+  }
+
+  .wo-print-area table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .wo-print-area th,
+  .wo-print-area td {
+    padding: 1px 2px !important;
+    font-size: 7pt !important;
+    line-height: 1.15 !important;
+    /* The remark column is free text and is the one cell that can hold a word
+       longer than its column. The unit captions ("(MM)", "(sq.mtr)") carry
+       their own smaller size class and stay proportionally below this. */
+    overflow-wrap: anywhere;
   }
 }
 

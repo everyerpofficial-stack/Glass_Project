@@ -32,13 +32,19 @@ export function SheetFitToggle({
 }
 
 /* Says which of the two mobile views is on, so the fitted sheet reads as a
-   deliberate overview rather than a rendering accident. */
+   deliberate overview rather than a rendering accident, and points out the one
+   thing a phone cannot be told to do from here: Safari ignores the landscape
+   page the print helper asks for, so that choice is the user's to make in the
+   dialog. The sheet prints correctly either way. */
 export function SheetViewHint({ fit }: { fit: boolean }) {
   return (
-    <p className="md:hidden mt-2 px-2 text-center text-[10px] text-muted-foreground print:hidden">
-      {fit
-        ? "Whole sheet fitted to the screen — tap Actual size to read the columns."
-        : "Actual size — swipe the sheet sideways for the remaining columns."}
-    </p>
+    <div className="md:hidden mt-2 px-2 text-center text-[10px] leading-relaxed text-muted-foreground print:hidden">
+      <p>
+        {fit
+          ? "Whole sheet fitted to the screen — tap Actual size to read the columns."
+          : "Actual size — swipe the sheet sideways for the remaining columns."}
+      </p>
+      <p>Printing: switch the dialog to Landscape for a roomier sheet — Portrait fits too.</p>
+    </div>
   );
 }
