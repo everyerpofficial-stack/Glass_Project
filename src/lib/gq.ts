@@ -860,6 +860,50 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
   } as any;
 }
 
+/* Percentage and per-SqM charges that no screen in the app can set. An early
+   build of the booking route seeded four of them into every new invoice's
+   `ch` — 10% farma cutting, 10% shape cutting, Rs 150/SqM katra polish and
+   Rs 800/SqM screen print — so Basic Amount carried tens of thousands of
+   rupees of charges that the document offered no way to switch off. A
+   thirteen-piece order at Rs 1530/SqM billed Rs 1,16,929 instead of Rs 65,727.
+   The first repair compared each key with `===` against the seeded number and
+   bailed out whenever the same key also existed in settings, so a value that
+   came back as the string "10" sailed through untouched. `ch` is not an
+   authoring surface for any of these, so drop the keys outright and let the
+   global settings be their only source. If a screen for them is ever added,
+   it belongs in Settings, not on the invoice. */
+const NON_INVOICE_CHARGE_KEYS = [
+  "jamboChargePercent",
+  "nonEconomicPercent",
+  "farmaCuttingPercent",
+  "shapeCuttingPercent",
+  "katraPolishRate",
+  "designRate",
+  "screenPrintRate",
+  "bewalingChargeRate",
+  "taperChargeRate",
+  "roundCornerRate",
+  "tapperRate",
+];
+
+/* The same seeds can also sit in a browser's persisted settings blob. Nothing
+   writes them there deliberately — there is no field for them — so clear them
+   by value, comparing numerically so "150" is caught alongside 150. */
+const LEGACY_CHARGE_SEEDS: Record<string, number> = {
+  farmaCuttingPercent: 10,
+  shapeCuttingPercent: 10,
+  katraPolishRate: 150,
+  screenPrintRate: 800,
+};
+
+/* Remove the un-editable charges from a saved invoice's `ch`. Mutates and
+   returns the object it is given; safe on undefined. */
+export function stripNonInvoiceCharges<T>(ch: T): T {
+  if (!ch || typeof ch !== "object") return ch;
+  for (const key of NON_INVOICE_CHARGE_KEYS) delete (ch as any)[key];
+  return ch;
+}
+
 /* effective engine settings = global settings + this invoice's charges */
 export function engineOpts(S: any, INV: any) {
   /* computeTotals runs inside the provider's useMemo, so anything that throws
@@ -869,14 +913,12 @@ export function engineOpts(S: any, INV: any) {
      `INV.glass.thickness` off one of those was a blank screen with no way back
      short of clearing site data. Treat both as optional. */
   const inv = INV || {};
-  const ch = Object.assign({}, inv.ch || {});
-  /* Sanitize accidental historical defaults if not configured in settings */
-  if (ch.farmaCuttingPercent === 10 && !S?.farmaCuttingPercent) ch.farmaCuttingPercent = 0;
-  if (ch.shapeCuttingPercent === 10 && !S?.shapeCuttingPercent) ch.shapeCuttingPercent = 0;
-  if (ch.katraPolishRate === 150 && !S?.katraPolishRate) ch.katraPolishRate = 0;
-  if (ch.screenPrintRate === 800 && !S?.screenPrintRate) ch.screenPrintRate = 0;
+  const ch = stripNonInvoiceCharges(Object.assign({}, inv.ch || {}));
 
   const o: any = Object.assign({}, S, ch);
+  for (const key in LEGACY_CHARGE_SEEDS) {
+    if (Number(o[key]) === LEGACY_CHARGE_SEEDS[key]) o[key] = 0;
+  }
   o.thicknessMM = inv.glass?.thickness;
   /* Only override when the record actually carries the flag — forcing `false`
      on a record with no `ch` would silently turn off rounding that the saved

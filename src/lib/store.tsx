@@ -34,6 +34,7 @@ import {
   getNextOrderNo,
   hasEnteredRateForInvoice,
   setStorageFailureHandler,
+  stripNonInvoiceCharges,
   pushAllInChunks,
   uid,
   workOrderBelongsTo,
@@ -383,13 +384,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         ? savedInvoices.filter((inv: any) => inv.id !== "inv-07321" && inv.id !== "inv-pi-07321")
         : [];
     const migratedInvoices = rawInvoices.map((inv: any) => {
-      const ch = inv.ch ? { ...inv.ch } : undefined;
-      if (ch) {
-        if (ch.farmaCuttingPercent === 10 && !s.farmaCuttingPercent) ch.farmaCuttingPercent = 0;
-        if (ch.shapeCuttingPercent === 10 && !s.shapeCuttingPercent) ch.shapeCuttingPercent = 0;
-        if (ch.katraPolishRate === 150 && !s.katraPolishRate) ch.katraPolishRate = 0;
-        if (ch.screenPrintRate === 800 && !s.screenPrintRate) ch.screenPrintRate = 0;
-      }
+      const ch = inv.ch ? stripNonInvoiceCharges({ ...inv.ch }) : undefined;
       const updatedInv = {
         ...inv,
         ch,
@@ -467,16 +462,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
 
     const draft = LS.get<any>("draft", null);
     const initialInv = draft && draft.items ? draft : samplePreProforma;
-    if (initialInv && initialInv.ch) {
-      if (initialInv.ch.farmaCuttingPercent === 10 && !s.farmaCuttingPercent)
-        initialInv.ch.farmaCuttingPercent = 0;
-      if (initialInv.ch.shapeCuttingPercent === 10 && !s.shapeCuttingPercent)
-        initialInv.ch.shapeCuttingPercent = 0;
-      if (initialInv.ch.katraPolishRate === 150 && !s.katraPolishRate)
-        initialInv.ch.katraPolishRate = 0;
-      if (initialInv.ch.screenPrintRate === 800 && !s.screenPrintRate)
-        initialInv.ch.screenPrintRate = 0;
-    }
+    if (initialInv && initialInv.ch) stripNonInvoiceCharges(initialInv.ch);
     setInvState(initialInv);
     if (!draft) LS.set("draft", samplePreProforma);
 

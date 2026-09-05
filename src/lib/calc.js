@@ -246,6 +246,14 @@
     var unit = item.rateUnit || s.rateUnit;
     var trace = [];
     var L, W;
+    /* Exact millimetres, never rounded. An invoice *prints* whole mm, but 84"
+       is 2133.6 mm and 36" is 914.4 mm: rounding those to 2134 x 914 before
+       multiplying reports 1.950 Sq.M where the true area is 1.951, and the
+       error compounds over every row of the sheet. Keep the exact value for
+       all area maths and round only for display. */
+    var lExactMM = 0,
+      wExactMM = 0,
+      mmDisplayDec = 0;
 
     var out = {
       ok: false,
@@ -262,6 +270,10 @@
       wCutMM: 0,
       lChgMM: 0,
       wChgMM: 0,
+      lExactMM: 0,
+      wExactMM: 0,
+      lChgExactMM: 0,
+      wChgExactMM: 0,
       areaSqmPer: 0,
       areaSqftPer: 0,
       totalSqm: 0,
@@ -285,8 +297,11 @@
       if (qty <= 0) out.errors.push("Quantity must be at least 1");
       if (!out.ok) return out;
 
-      out.lMM = round(Lm.mm, s.mmDecimals || 1);
-      out.wMM = round(Wm.mm, s.mmDecimals || 1);
+      mmDisplayDec = s.mmDecimals || 1;
+      lExactMM = Lm.mm;
+      wExactMM = Wm.mm;
+      out.lMM = round(lExactMM, mmDisplayDec);
+      out.wMM = round(wExactMM, mmDisplayDec);
       trace.push({ label: "L1 (MM)", expr: Lm.input + " mm", value: out.lMM + " mm" });
       trace.push({ label: "L2 (MM)", expr: Wm.input + " mm", value: out.wMM + " mm" });
     } else {
@@ -303,8 +318,11 @@
       if (qty <= 0) out.errors.push("Quantity must be at least 1");
       if (!out.ok) return out;
 
-      out.lMM = round(L.inches * MM_PER_INCH, s.mmDecimals);
-      out.wMM = round(W.inches * MM_PER_INCH, s.mmDecimals);
+      mmDisplayDec = s.mmDecimals;
+      lExactMM = L.inches * MM_PER_INCH;
+      wExactMM = W.inches * MM_PER_INCH;
+      out.lMM = round(lExactMM, mmDisplayDec);
+      out.wMM = round(wExactMM, mmDisplayDec);
       trace.push({
         label: "Length in mm",
         expr: L.input + '" = ' + L.inches + '" x 25.4',
@@ -318,8 +336,10 @@
     }
 
     // cutting size
-    out.lCutMM = out.lMM + s.cuttingAllowanceMM;
-    out.wCutMM = out.wMM + s.cuttingAllowanceMM;
+    var lCutExactMM = lExactMM + s.cuttingAllowanceMM;
+    var wCutExactMM = wExactMM + s.cuttingAllowanceMM;
+    out.lCutMM = round(lCutExactMM, mmDisplayDec);
+    out.wCutMM = round(wCutExactMM, mmDisplayDec);
     if (s.cuttingAllowanceMM) {
       trace.push({
         label: "Cutting size",
@@ -330,18 +350,23 @@
 
     // extra area formula
     var extraMM = 0;
-    if (s.extraAreaFormula === "+25.4mm" || s.extraAreaFormula === "+25mm") extraMM = 25.4;
+    /* "+25mm" used to be aliased to 25.4. They are different formulas and
+       both are in trade use: a full inch (25.4) and a flat 25 mm. */
+    if (s.extraAreaFormula === "+25.4mm") extraMM = MM_PER_INCH;
+    else if (s.extraAreaFormula === "+25mm") extraMM = 25;
     else if (s.extraAreaFormula === "+50mm") extraMM = 50;
     else if (s.extraAreaFormula === "custom") extraMM = parseFloat(s.extraAreaCustomMM) || 0;
     var effectiveChargeAllowance = (parseFloat(s.chargeAllowanceMM) || 0) + extraMM;
 
     // chargeable size
-    out.lChgMM = out.lMM + effectiveChargeAllowance;
-    out.wChgMM = out.wMM + effectiveChargeAllowance;
+    var lChgExactMM = lExactMM + effectiveChargeAllowance;
+    var wChgExactMM = wExactMM + effectiveChargeAllowance;
     if (s.snapChargeableToSooth) {
-      out.lChgMM = Math.ceil(out.lChgMM / SOOTH_MM - 1e-9) * SOOTH_MM;
-      out.wChgMM = Math.ceil(out.wChgMM / SOOTH_MM - 1e-9) * SOOTH_MM;
+      lChgExactMM = Math.ceil(lChgExactMM / SOOTH_MM - 1e-9) * SOOTH_MM;
+      wChgExactMM = Math.ceil(wChgExactMM / SOOTH_MM - 1e-9) * SOOTH_MM;
     }
+    out.lChgMM = round(lChgExactMM, mmDisplayDec);
+    out.wChgMM = round(wChgExactMM, mmDisplayDec);
     if (effectiveChargeAllowance || s.snapChargeableToSooth) {
       trace.push({
         label: "Chargeable size",
@@ -350,13 +375,13 @@
           round(effectiveChargeAllowance, 2) +
           " mm" +
           (s.snapChargeableToSooth ? ", rounded up to next sooth" : ""),
-        value: round(out.lChgMM, 2) + " x " + round(out.wChgMM, 2) + " mm",
+        value: round(lChgExactMM, 2) + " x " + round(wChgExactMM, 2) + " mm",
       });
     }
 
     // area (rounded once, after quantity — matches both sample invoices)
-    var rawSqm = (out.lChgMM * out.wChgMM) / 1e6;
-    var actualRawSqm = (out.lMM * out.wMM) / 1e6;
+    var rawSqm = (lChgExactMM * wChgExactMM) / 1e6;
+    var actualRawSqm = (lExactMM * wExactMM) / 1e6;
     var openArea = 0;
     (item.openings || []).forEach(function (o) {
       var a = ((parseFloat(o.w) || 0) * (parseFloat(o.h) || 0) * (parseFloat(o.qty) || 1)) / 1e6;
@@ -381,13 +406,14 @@
 
     trace.push({
       label: "Actual Area",
-      expr: round(out.lMM, 2) + " x " + round(out.wMM, 2) + " / 1,000,000 x " + qty + " pc",
+      expr: round(lExactMM, 2) + " x " + round(wExactMM, 2) + " / 1,000,000 x " + qty + " pc",
       value: out.totalSqm + " Sq.M  (" + out.totalSqft + " Sq.Ft)",
     });
     if (effectiveChargeAllowance) {
       trace.push({
         label: "Charge Area",
-        expr: round(out.lChgMM, 2) + " x " + round(out.wChgMM, 2) + " / 1,000,000 x " + qty + " pc",
+        expr:
+          round(lChgExactMM, 2) + " x " + round(wChgExactMM, 2) + " / 1,000,000 x " + qty + " pc",
         value: out.chargeAreaSqm + " Sq.M  (" + out.chargeAreaSqft + " Sq.Ft)",
       });
     }
@@ -412,6 +438,11 @@
       expr: out.billedArea + " " + unitLabel(unit) + " x Rs " + rate,
       value: "Rs " + out.amount.toFixed(2),
     });
+
+    out.lExactMM = lExactMM;
+    out.wExactMM = wExactMM;
+    out.lChgExactMM = lChgExactMM;
+    out.wChgExactMM = wChgExactMM;
 
     out.holes = parseFloat(item.holes) || 0;
     out.cutouts = parseFloat(item.cutouts) || 0;

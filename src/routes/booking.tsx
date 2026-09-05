@@ -1773,7 +1773,9 @@ function BookingPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="+25mm">+ 25 MM</SelectItem>
                           <SelectItem value="+25.4mm">+ 25.4 MM</SelectItem>
+                          <SelectItem value="+50mm">+ 50 MM</SelectItem>
                           <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1827,13 +1829,17 @@ function BookingPage() {
                 {(() => {
                   const extraAreaFormula = inv.ch?.extraAreaFormula || "+25.4mm";
                   const extraAreaLabel =
-                    extraAreaFormula === "+25.4mm" || extraAreaFormula === "+25mm"
+                    extraAreaFormula === "+25.4mm"
                       ? "+25.4 MM"
-                      : extraAreaFormula === "custom"
-                        ? inv.ch?.extraAreaCustomMM
-                          ? `+${inv.ch.extraAreaCustomMM} MM`
-                          : "+Custom"
-                        : "(Exact)";
+                      : extraAreaFormula === "+25mm"
+                        ? "+25 MM"
+                        : extraAreaFormula === "+50mm"
+                          ? "+50 MM"
+                          : extraAreaFormula === "custom"
+                            ? inv.ch?.extraAreaCustomMM
+                              ? `+${inv.ch.extraAreaCustomMM} MM`
+                              : "+Custom"
+                            : "(Exact)";
 
                   return (
                     <div className="space-y-6">

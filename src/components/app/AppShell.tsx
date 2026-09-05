@@ -217,7 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* ══════════ DESKTOP SIDEBAR ══════════ */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-30 hidden h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out md:flex",
+            "sticky top-0 hidden h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out md:flex",
             collapsed ? "w-[68px]" : "w-[240px]",
           )}
         >
@@ -364,12 +364,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         {/* ══════════ MAIN COLUMN ══════════ */}
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ease-in-out",
-            collapsed ? "md:pl-[68px]" : "md:pl-[240px]",
-          )}
-        >
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* ── Top header ──
               On a phone this is the only chrome at the top of the screen: brand
               mark, page title, and the three controls worth a thumb. Navigation

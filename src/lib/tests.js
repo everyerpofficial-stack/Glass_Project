@@ -86,7 +86,13 @@
       ["36", "11 7/8", 1, 914, 302, 0.276, 222.73],
       ["36 3/8", "15", 1, 924, 381, 0.352, 284.06],
       ["57 5/8", "22 3/8", 1, 1464, 568, 0.832, 671.42],
-      ["56 7/8", "17 3/8", 1, 1445, 441, 0.637, 514.06],
+      /* PI-1828 prints 0.637 for this row. 56 7/8" x 17 3/8" is
+         1444.625 x 441.325 mm = 0.63755 Sq.M; 0.637 only comes out if the
+         millimetres are rounded to 1445 x 441 before multiplying. It is the
+         one row in this sample where the two methods disagree, and all 24
+         rows of the Shri K. R. Glass reference sheet multiply the unrounded
+         millimetres, so the engine does the same and this row reads 0.638. */
+      ["56 7/8", "17 3/8", 1, 1445, 441, 0.638, 514.06],
       ["36 3/8", "13 1/8", 1, 924, 333, 0.308, 248.56],
     ].forEach(function (r) {
       var L = G.calcLine({ l1: r[0], l2: r[1], qty: r[2], rate: 807 }, anand);
