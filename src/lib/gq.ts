@@ -1089,6 +1089,18 @@ export function buildRecord(INV: any, TOT: any) {
     sqft: TOT.sqft,
     weightKg: TOT.weightKg,
     glassAmount: TOT.glassAmount,
+    holes: TOT.holes,
+    holeCharge: TOT.holeCharge,
+    cutouts: TOT.cutouts,
+    cutoutCharge: TOT.cutoutCharge,
+    bigHoles: TOT.bigHoles,
+    bigHoleCharge: TOT.bigHoleCharge,
+    bigCutouts: TOT.bigCutouts,
+    bigCutoutCharge: TOT.bigCutoutCharge,
+    csks: TOT.csks,
+    cskCharge: TOT.cskCharge,
+    countersinks: TOT.countersinks,
+    countersinkCharge: TOT.countersinkCharge,
     wastageArea: TOT.wastageArea,
     wastageAmount: TOT.wastageAmount,
     basicAmount: TOT.basicAmount,
@@ -1831,7 +1843,25 @@ export function buildPrintHTML(
       "</td></tr>"
     );
   }
-  const summary = [fr("Basic Amount", nf(t.basicAmount))];
+  const summary: string[] = [];
+  const hasExtraHoleCutCharges =
+    Boolean(t.holeCharge && t.holeCharge > 0) ||
+    Boolean(t.cutoutCharge && t.cutoutCharge > 0) ||
+    Boolean(t.bigHoleCharge && t.bigHoleCharge > 0) ||
+    Boolean(t.bigCutoutCharge && t.bigCutoutCharge > 0) ||
+    Boolean(t.cskCharge && t.cskCharge > 0) ||
+    Boolean(t.countersinkCharge && t.countersinkCharge > 0);
+
+  if (hasExtraHoleCutCharges) {
+    summary.push(fr("Glass Amount", nf(t.glassAmount)));
+    if (t.holeCharge) summary.push(fr("Hole Charge", nf(t.holeCharge)));
+    if (t.cutoutCharge) summary.push(fr("Cutout Charge", nf(t.cutoutCharge)));
+    if (t.bigHoleCharge) summary.push(fr("Big Hole Charge", nf(t.bigHoleCharge)));
+    if (t.bigCutoutCharge) summary.push(fr("Big Cutout Charge", nf(t.bigCutoutCharge)));
+    if (t.cskCharge || t.countersinkCharge)
+      summary.push(fr("CSK Charge", nf(t.cskCharge || t.countersinkCharge)));
+  }
+  summary.push(fr("Basic Amount", nf(t.basicAmount)));
   if (t.adminCharge) summary.push(fr("Admin Charge", nf(t.adminCharge)));
   if (t.discount) summary.push(fr("Discount", "-" + nf(t.discount)));
   summary.push(fr("Total", nf(t.subTotal)));

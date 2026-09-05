@@ -1728,13 +1728,71 @@ function OrderPage() {
                   </div>
                 </div>
                 <div className="px-3 py-2 space-y-0">
+                  {/* Glass Amount */}
+                  <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                    <span className="text-foreground font-medium bg-blue-500/10 px-2 py-0.5 rounded">
+                      Glass Amount
+                    </span>
+                    <span className="font-mono text-foreground bg-blue-500/20 px-2 py-0.5 rounded">
+                      {nf(totals.glassAmount ?? 0)}
+                    </span>
+                  </div>
+
+                  {Boolean(totals.holeCharge) && (
+                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                      <span className="text-foreground">
+                        Hole Charge {totals.holes ? `(${totals.holes} pcs)` : ""}
+                      </span>
+                      <span className="font-mono text-foreground">{nf(totals.holeCharge)}</span>
+                    </div>
+                  )}
+                  {Boolean(totals.cutoutCharge) && (
+                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                      <span className="text-foreground">
+                        Cutout Charge {totals.cutouts ? `(${totals.cutouts} pcs)` : ""}
+                      </span>
+                      <span className="font-mono text-foreground">{nf(totals.cutoutCharge)}</span>
+                    </div>
+                  )}
+                  {Boolean(totals.bigHoleCharge) && (
+                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                      <span className="text-foreground">
+                        Big Hole Charge {totals.bigHoles ? `(${totals.bigHoles} pcs)` : ""}
+                      </span>
+                      <span className="font-mono text-foreground">{nf(totals.bigHoleCharge)}</span>
+                    </div>
+                  )}
+                  {Boolean(totals.bigCutoutCharge) && (
+                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                      <span className="text-foreground">
+                        Big Cutout Charge {totals.bigCutouts ? `(${totals.bigCutouts} pcs)` : ""}
+                      </span>
+                      <span className="font-mono text-foreground">
+                        {nf(totals.bigCutoutCharge)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(totals.cskCharge || totals.countersinkCharge) && (
+                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
+                      <span className="text-foreground">
+                        CSK Charge{" "}
+                        {totals.csks || totals.countersinks
+                          ? `(${totals.csks || totals.countersinks} pcs)`
+                          : ""}
+                      </span>
+                      <span className="font-mono text-foreground">
+                        {nf(totals.cskCharge || totals.countersinkCharge)}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Basic Amount */}
                   <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
                     <span className="text-foreground font-medium bg-blue-500/10 px-2 py-0.5 rounded">
                       Basic Amount
                     </span>
                     <span className="font-mono text-foreground bg-blue-500/20 px-2 py-0.5 rounded">
-                      {nf(totals.glassAmount ?? 0)}
+                      {nf(totals.basicAmount ?? 0)}
                     </span>
                   </div>
 

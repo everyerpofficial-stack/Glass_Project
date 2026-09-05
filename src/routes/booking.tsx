@@ -2770,6 +2770,61 @@ function BookingPage() {
                       ₹ {nf(totals.glassAmount ?? 0)}
                     </span>
                   </div>
+
+                  {Boolean(totals.holeCharge) && (
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">
+                        Hole charge {totals.holes ? `(${totals.holes} pcs)` : ""}
+                      </span>
+                      <span className="font-mono font-medium text-foreground">
+                        ₹ {nf(totals.holeCharge)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(totals.cutoutCharge) && (
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">
+                        Cutout charge {totals.cutouts ? `(${totals.cutouts} pcs)` : ""}
+                      </span>
+                      <span className="font-mono font-medium text-foreground">
+                        ₹ {nf(totals.cutoutCharge)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(totals.bigHoleCharge) && (
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">
+                        Big Hole charge {totals.bigHoles ? `(${totals.bigHoles} pcs)` : ""}
+                      </span>
+                      <span className="font-mono font-medium text-foreground">
+                        ₹ {nf(totals.bigHoleCharge)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(totals.bigCutoutCharge) && (
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">
+                        Big Cutout charge {totals.bigCutouts ? `(${totals.bigCutouts} pcs)` : ""}
+                      </span>
+                      <span className="font-mono font-medium text-foreground">
+                        ₹ {nf(totals.bigCutoutCharge)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(totals.cskCharge || totals.countersinkCharge) && (
+                    <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                      <span className="text-muted-foreground">
+                        CSK charge{" "}
+                        {totals.csks || totals.countersinks
+                          ? `(${totals.csks || totals.countersinks} pcs)`
+                          : ""}
+                      </span>
+                      <span className="font-mono font-medium text-foreground">
+                        ₹ {nf(totals.cskCharge || totals.countersinkCharge)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
                     <span className="text-muted-foreground">Basic amount</span>
                     <span className="font-mono font-medium text-foreground">
