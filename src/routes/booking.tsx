@@ -175,7 +175,12 @@ function Section({
           <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
           {title}
         </span>
-        {headerRight && <div className="shrink-0">{headerRight}</div>}
+        {/* `shrink-0` used to keep this block at its natural width: on a phone a
+            header carrying several controls ran past the card's right edge and
+            was clipped by the card's `overflow-hidden`, so the last control —
+            Add Item on Product & Layers — could not be reached at all. It takes
+            a row of its own below `sm` instead and wraps inside that row. */}
+        {headerRight && <div className="w-full min-w-0 sm:w-auto sm:shrink-0">{headerRight}</div>}
       </div>
       <div className="px-3 sm:px-4 py-3">{children}</div>
     </div>
@@ -1708,14 +1713,14 @@ function BookingPage() {
               <Section
                 title="Product & Layers"
                 headerRight={
-                  <div className="flex items-center gap-2 flex-wrap justify-end text-xs">
+                  <div className="grid w-full grid-cols-2 items-center gap-1.5 text-xs sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-2">
                     {/* Size Entry Type */}
-                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <div className="min-w-0 flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
                         Size:
                       </span>
                       <Select value={inputUnit} onValueChange={(v) => handleInputUnitChange(v)}>
-                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[60px]">
+                        <SelectTrigger className="h-6 min-w-0 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-full sm:w-[60px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1727,7 +1732,7 @@ function BookingPage() {
 
                     {/* Frequency Toggle */}
                     <div
-                      className={`flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs transition-opacity ${
+                      className={`min-w-0 flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs transition-opacity ${
                         inputUnit === "mm" ? "opacity-50 pointer-events-none" : ""
                       }`}
                       title={
@@ -1744,7 +1749,7 @@ function BookingPage() {
                         value={isFreqOn ? "on" : "off"}
                         onValueChange={(v) => updateInvField("frequencyEnabled", v === "on")}
                       >
-                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[55px]">
+                        <SelectTrigger className="h-6 min-w-0 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-full sm:w-[55px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1755,7 +1760,7 @@ function BookingPage() {
                     </div>
 
                     {/* Area Formula */}
-                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <div className="min-w-0 flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
                         Area Formula:
                       </span>
@@ -1763,7 +1768,7 @@ function BookingPage() {
                         value={inv.ch?.extraAreaFormula || "+25.4mm"}
                         onValueChange={(v) => updateInvField("ch.extraAreaFormula", v)}
                       >
-                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[95px]">
+                        <SelectTrigger className="h-6 min-w-0 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-full sm:w-[95px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1776,7 +1781,7 @@ function BookingPage() {
                         <Input
                           type="number"
                           placeholder="MM"
-                          className="h-6 w-14 text-xs font-mono px-1 py-0 text-center"
+                          className="h-6 w-14 shrink-0 text-xs font-mono px-1 py-0 text-center"
                           value={inv.ch?.extraAreaCustomMM || ""}
                           onChange={(e) =>
                             updateInvField(
@@ -1789,7 +1794,7 @@ function BookingPage() {
                     </div>
 
                     {/* Rate Find Formula */}
-                    <div className="flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
+                    <div className="min-w-0 flex items-center gap-1 bg-background border border-border/80 rounded px-1.5 py-0.5 shadow-xs">
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase whitespace-nowrap">
                         Rate Formula:
                       </span>
@@ -1797,7 +1802,7 @@ function BookingPage() {
                         value={settings.rateUnit}
                         onValueChange={(v) => updateInvField("ch.rateUnit", v)}
                       >
-                        <SelectTrigger className="h-6 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-[105px]">
+                        <SelectTrigger className="h-6 min-w-0 text-[11px] border-0 shadow-none focus:ring-0 px-1 py-0 w-full sm:w-[105px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1811,7 +1816,7 @@ function BookingPage() {
                     {/* Add Item Button */}
                     <Button
                       size="sm"
-                      className="h-7 text-[11px] px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                      className="col-span-2 h-9 w-full text-[11px] px-2.5 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs sm:col-span-1 sm:h-7 sm:w-auto"
                       onClick={addLayer}
                     >
                       <Plus className="h-3 w-3" /> Add Item
@@ -1868,7 +1873,7 @@ function BookingPage() {
                                 <div className="order-1 md:order-none">
                                   <span className="field-label md:hidden">Item</span>
                                   <Input
-                                    className="h-9 md:h-7 text-xs w-full bg-green-500/10 text-center font-semibold"
+                                    className="h-8 w-24 md:h-7 md:w-full text-xs bg-green-500/10 text-center font-semibold"
                                     value={
                                       layer.layerNo !== undefined && layer.layerNo !== ""
                                         ? layer.layerNo

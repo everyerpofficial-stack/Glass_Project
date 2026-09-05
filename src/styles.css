@@ -754,6 +754,43 @@ summary {
   overflow-wrap: anywhere;
 }
 
+/* ── Printable document tables on a phone ────────────────────────────────── */
+/* The work order cut sheet is a seventeen-column factory document. It has to
+   stay that table on a desktop and on paper, so it cannot simply be made
+   narrower; below `md` the same pieces are rendered as one card each instead
+   (see CutSheetGroup) and the table is dropped. Print always gets the table,
+   whichever device the print was started from — a phone's print media query
+   is evaluated against the paper, not the screen, and this must not depend on
+   which breakpoint the browser decides that is. */
+.doc-table-view {
+  display: block;
+}
+
+.doc-card-view {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .doc-table-view {
+    display: none;
+  }
+
+  .doc-card-view {
+    display: block;
+  }
+}
+
+@media print {
+  .doc-table-view {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .doc-card-view {
+    display: none !important;
+  }
+}
+
 /* A page's own commit bar (Save, Confirm) outranks the shell's generic quick
    action: two floating controls in the same corner is one too many. */
 body:has(.app-action-bar) .app-fab {

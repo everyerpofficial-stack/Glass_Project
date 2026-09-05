@@ -167,7 +167,11 @@ function Section({
           <span className="w-1 h-3.5 rounded-full bg-primary inline-block" />
           {title}
         </span>
-        {headerRight && <div className="shrink-0">{headerRight}</div>}
+        {/* Same reason as the booking form: a header full of controls used to be
+            clipped by the card's `overflow-hidden` on a phone rather than
+            wrapping, which put the controls at the end of the row out of
+            reach. */}
+        {headerRight && <div className="w-full min-w-0 sm:w-auto sm:shrink-0">{headerRight}</div>}
       </div>
       <div className="px-3 sm:px-4 py-3">{children}</div>
     </div>
