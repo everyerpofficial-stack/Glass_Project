@@ -1856,12 +1856,12 @@ function BookingPage() {
 
                         const isCustomGlassType = Boolean(
                           layer.isCustomGlassType ||
-                            (layer.glassType &&
-                              !GLASS_TYPES.includes(layer.glassType) &&
-                              layer.glassType !==
-                                detectGlassTypeFromProduct(
-                                  layer.productName || layer.glassName || "",
-                                )),
+                          (layer.glassType &&
+                            !GLASS_TYPES.includes(layer.glassType) &&
+                            layer.glassType !==
+                              detectGlassTypeFromProduct(
+                                layer.productName || layer.glassName || "",
+                              )),
                         );
 
                         return (
@@ -1929,7 +1929,8 @@ function BookingPage() {
                                             updateLayer(layerIdx, "productName", firstProd);
                                             updateLayer(layerIdx, "glassName", firstProd);
                                             const thk = extractThicknessFromProductName(firstProd);
-                                            if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                            if (thk !== null)
+                                              updateLayer(layerIdx, "thickness", thk);
                                           }
                                         }}
                                       >
@@ -1961,7 +1962,8 @@ function BookingPage() {
                                             updateLayer(layerIdx, "productName", firstProd);
                                             updateLayer(layerIdx, "glassName", firstProd);
                                             const thk = extractThicknessFromProductName(firstProd);
-                                            if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                            if (thk !== null)
+                                              updateLayer(layerIdx, "thickness", thk);
                                           }
                                         }
                                       }}
@@ -2860,7 +2862,6 @@ function BookingPage() {
               </div>
             </div>
           </div>
-
         </div>
       )}
 

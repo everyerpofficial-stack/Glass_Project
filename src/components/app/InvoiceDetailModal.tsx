@@ -25,6 +25,8 @@ import {
 import { useGQ } from "@/lib/store";
 import { printElement } from "@/lib/print";
 import { CutSheetGroup } from "@/components/app/CutSheetGroup";
+import { SheetFitToggle, SheetViewHint } from "@/components/app/SheetViewport";
+import { useSheetViewport } from "@/hooks/use-sheet-viewport";
 import {
   FileText,
   User,
@@ -261,6 +263,14 @@ export function InvoiceDetailModal({
     });
     return Array.from(map.values());
   }, [activeWO]);
+
+  /* The cut sheet's own width: the entered-size columns (L1/L2 and, when it is
+     on, FREQ) are only there for an inch document, so an mm sheet is narrower
+     and can be scaled less on a phone. */
+  const docUnit = invoice?.inputUnit || activeWO?.inputUnit || "inch";
+  const isMM = docUnit === "mm";
+  const isFreqOn = !isMM && Boolean(invoice?.frequencyEnabled ?? activeWO?.frequencyEnabled);
+  const sheet = useSheetViewport(isMM ? 820 : 990);
 
   /* Sticker labels data */
   const stickerLabels = useMemo(() => {
@@ -1181,13 +1191,16 @@ export function InvoiceDetailModal({
                   <Factory className="h-4 w-4 text-amber-500" />
                   Work Order Cut Sheet for #{activeWO?.woNo || invoice.orderNo || invoice.no}
                 </span>
-                <Button
-                  size="sm"
-                  onClick={handlePrintCutSheet}
-                  className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  <Printer className="h-3.5 w-3.5" /> Print Cut Sheet
-                </Button>
+                <div className="flex items-center gap-2">
+                  <SheetFitToggle fit={sheet.fit} onToggle={sheet.toggleFit} className="flex-1" />
+                  <Button
+                    size="sm"
+                    onClick={handlePrintCutSheet}
+                    className="h-8 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Printer className="h-3.5 w-3.5" /> Print Cut Sheet
+                  </Button>
+                </div>
               </div>
 
               {!activeWO ? (
@@ -1208,107 +1221,111 @@ export function InvoiceDetailModal({
                   </Button>
                 </div>
               ) : (
-                <div
-                  ref={printRef}
-                  className="wo-print-area bg-white text-black p-4 sm:p-6 border border-gray-300 rounded-xl shadow-xs max-w-5xl mx-auto space-y-4 print:p-0 print:border-none print:shadow-none print:max-w-full print:w-full print:m-0"
-                >
-                  {/* WO Header */}
-                  <div className="border-b-2 border-black pb-3 mb-3">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4">
-                      <div className="text-[11px] space-y-0.5 min-w-0">
-                        <div className="truncate">
-                          <span className="font-bold">Customer :</span>{" "}
-                          {activeWO.customer || invoice.cust?.name || "—"}
-                        </div>
-                        <div>
-                          <span className="font-bold">PI No. :</span>{" "}
-                          <span className="font-mono font-bold">
-                            {activeWO.piNo || invoice.no || "—"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-bold">PI Date :</span>{" "}
-                          {dmy(activeWO.piDate || invoice.date)}
-                        </div>
-                        <div className="break-words">
-                          <span className="font-bold">Dispatch To :</span>{" "}
-                          {activeWO.dispatchTo || invoice.cust?.addr || "—"}
-                        </div>
-                      </div>
-                      <div className="text-left sm:text-right shrink-0">
-                        <div className="text-lg sm:text-xl font-black tracking-wide text-black">
-                          WORK ORDER
-                        </div>
-                        <div className="text-[11px] mt-1 space-y-0.5">
-                          <div>
-                            <span className="font-bold">Order No :</span>{" "}
-                            <span className="font-mono text-sm font-bold">
-                              {activeWO.orderNo || invoice.orderNo || invoice.no || "—"}
-                            </span>
+                <>
+                  <div ref={sheet.frameRef} className="wo-sheet-frame">
+                    <div style={sheet.zoomStyle}>
+                      <div
+                        ref={printRef}
+                        style={sheet.canvasStyle}
+                        className="wo-print-area wo-sheet-canvas bg-white text-black p-3 sm:p-6 border border-gray-300 rounded-xl shadow-xs max-w-5xl mx-auto space-y-4 print:p-0 print:border-none print:shadow-none print:max-w-full print:w-full print:m-0"
+                      >
+                        {/* WO Header */}
+                        <div className="border-b-2 border-black pb-3 mb-3">
+                          <div className="flex flex-row justify-between items-start gap-4">
+                            <div className="text-[11px] space-y-0.5 min-w-0">
+                              <div className="truncate">
+                                <span className="font-bold">Customer :</span>{" "}
+                                {activeWO.customer || invoice.cust?.name || "—"}
+                              </div>
+                              <div>
+                                <span className="font-bold">PI No. :</span>{" "}
+                                <span className="font-mono font-bold">
+                                  {activeWO.piNo || invoice.no || "—"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="font-bold">PI Date :</span>{" "}
+                                {dmy(activeWO.piDate || invoice.date)}
+                              </div>
+                              <div className="break-words">
+                                <span className="font-bold">Dispatch To :</span>{" "}
+                                {activeWO.dispatchTo || invoice.cust?.addr || "—"}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-xl font-black tracking-wide text-black">
+                                WORK ORDER
+                              </div>
+                              <div className="text-[11px] mt-1 space-y-0.5">
+                                <div>
+                                  <span className="font-bold">Order No :</span>{" "}
+                                  <span className="font-mono text-sm font-bold">
+                                    {activeWO.orderNo || invoice.orderNo || invoice.no || "—"}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-bold">Our Date :</span>{" "}
+                                  {dmy(activeWO.piDate || invoice.date || new Date())}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-bold">Our Date :</span>{" "}
-                            {dmy(activeWO.piDate || invoice.date || new Date())}
+                          <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
+                            <div>
+                              <span className="font-bold">PO No. :</span>{" "}
+                              {activeWO.poNo || invoice.poNo || "—"} &nbsp;&nbsp;{" "}
+                              <span className="font-bold">Project :</span>{" "}
+                              {activeWO.project || invoice.projectRemark || "—"}
+                            </div>
+                            <div className="mt-1 font-bold text-sm">
+                              {activeWO.glassDesc ||
+                                (activeWO.thickness
+                                  ? `${activeWO.thickness}mm ${activeWO.productName || "Glass"}`
+                                  : invoice.productName || "Glass")}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-300 text-[11px]">
-                      <div>
-                        <span className="font-bold">PO No. :</span>{" "}
-                        {activeWO.poNo || invoice.poNo || "—"} &nbsp;&nbsp;{" "}
-                        <span className="font-bold">Project :</span>{" "}
-                        {activeWO.project || invoice.projectRemark || "—"}
-                      </div>
-                      <div className="mt-1 font-bold text-sm">
-                        {activeWO.glassDesc ||
-                          (activeWO.thickness
-                            ? `${activeWO.thickness}mm ${activeWO.productName || "Glass"}`
-                            : invoice.productName || "Glass")}
+
+                        {/* WO Product-Grouped Tables */}
+                        <div className="space-y-4">
+                          {woProductGroups.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-muted-foreground">
+                              No cut pieces recorded
+                            </div>
+                          ) : (
+                            woProductGroups.map((grp: any, gIdx: number) => {
+                              const isSqft = settings?.rateUnit === "sqft";
+
+                              return (
+                                <CutSheetGroup
+                                  key={gIdx}
+                                  group={grp}
+                                  index={gIdx}
+                                  isMM={isMM}
+                                  isFreqOn={isFreqOn}
+                                  isSqft={isSqft}
+                                  areaUnitLabel={isSqft ? "sq.ft." : "sq.mtr"}
+                                  totals={totals}
+                                />
+                              );
+                            })
+                          )}
+
+                          {/* Overall Work Order Grand Summary Footer */}
+                          <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex flex-row justify-between gap-2">
+                            <div>Grand Total: {activeWO.totalPieces} Pcs</div>
+                            <div className="text-[11px]">
+                              {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp;{" "}
+                              {nf(activeWO.totalSqft, 3)} SQFT &nbsp;|&nbsp; Weight:{" "}
+                              {activeWO.weightKg || "—"} kg
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* WO Product-Grouped Tables */}
-                  <div className="space-y-4">
-                    {woProductGroups.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-muted-foreground">
-                        No cut pieces recorded
-                      </div>
-                    ) : (
-                      woProductGroups.map((grp: any, gIdx: number) => {
-                        const docUnit = invoice?.inputUnit || activeWO?.inputUnit || "inch";
-                        const isFreqOn =
-                          docUnit !== "mm" &&
-                          Boolean(invoice?.frequencyEnabled ?? activeWO?.frequencyEnabled);
-                        const isMM = docUnit === "mm";
-                        const isSqft = settings?.rateUnit === "sqft";
-
-                        return (
-                          <CutSheetGroup
-                            key={gIdx}
-                            group={grp}
-                            index={gIdx}
-                            isMM={isMM}
-                            isFreqOn={isFreqOn}
-                            isSqft={isSqft}
-                            areaUnitLabel={isSqft ? "sq.ft." : "sq.mtr"}
-                            totals={totals}
-                          />
-                        );
-                      })
-                    )}
-
-                    {/* Overall Work Order Grand Summary Footer */}
-                    <div className="border border-black bg-gray-100 p-2 font-bold text-[11px] flex flex-col sm:flex-row sm:justify-between gap-0.5">
-                      <div>Grand Total: {activeWO.totalPieces} Pcs</div>
-                      <div className="text-[10px] sm:text-[11px]">
-                        {nf(activeWO.totalSqm, 3)} SQM &nbsp;|&nbsp; {nf(activeWO.totalSqft, 3)}{" "}
-                        SQFT &nbsp;|&nbsp; Weight: {activeWO.weightKg || "—"} kg
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  <SheetViewHint fit={sheet.fit} />
+                </>
               )}
             </div>
           )}

@@ -754,40 +754,43 @@ summary {
   overflow-wrap: anywhere;
 }
 
-/* ── Printable document tables on a phone ────────────────────────────────── */
-/* The work order cut sheet is a seventeen-column factory document. It has to
-   stay that table on a desktop and on paper, so it cannot simply be made
-   narrower; below `md` the same pieces are rendered as one card each instead
-   (see CutSheetGroup) and the table is dropped. Print always gets the table,
-   whichever device the print was started from — a phone's print media query
-   is evaluated against the paper, not the screen, and this must not depend on
-   which breakpoint the browser decides that is. */
-.doc-table-view {
-  display: block;
-}
+/* ── The printable cut sheet on a phone ──────────────────────────────────── */
+/* The work order cut sheet is a seventeen-column factory document that has to
+   read the same on a desktop, on a phone and on paper, so it is never made
+   narrower. On a phone it keeps its desktop width (`.wo-sheet-canvas`, width
+   set by SheetViewport) and the frame around it either pans sideways or scales
+   the whole sheet down to fit the screen.
 
-.doc-card-view {
-  display: none;
-}
-
-@media (max-width: 767px) {
-  .doc-table-view {
-    display: none;
+   Screen-only, deliberately: a phone's print media query is evaluated against
+   the paper, not the screen, so a `max-width` rule meant for the handset must
+   never be allowed to reach the printer. */
+@media screen and (max-width: 767px) {
+  .wo-sheet-frame {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
   }
 
-  .doc-card-view {
-    display: block;
+  /* `mx-auto` on the sheet would otherwise centre a canvas wider than the
+     frame and hide its left edge behind the scroll origin. */
+  .wo-sheet-canvas {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 
+/* The clone printElement() puts on paper carries the canvas class with it. */
 @media print {
-  .doc-table-view {
-    display: block !important;
+  .wo-sheet-frame {
     overflow: visible !important;
   }
 
-  .doc-card-view {
-    display: none !important;
+  .wo-sheet-canvas {
+    width: auto !important;
+    max-width: 100% !important;
+    zoom: 1 !important;
   }
 }
 

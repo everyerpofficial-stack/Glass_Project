@@ -7,15 +7,11 @@
    and the /work-order page) from the same work order, so the markup lives
    here rather than being kept in step by hand in both.
 
-   On a desktop and on every printout it is the table it has always been. On a
-   phone that table is roughly three screens wide, and the columns past AREA
-   were simply off the edge — the reason this component also renders one card
-   per piece below `md`. Both views are always in the DOM; `.doc-table-view`
-   and `.doc-card-view` in styles.css decide which one the screen (or the
-   printer) gets.
+   It is the same table on a desktop, on a phone and on paper. The shop floor
+   reads this sheet off a phone and off the printer and the two have to match
+   column for column, so it is never re-flowed into a phone layout; the sheet
+   keeps its full width and SheetViewport scales or pans it to the screen.
    ===================================================================== */
-
-import type { ReactNode } from "react";
 
 import { nf } from "@/lib/gq";
 
@@ -39,16 +35,6 @@ type CutRow = {
   amount: number;
   remark: string;
 };
-
-/* A label/value pair inside a piece card. */
-function CardField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{label}</div>
-      <div className="font-mono text-[13px] font-semibold text-black">{value}</div>
-    </div>
-  );
-}
 
 export function CutSheetGroup({
   group,
@@ -131,7 +117,7 @@ export function CutSheetGroup({
       </div>
 
       {/* ── Desktop and print: the full cut sheet table ───────────────────── */}
-      <div className="doc-table-view overflow-x-auto print:overflow-visible">
+      <div className="overflow-x-auto print:overflow-visible">
         <table
           className="w-full text-[10px] border-collapse"
           style={{ minWidth: isMM ? "750px" : "920px" }}
@@ -315,84 +301,6 @@ export function CutSheetGroup({
             </tr>
           </tfoot>
         </table>
-      </div>
-
-      {/* ── Phone: the same pieces, one card each ─────────────────────────── */}
-      <div className="doc-card-view divide-y divide-gray-300 bg-white">
-        {rows.map((r, idx) => {
-          const fabrication = [
-            { label: "Hole", value: r.hole },
-            { label: "Cut out", value: r.cutOut },
-            { label: "Big hole", value: r.bigHole },
-            { label: "Big cut out", value: r.bigCutout },
-            { label: "CSK", value: r.csk },
-          ].filter((f) => f.value > 0);
-
-          return (
-            <div key={idx} className="p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="rounded bg-black px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                    SR {r.sr}
-                  </span>
-                  {!isMM && isFreqOn && (
-                    <span className="font-mono text-[10px] text-gray-600">FREQ {r.freqLabel}</span>
-                  )}
-                </span>
-                <span className="font-mono text-[13px] font-bold text-black">
-                  {r.amount > 0 ? nf(r.amount) : "—"}
-                </span>
-              </div>
-
-              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
-                {!isMM && (
-                  <CardField label="L1 / L2 (inch)" value={`${r.l1 || "—"} / ${r.l2 || "—"}`} />
-                )}
-                <CardField label="Pcs" value={r.qty} />
-                <CardField label="Actual size (mm)" value={`${r.heightMM} × ${r.widthMM}`} />
-                <CardField label={`Actual area (${areaUnitLabel})`} value={nf(r.actArea, 3)} />
-                <CardField
-                  label="Chargeable size (mm)"
-                  value={`${r.chgHeightMM} × ${r.chgWidthMM}`}
-                />
-                <CardField label={`Chargeable area (${areaUnitLabel})`} value={nf(r.chgArea, 3)} />
-              </div>
-
-              {fabrication.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {fabrication.map((f) => (
-                    <span
-                      key={f.label}
-                      className="rounded border border-gray-400 bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black"
-                    >
-                      {f.label} {f.value}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {r.remark && (
-                <div className="mt-2 text-[11px] text-black">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
-                    Remark:{" "}
-                  </span>
-                  {r.remark}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="border-t border-black bg-gray-100 p-2.5">
-          <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase text-black">
-            <span>Subtotal (Item {index + 1})</span>
-            <span className="font-mono">{grpAmount > 0 ? nf(grpAmount) : "—"}</span>
-          </div>
-          <div className="mt-1 font-mono text-[11px] text-gray-700">
-            {grpPcs} Pcs • Actual {nf(grpActualArea, 3)} • Chargeable {nf(grpChargeArea, 3)}{" "}
-            {areaUnitLabel}
-          </div>
-        </div>
       </div>
     </div>
   );
