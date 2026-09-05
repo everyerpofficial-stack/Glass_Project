@@ -1629,9 +1629,9 @@ function BookingPage() {
                   <div>
                     <FieldLabel>GSTIN</FieldLabel>
                     <Input
-                      className="h-8 text-xs font-mono"
+                      className="h-8 text-xs font-mono uppercase"
                       value={inv.cust?.gstin || ""}
-                      onChange={(e) => updateInvField("cust.gstin", e.target.value)}
+                      onChange={(e) => updateInvField("cust.gstin", e.target.value.toUpperCase())}
                       placeholder="08AACCH4208C1Z3"
                     />
                   </div>
@@ -1854,6 +1854,16 @@ function BookingPage() {
                         const isCustomMode =
                           layer.isCustomProduct || (curVal !== "" && !isPredefined);
 
+                        const isCustomGlassType = Boolean(
+                          layer.isCustomGlassType ||
+                            (layer.glassType &&
+                              !GLASS_TYPES.includes(layer.glassType) &&
+                              layer.glassType !==
+                                detectGlassTypeFromProduct(
+                                  layer.productName || layer.glassName || "",
+                                )),
+                        );
+
                         return (
                           <div
                             key={layer.id || layerIdx}
@@ -1888,40 +1898,92 @@ function BookingPage() {
                                 {/* 1. GLASS TYPE Dropdown */}
                                 <div className="order-3 col-span-2 md:order-none md:col-span-1">
                                   <span className="field-label md:hidden">Glass type</span>
-                                  <Select
-                                    value={
-                                      layer.glassType ||
-                                      detectGlassTypeFromProduct(
-                                        layer.productName || layer.glassName || "",
-                                      )
-                                    }
-                                    onValueChange={(val) => {
-                                      updateLayer(layerIdx, "glassType", val);
-                                      const rawProds = PRODUCTS_BY_TYPE[val] || [];
-                                      const firstItem = rawProds[0];
-                                      if (firstItem) {
-                                        const firstProd = formatProductNameForUnit(
-                                          firstItem,
-                                          inputUnit,
-                                        );
-                                        updateLayer(layerIdx, "productName", firstProd);
-                                        updateLayer(layerIdx, "glassName", firstProd);
-                                        const thk = extractThicknessFromProductName(firstProd);
-                                        if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                  {isCustomGlassType ? (
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        autoFocus
+                                        className="h-9 md:h-7 text-xs w-full bg-background font-medium"
+                                        value={layer.glassType || ""}
+                                        placeholder="Enter custom glass type..."
+                                        onChange={(e) => {
+                                          updateLayer(layerIdx, "glassType", e.target.value);
+                                        }}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 md:h-7 md:w-7 text-muted-foreground hover:text-foreground shrink-0"
+                                        title="Select from dropdown list"
+                                        onClick={() => {
+                                          updateLayer(layerIdx, "isCustomGlassType", false);
+                                          const defaultType = GLASS_TYPES[0] || "Clear Glass";
+                                          updateLayer(layerIdx, "glassType", defaultType);
+                                          const rawProds = PRODUCTS_BY_TYPE[defaultType] || [];
+                                          const firstItem = rawProds[0];
+                                          if (firstItem) {
+                                            const firstProd = formatProductNameForUnit(
+                                              firstItem,
+                                              inputUnit,
+                                            );
+                                            updateLayer(layerIdx, "productName", firstProd);
+                                            updateLayer(layerIdx, "glassName", firstProd);
+                                            const thk = extractThicknessFromProductName(firstProd);
+                                            if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                          }
+                                        }}
+                                      >
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Select
+                                      value={
+                                        layer.glassType ||
+                                        detectGlassTypeFromProduct(
+                                          layer.productName || layer.glassName || "",
+                                        )
                                       }
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-9 md:h-7 text-xs w-full bg-background border-border font-medium">
-                                      <SelectValue placeholder="Select Glass Type" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-64">
-                                      {GLASS_TYPES.map((gType, gIdx) => (
-                                        <SelectItem key={gIdx} value={gType}>
-                                          {gType}
+                                      onValueChange={(val) => {
+                                        if (val === "__custom__") {
+                                          updateLayer(layerIdx, "isCustomGlassType", true);
+                                          updateLayer(layerIdx, "glassType", "");
+                                        } else {
+                                          updateLayer(layerIdx, "isCustomGlassType", false);
+                                          updateLayer(layerIdx, "glassType", val);
+                                          const rawProds = PRODUCTS_BY_TYPE[val] || [];
+                                          const firstItem = rawProds[0];
+                                          if (firstItem) {
+                                            const firstProd = formatProductNameForUnit(
+                                              firstItem,
+                                              inputUnit,
+                                            );
+                                            updateLayer(layerIdx, "productName", firstProd);
+                                            updateLayer(layerIdx, "glassName", firstProd);
+                                            const thk = extractThicknessFromProductName(firstProd);
+                                            if (thk !== null) updateLayer(layerIdx, "thickness", thk);
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-9 md:h-7 text-xs w-full bg-background border-border font-medium">
+                                        <SelectValue placeholder="Select Glass Type" />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-64">
+                                        {GLASS_TYPES.map((gType, gIdx) => (
+                                          <SelectItem key={gIdx} value={gType}>
+                                            {gType}
+                                          </SelectItem>
+                                        ))}
+                                        <SelectItem
+                                          value="__custom__"
+                                          className="font-semibold text-emerald-600 dark:text-emerald-400"
+                                        >
+                                          + Custom Glass Type
                                         </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
                                 </div>
 
                                 {/* 2. PRODUCT NAME Dropdown */}
@@ -2798,20 +2860,7 @@ function BookingPage() {
               </div>
             </div>
           </div>
-          {/* Phone: the running total and the commit action, always in reach */}
-          <MobileActionBar label="Grand total" value={`₹ ${nf(totals.grandTotal ?? 0)}`}>
-            <Button
-              className="h-10 gap-2 bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700"
-              onClick={() => {
-                const ok = saveInvoice();
-                if (ok && inv.id) {
-                  navigate({ to: "/invoice", search: { id: inv.id } });
-                }
-              }}
-            >
-              <Save className="h-4 w-4" /> Save & Print
-            </Button>
-          </MobileActionBar>
+
         </div>
       )}
 

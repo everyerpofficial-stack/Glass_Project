@@ -1411,9 +1411,9 @@ function OrderPage() {
                   <div>
                     <FieldLabel>GSTIN</FieldLabel>
                     <Input
-                      className="h-8 text-xs font-mono"
+                      className="h-8 text-xs font-mono uppercase"
                       value={inv.cust?.gstin || ""}
-                      onChange={(e) => updateInvField("cust.gstin", e.target.value)}
+                      onChange={(e) => updateInvField("cust.gstin", e.target.value.toUpperCase())}
                     />
                   </div>
                   <div>

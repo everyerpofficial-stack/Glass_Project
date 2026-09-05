@@ -831,7 +831,7 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
       greenTax: 0,
       tcsPercent: 0,
       // Extra area
-      extraAreaFormula: S.extraAreaFormula || "+25.4mm",
+      extraAreaFormula: S.extraAreaFormula && S.extraAreaFormula !== "none" ? S.extraAreaFormula : "+25.4mm",
       extraAreaCustomMM: S.extraAreaCustomMM || 0,
       // GST
       gstType: S.gstType,

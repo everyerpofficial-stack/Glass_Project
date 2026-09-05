@@ -678,9 +678,11 @@ function CustomersPage() {
                   <div>
                     <Label>GSTIN Number</Label>
                     <Input
-                      className="h-8 text-xs font-mono"
+                      className="h-8 text-xs font-mono uppercase"
                       value={formData.gstin}
-                      onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gstin: e.target.value.toUpperCase() })
+                      }
                       placeholder="08AACCH4208C1Z3"
                     />
                   </div>

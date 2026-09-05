@@ -245,9 +245,9 @@ function SettingsPage() {
                   <div>
                     <Label className="text-xs">GSTIN Number</Label>
                     <Input
-                      className="h-9 text-xs font-mono"
+                      className="h-9 text-xs font-mono uppercase"
                       value={form.gstin || ""}
-                      onChange={(e) => handleChange("gstin", e.target.value)}
+                      onChange={(e) => handleChange("gstin", e.target.value.toUpperCase())}
                       placeholder="08AACCH4208C1Z3"
                     />
                   </div>
