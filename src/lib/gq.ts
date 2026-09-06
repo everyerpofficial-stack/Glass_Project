@@ -47,6 +47,12 @@ export const BASE_SETTINGS: any = {
   terms: DEFAULT_TERMS.join("\n"),
   footer: "",
   extraAreaFormula: "+25mm",
+  holeRate: 35,
+  cutoutRate: 85,
+  bigHoleRate: 150,
+  bigCutoutRate: 500,
+  cskRate: 85,
+  insurancePercent: 2,
   sheetUrl:
     "https://script.google.com/macros/s/AKfycbzfXV774Og0EuJXX-G7hyJTcnUVVTZtaEuRHliyJbCru9UDxMpnkXn6Vw79j6k8XjSm/exec",
 };
@@ -810,10 +816,13 @@ export function blankInvoice(S: any, docType: string = "pre_proforma") {
       otherCharges: 0,
       adminCharge: S.adminCharge,
       discountPercent: 0,
-      insurancePercent: S.insurancePercent,
+      insurancePercent: S.insurancePercent ?? 2,
       // Extended charges (Party Invoice Particulars)
-      cskRate: S.cskRate || 85,
+      holeRate: S.holeRate || 35,
+      cutoutRate: S.cutoutRate || 85,
       bigHoleRate: S.bigHoleRate || 150,
+      bigCutoutRate: S.bigCutoutRate || 500,
+      cskRate: S.cskRate || 85,
       jamboChargePercent: S.jamboChargePercent || 0,
       nonEconomicPercent: S.nonEconomicPercent || 0,
       farmaCuttingPercent: S.farmaCuttingPercent || 0,
@@ -933,11 +942,21 @@ export function engineOpts(S: any, INV: any) {
      short of clearing site data. Treat both as optional. */
   const inv = INV || {};
   const ch = stripNonInvoiceCharges(Object.assign({}, inv.ch || {}));
+  if (ch.insurancePercent === undefined && inv.insurancePct !== undefined) {
+    ch.insurancePercent = inv.insurancePct;
+  }
 
   const o: any = Object.assign({}, S, ch);
   for (const key in LEGACY_CHARGE_SEEDS) {
     if (Number(o[key]) === LEGACY_CHARGE_SEEDS[key]) o[key] = 0;
   }
+  if (o.holeRate === undefined) o.holeRate = 35;
+  if (o.cutoutRate === undefined) o.cutoutRate = 85;
+  if (o.bigHoleRate === undefined) o.bigHoleRate = 150;
+  if (o.bigCutoutRate === undefined) o.bigCutoutRate = 500;
+  if (o.cskRate === undefined) o.cskRate = 85;
+  if (o.insurancePercent === undefined) o.insurancePercent = 2;
+
   o.thicknessMM = inv.glass?.thickness;
   /* Only override when the record actually carries the flag — forcing `false`
      on a record with no `ch` would silently turn off rounding that the saved

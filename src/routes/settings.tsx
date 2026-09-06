@@ -389,6 +389,69 @@ function SettingsPage() {
                     />
                   </div>
                 </div>
+
+                <div className="border-t border-border/40 pt-4">
+                  <h4 className="font-semibold text-xs text-foreground mb-3 uppercase tracking-wider">
+                    Default Process & Charge Rates
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                    <div>
+                      <Label className="text-[11px]">Hole Rate (₹/pc)</Label>
+                      <Input
+                        type="number"
+                        className="h-8 text-xs font-mono"
+                        value={form.holeRate ?? 35}
+                        onChange={(e) => handleChange("holeRate", Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Cutout Rate (₹/pc)</Label>
+                      <Input
+                        type="number"
+                        className="h-8 text-xs font-mono"
+                        value={form.cutoutRate ?? 85}
+                        onChange={(e) => handleChange("cutoutRate", Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Big Hole Rate (₹/pc)</Label>
+                      <Input
+                        type="number"
+                        className="h-8 text-xs font-mono"
+                        value={form.bigHoleRate ?? 150}
+                        onChange={(e) => handleChange("bigHoleRate", Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Big Cutout Rate (₹/pc)</Label>
+                      <Input
+                        type="number"
+                        className="h-8 text-xs font-mono"
+                        value={form.bigCutoutRate ?? 500}
+                        onChange={(e) => handleChange("bigCutoutRate", Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">CSK Rate (₹/pc)</Label>
+                      <Input
+                        type="number"
+                        className="h-8 text-xs font-mono"
+                        value={form.cskRate ?? 85}
+                        onChange={(e) => handleChange("cskRate", Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Insurance (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        className="h-8 text-xs font-mono"
+                        value={form.insurancePercent ?? 2}
+                        onChange={(e) => handleChange("insurancePercent", Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1738,49 +1738,164 @@ function OrderPage() {
                     </span>
                   </div>
 
-                  {Boolean(totals.holeCharge) && (
-                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                      <span className="text-foreground">
-                        Hole Charge {totals.holes ? `(${totals.holes} pcs)` : ""}
+                  {Boolean(totals.holeCharge || totals.holes) && (
+                    <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-foreground truncate">
+                          Hole Charge {totals.holes ? `(${totals.holes} pcs)` : ""}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1 py-0.5 border border-border/60 shrink-0"
+                          title="Edit Hole rate per pc"
+                        >
+                          <span className="text-[9px] text-muted-foreground font-mono">@ ₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-4 w-11 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                            value={inv.ch?.holeRate ?? settings.holeRate ?? 35}
+                            onChange={(e) =>
+                              updateInvField(
+                                "ch.holeRate",
+                                e.target.value === "" ? 0 : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <span className="font-mono text-foreground shrink-0">
+                        {nf(totals.holeCharge)}
                       </span>
-                      <span className="font-mono text-foreground">{nf(totals.holeCharge)}</span>
                     </div>
                   )}
-                  {Boolean(totals.cutoutCharge) && (
-                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                      <span className="text-foreground">
-                        Cutout Charge {totals.cutouts ? `(${totals.cutouts} pcs)` : ""}
+
+                  {Boolean(totals.cutoutCharge || totals.cutouts) && (
+                    <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-foreground truncate">
+                          Cutout Charge {totals.cutouts ? `(${totals.cutouts} pcs)` : ""}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1 py-0.5 border border-border/60 shrink-0"
+                          title="Edit Cutout rate per pc"
+                        >
+                          <span className="text-[9px] text-muted-foreground font-mono">@ ₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-4 w-11 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                            value={inv.ch?.cutoutRate ?? settings.cutoutRate ?? 85}
+                            onChange={(e) =>
+                              updateInvField(
+                                "ch.cutoutRate",
+                                e.target.value === "" ? 0 : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <span className="font-mono text-foreground shrink-0">
+                        {nf(totals.cutoutCharge)}
                       </span>
-                      <span className="font-mono text-foreground">{nf(totals.cutoutCharge)}</span>
                     </div>
                   )}
-                  {Boolean(totals.bigHoleCharge) && (
-                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                      <span className="text-foreground">
-                        Big Hole Charge {totals.bigHoles ? `(${totals.bigHoles} pcs)` : ""}
+
+                  {Boolean(totals.bigHoleCharge || totals.bigHoles) && (
+                    <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-foreground truncate">
+                          Big Hole Charge {totals.bigHoles ? `(${totals.bigHoles} pcs)` : ""}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1 py-0.5 border border-border/60 shrink-0"
+                          title="Edit Big Hole rate per pc"
+                        >
+                          <span className="text-[9px] text-muted-foreground font-mono">@ ₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-4 w-11 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                            value={inv.ch?.bigHoleRate ?? settings.bigHoleRate ?? 150}
+                            onChange={(e) =>
+                              updateInvField(
+                                "ch.bigHoleRate",
+                                e.target.value === "" ? 0 : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <span className="font-mono text-foreground shrink-0">
+                        {nf(totals.bigHoleCharge)}
                       </span>
-                      <span className="font-mono text-foreground">{nf(totals.bigHoleCharge)}</span>
                     </div>
                   )}
-                  {Boolean(totals.bigCutoutCharge) && (
-                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                      <span className="text-foreground">
-                        Big Cutout Charge {totals.bigCutouts ? `(${totals.bigCutouts} pcs)` : ""}
-                      </span>
-                      <span className="font-mono text-foreground">
+
+                  {Boolean(totals.bigCutoutCharge || totals.bigCutouts) && (
+                    <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-foreground truncate">
+                          Big Cutout Charge {totals.bigCutouts ? `(${totals.bigCutouts} pcs)` : ""}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1 py-0.5 border border-border/60 shrink-0"
+                          title="Edit Big Cutout rate per pc"
+                        >
+                          <span className="text-[9px] text-muted-foreground font-mono">@ ₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-4 w-11 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                            value={inv.ch?.bigCutoutRate ?? settings.bigCutoutRate ?? 500}
+                            onChange={(e) =>
+                              updateInvField(
+                                "ch.bigCutoutRate",
+                                e.target.value === "" ? 0 : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <span className="font-mono text-foreground shrink-0">
                         {nf(totals.bigCutoutCharge)}
                       </span>
                     </div>
                   )}
-                  {Boolean(totals.cskCharge || totals.countersinkCharge) && (
-                    <div className="flex justify-between py-1.5 text-[11px] border-b border-border/30">
-                      <span className="text-foreground">
-                        CSK Charge{" "}
-                        {totals.csks || totals.countersinks
-                          ? `(${totals.csks || totals.countersinks} pcs)`
-                          : ""}
-                      </span>
-                      <span className="font-mono text-foreground">
+
+                  {Boolean(
+                    totals.cskCharge ||
+                    totals.countersinkCharge ||
+                    totals.csks ||
+                    totals.countersinks,
+                  ) && (
+                    <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30 gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-foreground truncate">
+                          CSK Charge{" "}
+                          {totals.csks || totals.countersinks
+                            ? `(${totals.csks || totals.countersinks} pcs)`
+                            : ""}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1 py-0.5 border border-border/60 shrink-0"
+                          title="Edit CSK rate per pc"
+                        >
+                          <span className="text-[9px] text-muted-foreground font-mono">@ ₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-4 w-11 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                            value={inv.ch?.cskRate ?? settings.cskRate ?? 85}
+                            onChange={(e) =>
+                              updateInvField(
+                                "ch.cskRate",
+                                e.target.value === "" ? 0 : Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <span className="font-mono text-foreground shrink-0">
                         {nf(totals.cskCharge || totals.countersinkCharge)}
                       </span>
                     </div>
@@ -1854,7 +1969,32 @@ function OrderPage() {
 
                   {/* Insurance */}
                   <div className="flex justify-between items-center py-1.5 text-[11px] border-b border-border/30">
-                    <span className="text-foreground">Insurance</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-foreground">Insurance</span>
+                      <div
+                        className="flex items-center gap-0.5 bg-muted/60 dark:bg-muted/40 rounded px-1.5 py-0.5 border border-border/60"
+                        title="Edit Insurance percentage"
+                      >
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className="h-4 w-10 text-[10px] font-mono text-center p-0 border-none bg-transparent shadow-none focus-visible:ring-0"
+                          value={
+                            inv.ch?.insurancePercent ??
+                            inv.insurancePct ??
+                            settings.insurancePercent ??
+                            2
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            updateInvField("ch.insurancePercent", val);
+                            updateInvField("insurancePct", val);
+                          }}
+                        />
+                        <span className="text-[9px] font-semibold">%</span>
+                      </div>
+                    </div>
                     <span className="font-mono text-foreground">{nf(totals.insurance ?? 0)}</span>
                   </div>
 
