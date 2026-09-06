@@ -185,22 +185,26 @@ function customerSummary(c: any, invoices: any[], payments: any[]) {
   const customerQuotes = commercialRecords(invoices).filter(
     (inv) => isCustomerMatch(inv.cust, c) && !isCancelled(inv),
   );
+  /* Unconfirmed Proforma Invoices (docType !== "proforma") are quotes/drafts and do NOT generate due amount.
+     Only confirmed Order Confirms (docType === "proforma") count towards confirmed totals and due amounts. */
+  const confirmedQuotes = customerQuotes.filter((inv) => inv.docType === "proforma");
   const custPays = (payments || []).filter(
     (p) => isPaymentMatch(p, c, customerQuotes) && !isPaymentForCancelledInv(p, invoices),
   );
 
-  const totalAmount = customerQuotes.reduce(
+  const totalAmount = confirmedQuotes.reduce(
     (sum, inv) => sum + (Number(inv.totals?.grandTotal) || 0),
     0,
   );
   const totalPaidFromPayments = custPays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const totalPaidFromInvoices = customerQuotes.reduce(
+  const totalPaidFromInvoices = confirmedQuotes.reduce(
     (sum, inv) => sum + settleAmounts(inv, custPays).paidAmount,
     0,
   );
   const receivedAmount = Math.max(totalPaidFromPayments, totalPaidFromInvoices);
   return {
     customerQuotes,
+    confirmedQuotes,
     totalAmount,
     receivedAmount,
     dueAmount: Math.max(0, totalAmount - receivedAmount),
@@ -229,6 +233,8 @@ function CustomersPage() {
     deletePayment,
     patchInvoice,
     setInv,
+    toggleWhatsAppSent,
+    markAsDelivered,
     settings,
     hydrated,
   } = useGQ();
@@ -245,29 +251,43 @@ function CustomersPage() {
   /* Pay Modal state */
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [payModalInvoice, setPayModalInvoice] = useState<any>(null);
+  const [payModalCustomerInvoices, setPayModalCustomerInvoices] = useState<any[]>([]);
+  const [payModalTotalDue, setPayModalTotalDue] = useState<number>(0);
 
   const handlePayClick = (c: any, customerQuotes: any[], e: React.MouseEvent) => {
     e.stopPropagation();
-    const unpaidInv =
-      customerQuotes.find(
-        (inv) =>
-          !isCancelled(inv) &&
-          Math.max(0, (Number(inv.totals?.grandTotal) || 0) - (Number(inv.paidAmount) || 0)) > 0,
-      ) || customerQuotes[0];
+    // Confirmed order invoices (docType === "proforma") with pending balance
+    const confirmedDueInvoices = (customerQuotes || []).filter((inv) => {
+      if (isCancelled(inv) || inv.docType !== "proforma") return false;
+      const gTotal = Number(inv.totals?.grandTotal) || 0;
+      const paid = settleAmounts(inv, payments).paidAmount;
+      return Math.max(0, gTotal - paid) > 0;
+    });
 
-    if (unpaidInv) {
-      setPayModalInvoice(unpaidInv);
+    const totalDue = confirmedDueInvoices.reduce((sum, inv) => {
+      const gTotal = Number(inv.totals?.grandTotal) || 0;
+      const paid = settleAmounts(inv, payments).paidAmount;
+      return sum + Math.max(0, gTotal - paid);
+    }, 0);
+
+    if (confirmedDueInvoices.length > 0) {
+      setPayModalInvoice(confirmedDueInvoices[0]);
+      setPayModalCustomerInvoices(confirmedDueInvoices);
+      setPayModalTotalDue(totalDue);
       setPayModalOpen(true);
     } else {
+      toast.info(`${c.name} has no pending due invoices to pay.`);
       handleOpenDetails(c, e);
       setShowAddPayment(true);
     }
   };
 
-  const handleConfirmPaymentDetails = (details: ConfirmPaymentDetails) => {
-    if (!payModalInvoice) return;
-    const grandTotal = Number(payModalInvoice.totals?.grandTotal) || 0;
-    const currentPaid = settleAmounts(payModalInvoice, payments).paidAmount;
+  const handleConfirmPaymentDetails = (details: ConfirmPaymentDetails, activeInvOverride?: any) => {
+    const targetInv = activeInvOverride || payModalInvoice;
+    if (!targetInv) return;
+
+    const grandTotal = Number(targetInv.totals?.grandTotal) || 0;
+    const currentPaid = settleAmounts(targetInv, payments).paidAmount;
     const pendingAmount = Math.max(0, grandTotal - currentPaid);
 
     if (details.paidAmount > pendingAmount) {
@@ -278,28 +298,31 @@ function CustomersPage() {
     const newPaidAmount = Math.min(grandTotal, currentPaid + details.paidAmount);
     const remaining = Math.max(0, grandTotal - newPaidAmount);
 
-    patchInvoice(payModalInvoice.id, {
+    patchInvoice(targetInv.id, {
       paidAmount: newPaidAmount,
       remainingBalance: remaining,
       paymentStatus:
         newPaidAmount >= grandTotal ? "PAID" : newPaidAmount > 0 ? "PARTIAL" : "UNPAID",
-      dueDate: details.dueDate || payModalInvoice.dueDate,
+      dueDate: details.dueDate || targetInv.dueDate,
     });
 
     savePayment({
       date: new Date().toISOString().split("T")[0],
-      custName: payModalInvoice.cust?.name || payModalInvoice.custName || "",
-      invoiceNo: payModalInvoice.no || payModalInvoice.orderNo || "",
-      invoiceId: payModalInvoice.id,
+      custName: targetInv.cust?.name || targetInv.custName || "",
+      invoiceNo: targetInv.no || targetInv.orderNo || "",
+      invoiceId: targetInv.id,
       amount: details.paidAmount,
-      mode: details.paymentType,
+      mode: details.paymentType || "Cash",
       refNo: details.refNo,
       notes: details.notes,
     });
 
-    toast.success(`Payment of ₹${nf(details.paidAmount)} recorded successfully`);
+    toast.success(
+      `Payment of ₹${nf(details.paidAmount)} recorded for Invoice ${targetInv.no || targetInv.orderNo}!`,
+    );
     setPayModalOpen(false);
     setPayModalInvoice(null);
+    setPayModalCustomerInvoices([]);
   };
 
   /* Add Payment Form state inside Customer Details Popup */
@@ -438,9 +461,10 @@ function CustomersPage() {
     );
   }, [payments, viewCust, customerInvoices, invoices]);
 
+  /* Unconfirmed Proforma Invoices do NOT add to invoiced total or due balance */
   const totalInvoicedForViewCust = useMemo(() => {
     return customerInvoices
-      .filter((item) => !isCancelled(item))
+      .filter((item) => !isCancelled(item) && item.docType === "proforma")
       .reduce((acc, item) => acc + (Number(item.totals?.grandTotal) || 0), 0);
   }, [customerInvoices]);
 
@@ -450,7 +474,7 @@ function CustomersPage() {
       .reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
 
     const totalFromInvoices = customerInvoices
-      .filter((item) => !isCancelled(item))
+      .filter((item) => !isCancelled(item) && item.docType === "proforma")
       .reduce((acc, item) => acc + settleAmounts(item, payments).paidAmount, 0);
 
     return Math.max(totalFromPayments, totalFromInvoices);
@@ -941,6 +965,13 @@ function CustomersPage() {
                     ]}
                     actions={
                       <>
+                        <Button
+                          size="sm"
+                          className="h-9 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs gap-1.5 flex-1 cursor-pointer"
+                          onClick={(e) => handlePayClick(c, customerQuotes, e)}
+                        >
+                          <CreditCard className="h-4 w-4" /> Pay
+                        </Button>
                         {c.phone && (
                           <a
                             href={`tel:${String(c.phone).replace(/\s+/g, "")}`}
@@ -1106,6 +1137,14 @@ function CustomersPage() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Button
+                              size="sm"
+                              className="h-7 text-[11px] px-2.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs gap-1 cursor-pointer"
+                              onClick={(e) => handlePayClick(c, customerQuotes, e)}
+                              title="Pay Due Invoices for this customer"
+                            >
+                              <CreditCard className="h-3.5 w-3.5" /> Pay
+                            </Button>
+                            <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
@@ -1159,6 +1198,15 @@ function CustomersPage() {
             </DesktopOnly>
           </>
         )}
+
+        {/* ── CONFIRM PAYMENT MODAL ── */}
+        <ConfirmPaymentModal
+          open={payModalOpen}
+          customer={payModalCustomer}
+          invoices={payModalCustomerInvoices}
+          onClose={() => setPayModalOpen(false)}
+          onConfirm={handleConfirmPaymentDetails}
+        />
 
         {/* ── Pagination Bar ────────────────────────────────────────── */}
         {filteredCustomers.length > 0 && (
@@ -1394,19 +1442,45 @@ function CustomersPage() {
                             dimmed={isCancelled(inv)}
                             code={inv.no}
                             badge={
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                  isCancelled(inv)
-                                    ? "bg-rose-500/10 text-rose-600"
-                                    : inv.status === "order_confirmed"
-                                      ? "bg-emerald-500/10 text-emerald-600"
-                                      : "bg-amber-500/10 text-amber-600"
-                                }`}
-                              >
-                                {isCancelled(inv)
-                                  ? "Cancelled (not billed)"
-                                  : inv.status || "Draft"}
-                              </span>
+                              isCancelled(inv) ? (
+                                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                  Cancelled
+                                </span>
+                              ) : inv.docType === "proforma" ? (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markAsDelivered(inv.id);
+                                  }}
+                                  title="Order Confirm — click to mark delivered"
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold cursor-pointer ${
+                                    inv.delivered || inv.status === "delivered"
+                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                                      : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                                  }`}
+                                >
+                                  {inv.delivered || inv.status === "delivered"
+                                    ? "✓ Delivered"
+                                    : "❌ Not Delivered"}
+                                </span>
+                              ) : (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWhatsAppSent(inv.id);
+                                  }}
+                                  title="Proforma Invoice — click to toggle follow-up"
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold cursor-pointer ${
+                                    inv.whatsappSent || inv.status === "followed_up"
+                                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                                      : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                                  }`}
+                                >
+                                  {inv.whatsappSent || inv.status === "followed_up"
+                                    ? "✓ Followed Up"
+                                    : "Pending Follow Up"}
+                                </span>
+                              )
                             }
                             subject={
                               inv.docType === "proforma" ? "Order Confirm" : "Proforma Invoice"
@@ -1469,23 +1543,61 @@ function CustomersPage() {
                                   ₹ {nf(inv.totals?.grandTotal || 0)}
                                 </td>
                                 <td className="p-2.5 text-center font-sans">
-                                  {/* Cancelled rows stay listed but no longer feed
-                                    Total Invoiced, so they have to look
-                                    different or the ledger looks like it lost
-                                    money. */}
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      isCancelled(inv)
-                                        ? "bg-rose-500/10 text-rose-600"
-                                        : inv.status === "order_confirmed"
-                                          ? "bg-emerald-500/10 text-emerald-600"
-                                          : "bg-amber-500/10 text-amber-600"
-                                    }`}
-                                  >
-                                    {isCancelled(inv)
-                                      ? "Cancelled (not billed)"
-                                      : inv.status || "Draft"}
-                                  </span>
+                                  {isCancelled(inv) ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                      Cancelled
+                                    </span>
+                                  ) : inv.docType === "proforma" ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        markAsDelivered(inv.id);
+                                      }}
+                                      title="Order Confirm status — click to mark as delivered"
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
+                                        inv.delivered || inv.status === "delivered"
+                                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25"
+                                      }`}
+                                    >
+                                      {inv.delivered || inv.status === "delivered" ? (
+                                        <>
+                                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />{" "}
+                                          Delivered: Yes
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Clock className="h-3 w-3 text-amber-600" /> Delivered: No
+                                        </>
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleWhatsAppSent(inv.id);
+                                      }}
+                                      title="Proforma Invoice status — click to toggle follow-up"
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
+                                        inv.whatsappSent || inv.status === "followed_up"
+                                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                          : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25"
+                                      }`}
+                                    >
+                                      {inv.whatsappSent || inv.status === "followed_up" ? (
+                                        <>
+                                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />{" "}
+                                          Follow Up: Yes
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Clock className="h-3 w-3 text-amber-600" /> Follow Up: No
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
                                 </td>
                                 <td className="p-2.5 text-right font-sans">
                                   <Button
@@ -1821,6 +1933,8 @@ function CustomersPage() {
       <ConfirmPaymentModal
         open={payModalOpen}
         invoice={payModalInvoice}
+        customerInvoices={payModalCustomerInvoices}
+        customerTotalDue={payModalTotalDue}
         onClose={() => setPayModalOpen(false)}
         onConfirm={handleConfirmPaymentDetails}
       />

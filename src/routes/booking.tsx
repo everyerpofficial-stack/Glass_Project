@@ -1523,7 +1523,10 @@ function BookingPage() {
                             <div
                               key={c.id || c.name}
                               className="px-3 py-2 text-xs hover:bg-muted cursor-pointer text-foreground border-b border-border/30 last:border-0"
-                              onMouseDown={() => selectCustomer(c)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                selectCustomer(c);
+                              }}
                             >
                               <div className="font-semibold">{c.name}</div>
                               {c.phone && (

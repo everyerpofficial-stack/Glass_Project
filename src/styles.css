@@ -650,8 +650,12 @@ html {
 
 /* One rogue wide child used to make the whole document pan sideways. The
    horizontal scroll now belongs to the element that is actually wide. */
-html,
 body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-shell {
   max-width: 100%;
   overflow-x: clip;
 }

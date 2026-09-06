@@ -17,44 +17,87 @@ export type ConfirmPaymentDetails = {
 export function ConfirmPaymentModal({
   open,
   invoice,
+  customerInvoices,
+  customerTotalDue,
   onClose,
   onConfirm,
 }: {
   open: boolean;
-  invoice: any;
+  invoice?: any;
+  customerInvoices?: any[];
+  customerTotalDue?: number;
   onClose: () => void;
-  onConfirm: (paymentDetails: ConfirmPaymentDetails) => void;
+  onConfirm: (paymentDetails: ConfirmPaymentDetails, activeInvoice?: any) => void;
 }) {
-  if (!open || !invoice) return null;
-  return <ConfirmPaymentModalBody invoice={invoice} onClose={onClose} onConfirm={onConfirm} />;
+  if (!open) return null;
+  const initialInv =
+    invoice || (customerInvoices && customerInvoices.length > 0 ? customerInvoices[0] : null);
+  if (!initialInv && (!customerInvoices || customerInvoices.length === 0)) return null;
+
+  return (
+    <ConfirmPaymentModalBody
+      initialInvoice={initialInv}
+      customerInvoices={customerInvoices}
+      customerTotalDue={customerTotalDue}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
 }
 
 function ConfirmPaymentModalBody({
-  invoice,
+  initialInvoice,
+  customerInvoices,
+  customerTotalDue,
   onClose,
   onConfirm,
 }: {
-  invoice: any;
+  initialInvoice: any;
+  customerInvoices?: any[];
+  customerTotalDue?: number;
   onClose: () => void;
-  onConfirm: (paymentDetails: ConfirmPaymentDetails) => void;
+  onConfirm: (paymentDetails: ConfirmPaymentDetails, activeInvoice?: any) => void;
 }) {
-  const grandTotal = Number(invoice.totals?.grandTotal) || 0;
-  const isPre = invoice.docType === "pre_proforma";
-  const alreadyPaid = isPre ? 0 : Number(invoice.paidAmount || 0);
+  const [selectedInvId, setSelectedInvId] = useState<string>(initialInvoice?.id || "");
+
+  const activeInvoice = React.useMemo(() => {
+    if (selectedInvId && customerInvoices && customerInvoices.length > 0) {
+      const found = customerInvoices.find((x: any) => String(x.id) === String(selectedInvId));
+      if (found) return found;
+    }
+    return initialInvoice;
+  }, [selectedInvId, customerInvoices, initialInvoice]);
+
+  const grandTotal = Number(activeInvoice?.totals?.grandTotal) || 0;
+  const isPre = activeInvoice?.docType === "pre_proforma";
+  const alreadyPaid = isPre ? 0 : Number(activeInvoice?.paidAmount || 0);
   const pendingAmount = Math.max(0, grandTotal - alreadyPaid);
 
   const [paidAmountStr, setPaidAmountStr] = useState<string>(
-    isPre && invoice.paidAmount !== undefined && invoice.paidAmount !== null
-      ? String(invoice.paidAmount)
-      : "0",
+    isPre && activeInvoice?.paidAmount !== undefined && activeInvoice?.paidAmount !== null
+      ? String(activeInvoice.paidAmount)
+      : String(pendingAmount),
   );
+
+  React.useEffect(() => {
+    const activeIsPre = activeInvoice?.docType === "pre_proforma";
+    const activeGrand = Number(activeInvoice?.totals?.grandTotal) || 0;
+    const activePaid = activeIsPre ? 0 : Number(activeInvoice?.paidAmount || 0);
+    const activePending = Math.max(0, activeGrand - activePaid);
+
+    if (activeIsPre && activeInvoice?.paidAmount !== undefined && activeInvoice?.paidAmount !== null) {
+      setPaidAmountStr(String(activeInvoice.paidAmount));
+    } else {
+      setPaidAmountStr(String(activePending));
+    }
+  }, [activeInvoice]);
   const [paymentType, setPaymentType] = useState<string>(
-    invoice.delivery?.paymentType === "Cash" ? "Cash" : "Bank Transfer",
+    activeInvoice?.delivery?.paymentType === "Cash" ? "Cash" : "Bank Transfer",
   );
   const [refNo, setRefNo] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>(
-    invoice.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+    activeInvoice?.dueDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
   );
 
   const numericPaid = Number(paidAmountStr) || 0;
@@ -103,13 +146,16 @@ function ConfirmPaymentModalBody({
       toast.error("Payment amount cannot be negative");
       return;
     }
-    onConfirm({
-      paidAmount: numericPaid,
-      paymentType: hasPaidAmount ? paymentType : "Credit",
-      refNo,
-      notes,
-      dueDate: isFullPaid ? "" : dueDate,
-    });
+    onConfirm(
+      {
+        paidAmount: numericPaid,
+        paymentType: hasPaidAmount ? paymentType : "Credit",
+        refNo,
+        notes,
+        dueDate: isFullPaid ? "" : dueDate,
+      },
+      activeInvoice,
+    );
   };
 
   return (
@@ -123,19 +169,19 @@ function ConfirmPaymentModalBody({
           <div>
             <div className="text-[9px] uppercase font-bold tracking-widest text-blue-400 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-              Order Confirmation & Payment
+              Customer Payment & Settlement
             </div>
             <h3 className="text-sm font-bold text-white mt-0.5">
               {hasPaidAmount
                 ? `Record Payment (${paymentType})`
-                : "Confirm Order (Credit / ₹0 Paid)"}
+                : "Confirm Order / Payment"}
             </h3>
             <div className="text-[11px] text-slate-300 font-mono mt-0.5 flex items-center gap-1.5">
               <span>
-                PI No: <strong className="text-white">{invoice.no || invoice.orderNo}</strong>
+                Doc No: <strong className="text-white">{activeInvoice?.no || activeInvoice?.orderNo}</strong>
               </span>
               <span>·</span>
-              <span className="truncate max-w-[160px]">{invoice.cust?.name || "Customer"}</span>
+              <span className="truncate max-w-[160px]">{activeInvoice?.cust?.name || activeInvoice?.custName || "Customer"}</span>
             </div>
           </div>
           <button
@@ -151,6 +197,47 @@ function ConfirmPaymentModalBody({
           onSubmit={handleSubmit}
           className="p-3.5 space-y-2.5 text-xs overflow-y-auto overscroll-contain max-h-[calc(92dvh-72px)] sm:max-h-[calc(90vh-60px)]"
         >
+          {/* Total Customer Outstanding Due Banner */}
+          {customerTotalDue !== undefined && (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-lg p-2.5 flex items-center justify-between shadow-2xs">
+              <div>
+                <div className="text-[9.5px] font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Total Customer Due
+                </div>
+                <div className="text-[10px] text-amber-700/80 dark:text-amber-400">
+                  Outstanding balance across all confirmed invoices
+                </div>
+              </div>
+              <span className="font-mono text-sm sm:text-base font-extrabold text-amber-800 dark:text-amber-200">
+                ₹ {nf(customerTotalDue)}
+              </span>
+            </div>
+          )}
+
+          {/* Select Due Invoice Dropdown */}
+          {customerInvoices && customerInvoices.length > 0 && (
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-border rounded-lg p-2.5 space-y-1">
+              <label className="block text-[9.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                Select Due Invoice to Pay *
+              </label>
+              <select
+                value={selectedInvId}
+                onChange={(e) => setSelectedInvId(e.target.value)}
+                className="w-full h-8 text-xs font-semibold rounded-md border border-input bg-background px-2.5 outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                {customerInvoices.map((inv: any) => {
+                  const gTotal = Number(inv.totals?.grandTotal) || 0;
+                  const paid = Number(inv.paidAmount || 0);
+                  const pending = Math.max(0, gTotal - paid);
+                  return (
+                    <option key={inv.id} value={inv.id}>
+                      Invoice #{inv.no || inv.orderNo} — Due: ₹{nf(pending)} (Total: ₹{nf(gTotal)})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
           {/* Main Calculation Summary Card */}
           <div className="bg-slate-50 dark:bg-slate-800/40 border border-border rounded-lg p-2.5 space-y-2">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
