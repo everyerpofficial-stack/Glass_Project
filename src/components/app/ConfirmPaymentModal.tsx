@@ -24,8 +24,8 @@ export function ConfirmPaymentModal({
 }: {
   open: boolean;
   invoice?: any;
-  customerInvoices?: any[];
-  customerTotalDue?: number;
+  customerInvoices?: any[] | undefined;
+  customerTotalDue?: number | undefined;
   onClose: () => void;
   onConfirm: (paymentDetails: ConfirmPaymentDetails, activeInvoice?: any) => void;
 }) {
@@ -53,8 +53,8 @@ function ConfirmPaymentModalBody({
   onConfirm,
 }: {
   initialInvoice: any;
-  customerInvoices?: any[];
-  customerTotalDue?: number;
+  customerInvoices?: any[] | undefined;
+  customerTotalDue?: number | undefined;
   onClose: () => void;
   onConfirm: (paymentDetails: ConfirmPaymentDetails, activeInvoice?: any) => void;
 }) {

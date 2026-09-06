@@ -1199,14 +1199,6 @@ function CustomersPage() {
           </>
         )}
 
-        {/* ── CONFIRM PAYMENT MODAL ── */}
-        <ConfirmPaymentModal
-          open={payModalOpen}
-          customer={payModalCustomer}
-          invoices={payModalCustomerInvoices}
-          onClose={() => setPayModalOpen(false)}
-          onConfirm={handleConfirmPaymentDetails}
-        />
 
         {/* ── Pagination Bar ────────────────────────────────────────── */}
         {filteredCustomers.length > 0 && (
