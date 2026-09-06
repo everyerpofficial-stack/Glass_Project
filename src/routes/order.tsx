@@ -336,12 +336,20 @@ function OrderPage() {
     () => proformaInvoices.filter((x: any) => x.status === "cancelled").length,
     [proformaInvoices],
   );
+  /* `markAsDelivered` writes a single field, `delivered: true` — nothing in the
+     app has ever written `deliveryStatus`, and "delivered" is not one of the
+     WorkflowStatus values, so neither arm of the old test could ever be true.
+     This card therefore read 0 no matter how many orders had been dispatched,
+     while the row badge and the delivery filter three lines below (both of
+     which do read `delivered`) showed them as delivered. Same rule everywhere.
+     The two legacy fields stay in the test so rows imported from a sheet that
+     carries them still count. */
   const deliveredCount = useMemo(
     () =>
       proformaInvoices.filter(
         (x: any) =>
           x.status !== "cancelled" &&
-          (x.deliveryStatus === "Delivered" || x.status === "delivered"),
+          (Boolean(x.delivered) || x.deliveryStatus === "Delivered" || x.status === "delivered"),
       ).length,
     [proformaInvoices],
   );

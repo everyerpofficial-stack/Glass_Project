@@ -1000,6 +1000,20 @@ function formatAllSheets_() {
   }
 }
 
+/* ---------- Grid width guard ----------
+   insertSheet() creates a 26-column grid, and a sheet somebody added by hand is
+   26 columns too. INVOICE_HEADERS is 50 wide. Every read and write in this file
+   addresses `getRange(row, 1, n, HEADERS.length)`, and a range that runs past
+   the last column of the grid throws — so on a spreadsheet where the Invoices
+   tab had not already been widened, the very first save died with an
+   out-of-bounds error and the client reported the backend as broken. One
+   metadata read per tab per execution, and a column insert only when the grid
+   is genuinely too narrow. */
+function ensureColumns_(sheet, count) {
+  var have = sheet.getMaxColumns();
+  if (have < count) sheet.insertColumnsAfter(have, count - have);
+}
+
 /* Get or create a sheet with headers */
 function getOrCreateSheet_(name, headers) {
   var ss = getSpreadsheet_();
@@ -1011,8 +1025,11 @@ function getOrCreateSheet_(name, headers) {
      cost in the multi-second refresh. Call action=format to restyle on demand. */
   if (!sheet) {
     sheet = ss.insertSheet(name);
+    ensureColumns_(sheet, headers.length);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     formatSheetColumns_(sheet, headers);
+  } else {
+    ensureColumns_(sheet, headers.length);
   }
 
   return sheet;

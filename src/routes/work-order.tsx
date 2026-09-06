@@ -488,9 +488,14 @@ function WorkOrderPage() {
 
   const handleSelectOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
-    const existingWO = availableWorkOrders.find(
-      (w: any) => w.orderId === orderId || w.orderNo === orderId,
-    );
+    /* Matched through findWorkOrderFor, the same lookup the auto-adopt effect
+       above uses. The old inline test compared only `orderId` and `orderNo`, so
+       a work order that identifies its parent by `woNo` or `piNo` — anything
+       written before `orderId` was recorded, or rebuilt from the sheet's typed
+       columns — went unrecognised and this branch generated a *second* work
+       order for an invoice that already had one, with a fresh uid and its own
+       row in the WorkOrders tab. */
+    const existingWO = findWorkOrderFor(orderId);
     if (existingWO) {
       setActiveWO(existingWO);
       toast.success(`Loaded Work Order #${existingWO.woNo}`);

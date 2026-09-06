@@ -82,6 +82,22 @@ function SettingsPage() {
     saveSettings(form);
   };
 
+  /* Every sync and wipe below runs against `settings.sheetUrl` — the *saved*
+     deployment — because that is the only value the store has. The buttons used
+     to be enabled off `form.sheetUrl`, the text currently in the box, so
+     pasting a new Apps Script URL and pressing one of them without saving first
+     acted on the previous sheet while the screen showed the new one. On "Pull"
+     that quietly imported the wrong database; on "Push" it wrote this device's
+     records into it; on "Clear Sheet Database" it wiped a sheet the user had
+     just navigated away from. Gate them on the saved value and say why.
+
+     Test Ping is deliberately left alone: checking a URL you have just typed,
+     before committing it, is the entire point of that button. */
+  const savedSheetUrl = String(settings.sheetUrl || "").trim();
+  const typedSheetUrl = String(form.sheetUrl || "").trim();
+  const sheetUrlUnsaved = typedSheetUrl !== savedSheetUrl;
+  const sheetActionsBlocked = !savedSheetUrl || sheetUrlUnsaved;
+
   const handlePing = () => {
     if (!form.sheetUrl) {
       toast.error("Please enter a Google Apps Script URL first");
@@ -560,6 +576,17 @@ function SettingsPage() {
                     Deploy your Google Apps Script as a Web App with access set to "Anyone" and
                     paste the URL above.
                   </p>
+                  {sheetUrlUnsaved && (
+                    <p className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                      <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        This URL has not been saved yet. Sync and clear actions still point at the
+                        saved deployment
+                        {savedSheetUrl ? "" : " (none configured)"} — press{" "}
+                        <strong>Save Settings</strong> before using them.
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* ── Two-Way Sync Actions ── */}
@@ -586,7 +613,7 @@ function SettingsPage() {
                         size="sm"
                         className="w-full h-8 text-xs gap-1.5"
                         onClick={() => loadFromSheet()}
-                        disabled={sheetSyncing || !form.sheetUrl}
+                        disabled={sheetSyncing || sheetActionsBlocked}
                       >
                         {sheetSyncing ? (
                           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -611,7 +638,7 @@ function SettingsPage() {
                         size="sm"
                         className="w-full h-8 text-xs gap-1.5"
                         onClick={pushAllToSheet}
-                        disabled={sheetSyncing || !form.sheetUrl}
+                        disabled={sheetSyncing || sheetActionsBlocked}
                       >
                         {sheetSyncing ? (
                           <RefreshCw className="h-3 w-3 animate-spin" />
@@ -717,7 +744,7 @@ function SettingsPage() {
                         variant="outline"
                         size="sm"
                         className="w-full text-xs font-bold text-rose-600 border-rose-300 hover:bg-rose-50 gap-1.5"
-                        disabled={!form.sheetUrl || sheetSyncing}
+                        disabled={sheetActionsBlocked || sheetSyncing}
                       >
                         <Database className="h-3.5 w-3.5" /> Clear Sheet Database
                       </Button>
@@ -745,7 +772,7 @@ function SettingsPage() {
                         type="button"
                         size="sm"
                         className="w-full text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white gap-1.5 shadow-sm"
-                        disabled={sheetSyncing}
+                        disabled={sheetSyncing || sheetUrlUnsaved}
                       >
                         <AlertTriangle className="h-3.5 w-3.5" /> TOTAL CLEAR (Website + Database)
                       </Button>

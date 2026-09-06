@@ -244,6 +244,7 @@ type Ctx = {
     bookingId: string,
     paymentDetails?: {
       paidAmount?: number;
+      alreadyPaid?: number;
       paymentType?: string;
       refNo?: string;
       notes?: string;
@@ -787,6 +788,13 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
     }
     setInvoices(next);
+    /* Move the workflow cursor with the write, the same way patchInvoice does.
+       `invoicesRef` is otherwise only refreshed on render, so a handler that
+       saves and then calls a workflow helper — confirmPreProforma,
+       updateInvoiceStatus — looked the record up in the list as it stood
+       *before* the save. On a brand-new document that lookup found nothing and
+       the helper bailed out with "not found" on a record it had just written. */
+    invoicesRef.current = next;
     LS.set("invoices", next);
     setInvState(rec);
 
@@ -1127,6 +1135,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       bookingId: string,
       paymentDetails?: {
         paidAmount?: number;
+        alreadyPaid?: number;
         paymentType?: string;
         refNo?: string;
         notes?: string;
@@ -1145,9 +1154,29 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
       }
 
       const grandTotal = Number(target.totals?.grandTotal) || 0;
-      const rawPaid = Number(paymentDetails?.paidAmount ?? target.paidAmount ?? 0);
+
+      /* `paidAmount` off the modal is the amount received *now*, not the
+         document's running total — the modal caps the entry at the pending
+         balance precisely because it expects the two to be added. Storing the
+         entry as the total instead erased every earlier receipt: a ₹10,000
+         order already carrying ₹5,000 that took a further ₹3,000 came out
+         showing ₹3,000 paid and ₹7,000 due, and the ledger row written below
+         carried the same wrong figure. Every other payment path in the app —
+         Customers ▸ Add Payment, the invoice preview's Record Payment — already
+         adds to what came before; this one did not.
+
+         `alreadyPaid` travels with the entry so the base is whatever the modal
+         showed the user under "Prev Paid", which also keeps a Proforma
+         Invoice's planned advance from being counted as money in the bank. */
+      const increment = Number(paymentDetails?.paidAmount);
+      const priorPaid = Math.max(0, Number(paymentDetails?.alreadyPaid) || 0);
+      const rawPaid = Number.isFinite(increment)
+        ? priorPaid + increment
+        : Number(target.paidAmount) || 0;
       const paidAmount =
         grandTotal > 0 ? Math.min(grandTotal, Math.max(0, rawPaid)) : Math.max(0, rawPaid);
+      /* Only the new money gets a ledger row; `priorPaid` already has one. */
+      const receiptAmount = Math.max(0, paidAmount - priorPaid);
       const remainingBalance = Math.max(0, grandTotal - paidAmount);
       let paymentStatus = "Credit";
       if (paidAmount >= grandTotal && grandTotal > 0) {
@@ -1175,7 +1204,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
         target,
       );
 
-      if (paymentDetails && paidAmount > 0) {
+      if (paymentDetails && receiptAmount > 0) {
         savePayment({
           id: uid("pay"),
           invoiceId: target.id,
@@ -1184,7 +1213,7 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
              sheet carries an id here because this read the null variable. */
           invoiceNo: updated?.no || target.no || bookingId,
           date: new Date().toISOString().slice(0, 10),
-          amount: paidAmount,
+          amount: receiptAmount,
           mode: paymentDetails.paymentType || "Credit",
           refNo: paymentDetails.refNo || "",
           notes: paymentDetails.notes || "Order Confirmation Payment",

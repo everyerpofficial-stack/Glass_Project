@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -34,6 +35,43 @@ export function GlobalSearch({
   const navigate = useNavigate();
   const { invoices, customers, loadInvoice } = useGQ();
 
+  /* Ctrl+K only ever searched the eight newest records. cmdk filters the items
+     it is given, and this rendered `invoices.slice(0, 8)` — so an invoice
+     number typed in full matched nothing unless that invoice happened to be
+     among the last eight created, which on a real dataset it almost never is.
+     Filter the whole set against the query first, then cap what is rendered:
+     the cap is there to keep the list readable, not to decide what is
+     searchable. */
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+
+  const matchedInvoices = useMemo(() => {
+    const rows = q
+      ? invoices.filter((r: any) =>
+          [r?.no, r?.orderNo, r?.preProformaNo, r?.cust?.name, r?.poNo, r?.projectRemark].some(
+            (field) =>
+              String(field ?? "")
+                .toLowerCase()
+                .includes(q),
+          ),
+        )
+      : invoices;
+    return rows.slice(0, 8);
+  }, [invoices, q]);
+
+  const matchedCustomers = useMemo(() => {
+    const rows = q
+      ? customers.filter((c: any) =>
+          [c?.name, c?.phone, c?.email, c?.gstin, c?.city].some((field) =>
+            String(field ?? "")
+              .toLowerCase()
+              .includes(q),
+          ),
+        )
+      : customers;
+    return rows.slice(0, 8);
+  }, [customers, q]);
+
   const goto = (to: string) => {
     onOpenChange(false);
     navigate({ to });
@@ -54,7 +92,11 @@ export function GlobalSearch({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search bookings, invoices, customers or pages…" />
+      <CommandInput
+        value={query}
+        onValueChange={setQuery}
+        placeholder="Search bookings, invoices, customers or pages…"
+      />
       <CommandList>
         <CommandEmpty>Nothing matched your search.</CommandEmpty>
         <CommandGroup heading="Go to">
@@ -64,17 +106,20 @@ export function GlobalSearch({
             </CommandItem>
           ))}
         </CommandGroup>
-        {invoices.length > 0 && (
+        {matchedInvoices.length > 0 && (
           <CommandGroup heading="Bookings & Invoices">
-            {invoices.slice(0, 8).map((r: any) => {
+            {matchedInvoices.map((r: any) => {
               const no = String(r?.no || r?.orderNo || "Untitled");
               const custName = String(r?.cust?.name || "No customer");
+              /* cmdk runs its own pass over each item's `value`, so every field
+                 the filter above accepts has to appear here as well — otherwise
+                 a row matched on its PO number or order number is let through
+                 and then hidden again. */
+              const haystack = [no, r?.orderNo, r?.preProformaNo, custName, r?.poNo]
+                .filter(Boolean)
+                .join(" ");
               return (
-                <CommandItem
-                  key={r?.id || no}
-                  value={no + " " + custName}
-                  onSelect={() => openRecord(r)}
-                >
+                <CommandItem key={r?.id || no} value={haystack} onSelect={() => openRecord(r)}>
                   <span className="num">{no}</span>
                   <span className="text-muted-foreground">{custName}</span>
                   <span className="ml-auto num text-xs text-muted-foreground">
@@ -85,12 +130,12 @@ export function GlobalSearch({
             })}
           </CommandGroup>
         )}
-        {customers.length > 0 && (
+        {matchedCustomers.length > 0 && (
           <CommandGroup heading="Customers">
-            {customers.slice(0, 8).map((c: any, i: number) => (
+            {matchedCustomers.map((c: any, i: number) => (
               <CommandItem
                 key={c?.id || c?.name || i}
-                value={String(c?.name || "")}
+                value={[c?.name, c?.phone, c?.email, c?.gstin, c?.city].filter(Boolean).join(" ")}
                 onSelect={() => goto("/customers")}
               >
                 {String(c?.name || "Unnamed")}
