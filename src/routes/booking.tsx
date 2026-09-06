@@ -1120,6 +1120,7 @@ function BookingPage() {
                     const isConfirmed =
                       item.status === "order_confirmed" || item.status === "work_order_generated";
                     const rowCancelled = item.status === "cancelled";
+                    const isDelivered = Boolean(item.delivered);
                     return (
                       <MobileRecordCard
                         key={item.id}
@@ -1245,24 +1246,26 @@ function BookingPage() {
                               >
                                 <Printer className="h-4 w-4" />
                               </Button>
-                              <ConfirmDelete
-                                title={`Cancel Proforma Invoice ${item.no}?`}
-                                description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
-                                confirmLabel="Cancel Proforma Invoice"
-                                onConfirm={() => {
-                                  updateInvoiceStatus(item.id, "cancelled");
-                                  toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
-                                }}
-                              >
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 text-amber-600 border-amber-500/30"
-                                  title="Cancel Proforma Invoice"
+                              {!rowCancelled && !isDelivered && (
+                                <ConfirmDelete
+                                  title={`Cancel Proforma Invoice ${item.no}?`}
+                                  description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
+                                  confirmLabel="Cancel Proforma Invoice"
+                                  onConfirm={() => {
+                                    updateInvoiceStatus(item.id, "cancelled");
+                                    toast.info(`Proforma Invoice ${item.no} set to Cancelled`);
+                                  }}
                                 >
-                                  <Ban className="h-4 w-4" />
-                                </Button>
-                              </ConfirmDelete>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-9 w-9 text-amber-600 border-amber-500/30"
+                                    title="Cancel Proforma Invoice"
+                                  >
+                                    <Ban className="h-4 w-4" />
+                                  </Button>
+                                </ConfirmDelete>
+                              )}
                             </>
                           )
                         }
@@ -1295,6 +1298,7 @@ function BookingPage() {
                           item.status === "order_confirmed" ||
                           item.status === "work_order_generated";
                         const isCancelled = item.status === "cancelled";
+                        const isDelivered = Boolean(item.delivered);
 
                         return (
                           <tr
@@ -1457,7 +1461,7 @@ function BookingPage() {
                                   <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                                     Cancelled
                                   </span>
-                                ) : (
+                                ) : isDelivered ? null : (
                                   <ConfirmDelete
                                     title={`Cancel Proforma Invoice ${item.no}?`}
                                     description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}

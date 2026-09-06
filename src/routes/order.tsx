@@ -1063,7 +1063,7 @@ function OrderPage() {
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
-                            {!rowCancelled && (
+                            {!rowCancelled && !isDelivered && (
                               <ConfirmDelete
                                 title={`Cancel Order Confirm ${item.no}?`}
                                 description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
@@ -1257,7 +1257,7 @@ function OrderPage() {
                                   <span className="px-2 py-1 rounded text-[10px] font-extrabold uppercase bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
                                     Cancelled
                                   </span>
-                                ) : (
+                                ) : isDelivered ? null : (
                                   <ConfirmDelete
                                     title={`Cancel Order Confirm ${item.no}?`}
                                     description={`Are you sure you want to cancel ${item.no} (${item.cust?.name || "unnamed customer"})? Its status becomes Cancelled: the record stays for the audit trail but stops counting towards revenue and dues.`}
