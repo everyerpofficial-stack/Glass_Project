@@ -1199,7 +1199,6 @@ function CustomersPage() {
           </>
         )}
 
-
         {/* ── Pagination Bar ────────────────────────────────────────── */}
         {filteredCustomers.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 border-t border-border bg-muted/20 text-xs">

@@ -1873,12 +1873,59 @@ export function buildPrintHTML(
 
   if (hasExtraHoleCutCharges) {
     summary.push(fr("Glass Amount", nf(t.glassAmount)));
-    if (t.holeCharge) summary.push(fr("Hole Charge", nf(t.holeCharge)));
-    if (t.cutoutCharge) summary.push(fr("Cutout Charge", nf(t.cutoutCharge)));
-    if (t.bigHoleCharge) summary.push(fr("Big Hole Charge", nf(t.bigHoleCharge)));
-    if (t.bigCutoutCharge) summary.push(fr("Big Cutout Charge", nf(t.bigCutoutCharge)));
-    if (t.cskCharge || t.countersinkCharge)
-      summary.push(fr("CSK Charge", nf(t.cskCharge || t.countersinkCharge)));
+    if (t.holeCharge) {
+      const pcs = Number(t.holes) || 0;
+      const rate =
+        parseFloat(INV?.ch?.holeRate ?? o?.holeRate) || (pcs > 0 ? t.holeCharge / pcs : 0);
+      const label =
+        pcs > 0
+          ? `Hole Charge (${pcs} pcs)${rate > 0 ? ` @ ₹ ${Math.round(rate) === rate ? rate : rate.toFixed(2)}` : ""}`
+          : "Hole Charge";
+      summary.push(fr(label, nf(t.holeCharge)));
+    }
+    if (t.cutoutCharge) {
+      const pcs = Number(t.cutouts) || 0;
+      const rate =
+        parseFloat(INV?.ch?.cutoutRate ?? o?.cutoutRate) || (pcs > 0 ? t.cutoutCharge / pcs : 0);
+      const label =
+        pcs > 0
+          ? `Cutout Charge (${pcs} pcs)${rate > 0 ? ` @ ₹ ${Math.round(rate) === rate ? rate : rate.toFixed(2)}` : ""}`
+          : "Cutout Charge";
+      summary.push(fr(label, nf(t.cutoutCharge)));
+    }
+    if (t.bigHoleCharge) {
+      const pcs = Number(t.bigHoles) || 0;
+      const rate =
+        parseFloat(INV?.ch?.bigHoleRate ?? o?.bigHoleRate) || (pcs > 0 ? t.bigHoleCharge / pcs : 0);
+      const label =
+        pcs > 0
+          ? `Big Hole Charge (${pcs} pcs)${rate > 0 ? ` @ ₹ ${Math.round(rate) === rate ? rate : rate.toFixed(2)}` : ""}`
+          : "Big Hole Charge";
+      summary.push(fr(label, nf(t.bigHoleCharge)));
+    }
+    if (t.bigCutoutCharge) {
+      const pcs = Number(t.bigCutouts) || 0;
+      const rate =
+        parseFloat(INV?.ch?.bigCutoutRate ?? o?.bigCutoutRate) ||
+        (pcs > 0 ? t.bigCutoutCharge / pcs : 0);
+      const label =
+        pcs > 0
+          ? `Big Cutout Charge (${pcs} pcs)${rate > 0 ? ` @ ₹ ${Math.round(rate) === rate ? rate : rate.toFixed(2)}` : ""}`
+          : "Big Cutout Charge";
+      summary.push(fr(label, nf(t.bigCutoutCharge)));
+    }
+    if (t.cskCharge || t.countersinkCharge) {
+      const cskAmt = t.cskCharge || t.countersinkCharge;
+      const pcs = Number(t.csks || t.countersinks) || 0;
+      const rate =
+        parseFloat(INV?.ch?.cskRate ?? o?.cskRate ?? o?.countersinkRate) ||
+        (pcs > 0 ? cskAmt / pcs : 0);
+      const label =
+        pcs > 0
+          ? `CSK Charge (${pcs} pcs)${rate > 0 ? ` @ ₹ ${Math.round(rate) === rate ? rate : rate.toFixed(2)}` : ""}`
+          : "CSK Charge";
+      summary.push(fr(label, nf(cskAmt)));
+    }
   }
   summary.push(fr("Basic Amount", nf(t.basicAmount)));
   if (t.adminCharge) summary.push(fr("Admin Charge", nf(t.adminCharge)));
