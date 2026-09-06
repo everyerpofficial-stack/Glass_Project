@@ -27,6 +27,7 @@ import {
   liveWorkOrders,
   workOrderBelongsTo,
   formatOrderId,
+  formatPiNo,
   buildPrintHTML,
   computeTotals,
 } from "@/lib/gq";
@@ -575,10 +576,26 @@ function WorkOrderPage() {
   /* Build sticker labels data from active work order */
   const labels = useMemo(() => {
     if (!activeWO || !activeWO.pieces) return [];
+
+    const rawPi =
+      activeWO.piNo ||
+      targetInv?.preProformaNo ||
+      (targetInv?.docType !== "proforma" ? targetInv?.no : "");
+    const piNo = formatPiNo(rawPi);
+
+    const rawCi =
+      targetInv?.docType === "proforma"
+        ? targetInv?.no || targetInv?.orderNo
+        : activeWO.orderNo !== activeWO.piNo
+          ? activeWO.orderNo
+          : undefined;
+    const ciNo = formatPiNo(rawCi);
+
     return activeWO.pieces.map((piece: any, idx: number) => ({
-      customer: activeWO.customer || "Customer",
-      piNo: activeWO.piNo || activeWO.orderNo,
-      woNo: activeWO.woNo?.replace("WO-", "") || activeWO.orderNo,
+      customer: activeWO.customer || targetInv?.cust?.name || "Customer",
+      piNo: piNo !== "—" ? piNo : activeWO.piNo || targetInv?.no || "—",
+      ciNo: ciNo !== "—" ? ciNo : undefined,
+      woNo: activeWO.woNo?.replace("WO-", "") || activeWO.orderNo || targetInv?.orderNo || targetInv?.no,
       size: `${piece.heightMM} X ${piece.widthMM}`,
       sn: piece.sr,
       glassType:
@@ -586,10 +603,10 @@ function WorkOrderPage() {
       pieceOf: piece.pieceOf || `1 of ${activeWO.pieces.length}`,
       shape: piece.shape || "BLOCK",
       code: `${idx + 1} ${piece.shape === "BLOCK" ? "W1" : "SD1"}`,
-      partyWO: activeWO.orderNo,
+      partyWO: activeWO.orderNo || targetInv?.orderNo,
       barcode: piece.barcode || `000${idx + 1}`,
     }));
-  }, [activeWO]);
+  }, [activeWO, targetInv]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -865,16 +882,29 @@ function WorkOrderPage() {
                     {label.customer}
                   </div>
 
-                  {/* PI / WO / Size / SN row */}
+                  {/* PI / CI / WO / Size / SN row */}
                   <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
                     <div>
                       <span className="font-bold">PI :</span>{" "}
                       <span className="font-mono">{label.piNo}</span>
                     </div>
-                    <div>
-                      <span className="font-bold">WO :</span>{" "}
-                      <span className="font-mono">{label.woNo}</span>
-                    </div>
+                    {label.ciNo && label.ciNo !== label.piNo ? (
+                      <div>
+                        <span className="font-bold">CI :</span>{" "}
+                        <span className="font-mono font-bold">{label.ciNo}</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="font-bold">WO :</span>{" "}
+                        <span className="font-mono">{label.woNo}</span>
+                      </div>
+                    )}
+                    {label.ciNo && label.ciNo !== label.piNo && (
+                      <div>
+                        <span className="font-bold">WO :</span>{" "}
+                        <span className="font-mono">{label.woNo}</span>
+                      </div>
+                    )}
                     <div>
                       <span className="font-bold">Size :</span>{" "}
                       <span className="font-mono font-bold">{label.size}</span>

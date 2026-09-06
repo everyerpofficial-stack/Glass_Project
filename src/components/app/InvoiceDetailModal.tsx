@@ -276,9 +276,25 @@ export function InvoiceDetailModal({
   /* Sticker labels data */
   const stickerLabels = useMemo(() => {
     if (!activeWO || !activeWO.pieces) return [];
+
+    const rawPi =
+      activeWO.piNo ||
+      invoice?.preProformaNo ||
+      (invoice?.docType !== "proforma" ? invoice?.no : "");
+    const piNo = formatPiNo(rawPi);
+
+    const rawCi =
+      invoice?.docType === "proforma"
+        ? invoice?.no || invoice?.orderNo
+        : activeWO.orderNo !== activeWO.piNo
+          ? activeWO.orderNo
+          : undefined;
+    const ciNo = formatPiNo(rawCi);
+
     return activeWO.pieces.map((piece: any, idx: number) => ({
       customer: activeWO.customer || invoice?.cust?.name || "Customer",
-      piNo: activeWO.piNo || invoice?.no,
+      piNo: piNo !== "—" ? piNo : activeWO.piNo || invoice?.no || "—",
+      ciNo: ciNo !== "—" ? ciNo : undefined,
       woNo: activeWO.woNo?.replace("WO-", "") || invoice?.orderNo || invoice?.no,
       size: `${piece.heightMM} X ${piece.widthMM}`,
       sn: piece.sr,
@@ -1388,16 +1404,29 @@ export function InvoiceDetailModal({
                         {label.customer}
                       </div>
 
-                      {/* PI / WO / Size / SN row */}
+                      {/* PI / CI / WO / Size / SN row */}
                       <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px]">
                         <div>
                           <span className="font-bold">PI :</span>{" "}
                           <span className="font-mono">{label.piNo}</span>
                         </div>
-                        <div>
-                          <span className="font-bold">WO :</span>{" "}
-                          <span className="font-mono">{label.woNo}</span>
-                        </div>
+                        {label.ciNo && label.ciNo !== label.piNo ? (
+                          <div>
+                            <span className="font-bold">CI :</span>{" "}
+                            <span className="font-mono font-bold">{label.ciNo}</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="font-bold">WO :</span>{" "}
+                            <span className="font-mono">{label.woNo}</span>
+                          </div>
+                        )}
+                        {label.ciNo && label.ciNo !== label.piNo && (
+                          <div>
+                            <span className="font-bold">WO :</span>{" "}
+                            <span className="font-mono">{label.woNo}</span>
+                          </div>
+                        )}
                         <div>
                           <span className="font-bold">Size :</span>{" "}
                           <span className="font-mono font-bold">{label.size}</span>
