@@ -366,6 +366,9 @@ export function GlassQuoteProvider({ children }: { children: ReactNode }) {
     if (!s.sheetUrl) {
       s.sheetUrl = BASE_SETTINGS.sheetUrl;
     }
+    if (!s.phone) {
+      s.phone = BASE_SETTINGS.phone;
+    }
     setSettings(s);
     LS.set("settings", s);
 

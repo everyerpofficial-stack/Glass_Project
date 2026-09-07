@@ -31,7 +31,7 @@ export const BASE_SETTINGS: any = {
   addr: "S-5, Shree Govind Complex,\nPareek College Mode, Jhotwara Road,\nJaipur, Rajasthan, 302013",
   logo: "/logo.png",
   qrCode: "/payment-qr.png",
-  phone: "",
+  phone: "9694000561 / 9694000562",
   email: "hindustan@live.in",
   gstin: "08AACCH4208C1Z3",
   pan: "U26109RJ2010PTC031953",
