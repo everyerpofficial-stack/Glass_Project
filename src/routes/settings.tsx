@@ -519,7 +519,33 @@ function SettingsPage() {
                       placeholder="Branch name"
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs">Payment QR Code Path / Image URL</Label>
+                    <Input
+                      className="h-9 text-xs font-mono"
+                      value={form.qrCode ?? "/payment-qr.png"}
+                      onChange={(e) => handleChange("qrCode", e.target.value)}
+                      placeholder="/payment-qr.png"
+                    />
+                  </div>
                 </div>
+
+                {form.qrCode && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 border border-border/60 rounded-lg">
+                    <img
+                      src={form.qrCode}
+                      alt="QR Code Preview"
+                      className="h-14 w-14 object-contain bg-white border border-border rounded p-1"
+                    />
+                    <div>
+                      <div className="text-xs font-medium">Payment QR Code Preview</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        This QR code will be displayed on printed invoices and PDF downloads next to
+                        bank details.
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <Label className="text-xs">Standard Terms & Conditions (One per line)</Label>

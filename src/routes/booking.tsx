@@ -3067,11 +3067,28 @@ function BookingPage() {
                       ₹ {nf(totals.basicAmount ?? 0)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0">
+                  <div className="flex justify-between items-center py-1 border-b border-border/30 last:border-0">
                     <span className="text-muted-foreground">Admin charge</span>
-                    <span className="font-mono font-medium text-foreground">
-                      ₹ {nf(totals.adminCharge ?? 0)}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">₹</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        className="h-6 w-16 text-xs font-mono text-right p-1 bg-background border border-border/80 rounded"
+                        value={
+                          inv.ch?.adminCharge !== undefined && inv.ch?.adminCharge !== ""
+                            ? inv.ch.adminCharge
+                            : (totals.adminCharge ?? settings.adminCharge ?? 50)
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? 0 : Number(e.target.value);
+                          setInv((prev: any) => ({
+                            ...prev,
+                            ch: { ...(prev.ch || {}), adminCharge: val },
+                          }));
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-between items-baseline py-1 border-b border-border/30 last:border-0 font-medium">
                     <span className="text-muted-foreground">Total</span>

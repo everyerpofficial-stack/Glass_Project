@@ -30,6 +30,7 @@ export const BASE_SETTINGS: any = {
   title: "PROFORMA INVOICE",
   addr: "S-5, Shree Govind Complex,\nPareek College Mode, Jhotwara Road,\nJaipur, Rajasthan, 302013",
   logo: "/logo.png",
+  qrCode: "/payment-qr.png",
   phone: "",
   email: "hindustan@live.in",
   gstin: "08AACCH4208C1Z3",
@@ -2063,13 +2064,23 @@ export function buildPrintHTML(
               Please make sure to double check the performa in terms of Specification size,qty,Rates&taxes.if there is any item not as per your requirement please get the same modified to reflected in PI.
             </div>
 
-            <div style="margin-top:6px; font-family:monospace; font-size:7.5pt">
-              <span style="color:#bd1e24; font-weight:bold">Bank Details :</span><br>
-              <b style="color:#bd1e24">${esc(S.coName || "Ridhi Sidhi Glasses (India) Pvt. Ltd.")}</b><br>
-              ${esc(S.bankName || "HDFC BANK")}<br>
-              A/c. No. : ${esc(S.bankAcc || "18432790000120")}<br>
-              IFSC : ${esc(S.bankIfsc || "HDFC0001843")}<br>
-              Branch : ${esc(S.bankBranch || "New Sanganer Road Jaipur")}
+            <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center">
+              <div style="font-family:monospace; font-size:7.5pt; flex:1">
+                <span style="color:#bd1e24; font-weight:bold">Bank Details :</span><br>
+                <b style="color:#bd1e24">${esc(S.coName || "Ridhi Sidhi Glasses (India) Pvt. Ltd.")}</b><br>
+                ${esc(S.bankName || "HDFC BANK")}<br>
+                A/c. No. : ${esc(S.bankAcc || "18432790000120")}<br>
+                IFSC : ${esc(S.bankIfsc || "HDFC0001843")}<br>
+                Branch : ${esc(S.bankBranch || "New Sanganer Road Jaipur")}
+              </div>
+              ${
+                S.qrCode !== false && (S.qrCode || "/payment-qr.png")
+                  ? `<div style="text-align:center; flex-shrink:0; margin-left:10px; margin-right:6px">
+                      <img src="${esc(S.qrCode || "/payment-qr.png")}" alt="Payment QR" style="height:90px; width:90px; object-fit:contain; border:1px solid #ccc; padding:2px; background:#fff">
+                      <div style="font-size:7pt; font-weight:bold; color:#111; margin-top:2px">Scan to Pay</div>
+                     </div>`
+                  : ""
+              }
             </div>
           </div>
           <div class="rgt">
